@@ -56,20 +56,20 @@ let NOT = 15
 [<Literal>]
 let IS_ZERO = 16
 
-type Machine(program: seq<uint64>, input: seq<uint64>, output: seq<uint64> -> unit) =
+type Machine(program: seq<uint32>, input: seq<uint32>, output: seq<uint32> -> unit) =
 
     // Reverse ordering
-    let mutable arrays = [ (uint64 0, Seq.toArray program) ]
+    let mutable arrays = [ (uint32 0, Seq.toArray program) ]
 
-    let mutable nextUnused = let (_, arr) = arrays.[0] in uint64(Array.length arr)
+    let mutable nextUnused = let (_, arr) = arrays.[0] in uint32(Array.length arr)
 
-    let getArray (location: uint64) =
+    let getArray (location: uint32) =
         match List.skipWhile
             (fun (start, _) -> start > location)
             arrays with
         | [] -> raise AccessException
         | (start, arr) :: _ ->
-            if location < start + uint64 (Array.length arr)
+            if location < start + uint32 (Array.length arr)
             then (arr, int (location - start))
             else raise AccessException
 
@@ -80,23 +80,23 @@ type Machine(program: seq<uint64>, input: seq<uint64>, output: seq<uint64> -> un
         let (a, i) = getArray location in a.[i] <- value
 
 
-    let mutable programCounter = 0UL // program counter (next location)
+    let mutable programCounter = 0u // program counter (next location)
     let mutable stackPointer = nextUnused // stack pointer (next location)
     let mutable terminated = false
 
 
     let nextOp () =
         let op = get programCounter
-        programCounter <- programCounter + 1UL
+        programCounter <- programCounter + 1u
         op
 
     let pop () =
-        stackPointer <- stackPointer - 1UL
+        stackPointer <- stackPointer - 1u
         get stackPointer
 
     let push value =
         set stackPointer value
-        stackPointer <- stackPointer + 1UL
+        stackPointer <- stackPointer + 1u
 
     let allocate size =
         let start = nextUnused
@@ -115,20 +115,20 @@ type Machine(program: seq<uint64>, input: seq<uint64>, output: seq<uint64> -> un
         arrays <- de arrays
 
     let output start stop =
-        Seq.map get { start .. stop - 1UL} |> output
+        Seq.map get { start .. stop - 1u} |> output
 
     let input start stop =
         let mutable counter = 0
-        for (i, data) in Seq.zip {start .. stop - 1UL} input do
+        for (i, data) in Seq.zip {start .. stop - 1u} input do
             counter <- counter + 1
             set i data
-        start + uint64 counter
+        start + uint32 counter
 
     let flip f x y = f y x // Useful since arguments are popped.
 
     let step () =
         let op = nextOp () |> int
-        // printfn "Top: %6d, op: %2d" (if stackPointer > uint64 0 then get (stackPointer - 1UL) |> int else -1) op
+        // printfn "Top: %6d, op: %2d" (if stackPointer > uint32 0 then get (stackPointer - 1u) |> int else -1) op
 
         match op with
         | EXIT -> terminated <- true
@@ -147,7 +147,7 @@ type Machine(program: seq<uint64>, input: seq<uint64>, output: seq<uint64> -> un
         | MULTIPLY -> pop () * pop () |> push
         | AND -> pop () &&& pop () |> push
         | NOT -> ~~~ (pop ()) |> push
-        | IS_ZERO -> (if pop() = 0UL then 1 else 0) |> uint64 |> push
+        | IS_ZERO -> (if pop() = 0u then 1 else 0) |> uint32 |> push
         | _ -> raise UndefinedException
 
     member this.Run () = while not terminated do step ()
@@ -164,7 +164,7 @@ type Machine(program: seq<uint64>, input: seq<uint64>, output: seq<uint64> -> un
         and set (value) = stackPointer <- value
 
     member this.Allocated = List.rev [ for (start, arr) in arrays ->
-                                       (start, start + uint64 (Array.length arr)) ]
+                                       (start, start + uint32 (Array.length arr)) ]
 
     member this.Get location = get location
 
@@ -219,10 +219,10 @@ let swap i j =
 //
 // The two zeros at the end are for the initial stack.
 let runExample program arguments inputString =
-    let input = Seq.map uint64 ""
-    let output (s: seq<uint64>) = for x in s do printfn "Output: %d" x
-    let machine = Machine (Seq.map uint64 (program @ [0] @ arguments @ [0;0]),
-                           Seq.map uint64 inputString,
+    let input = Seq.map uint32 ""
+    let output (s: seq<uint32>) = for x in s do printfn "Output: %d" x
+    let machine = Machine (Seq.map uint32 (program @ [0] @ arguments @ [0;0]),
+                           Seq.map uint32 inputString,
                            output)
     try machine.Run () with
     | AccessException -> printfn "Access violation!"
@@ -233,7 +233,7 @@ let example1 () =
     let program =
         List.concat [
             [ADD; ADD] // Essentially pop the last two zeros, so that we do not cause stack overflow.
-            [PUSH; 1<<<14; ALLOCATE] // Allocate 16k 64-bit word stack
+            [PUSH; 1<<<14; ALLOCATE] // Allocate 16k 32-bit word stack
             copy 0 @ [GET_STACK] @ subtractC 2 @ [SET] // Push current argument pointer to new stack
             addC 1 @ [SET_STACK]
             copy 0
