@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <OtherFlags>--mlcompatibility</OtherFlags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="lib.ml" />
+    <Compile Include="types.ml" />
+    <Compile Include="source.ml" />
+    <Compile Include="values.ml" />
+    <Compile Include="ast.ml" />
+    <Compile Include="memory.ml" />
+    <Compile Include="operators.ml" />
+    <Compile Include="utf8.ml" />
+    <Compile Include="decode.ml" />
+  </ItemGroup>
+
+</Project>
