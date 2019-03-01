@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="buffer.ml" />
     <Compile Include="lib.ml" />
     <Compile Include="types.ml" />
     <Compile Include="source.ml" />
