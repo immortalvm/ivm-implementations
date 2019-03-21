@@ -3,14 +3,13 @@ module Decode
 (* Decoding stream *)
 
 type Stream = {
-  name : string;
   bytes : byte array;
   pos : int ref;
 }
 
 exception EosException
 
-let stream name bs = {name = name; bytes = bs; pos = ref 0}
+let stream bs = {bytes = bs; pos = ref 0}
 
 let len s : int = Array.length s.bytes
 let pos s = !(s.pos)
@@ -27,15 +26,11 @@ let getString0 n s : byte array = let i = pos s in skip0 n s; s.bytes.[i..i+n-1]
 
 (* Errors *)
 
-exception CodeException of Source.Region * string
+exception CodeException of int * string
 
 let stringOfByte b = Printf.sprintf "%02x" b
 
-let position (s: Stream) pos = {Source.Pos.file = s.name; Source.Pos.line = -1; Source.Pos.column = pos}
-let region (s: Stream) left right : Source.Region =
-  {Source.Region.left = position s left; Source.Region.right = position s right}
-
-let error s pos msg = raise (CodeException (region s pos pos, msg))
+let error s pos msg = raise (CodeException (pos, msg))
 let require b s pos msg = if not b then error s pos msg
 
 let guard f s =
@@ -56,8 +51,7 @@ let (@@) = Source.(@@)
 let at (f: Stream -> 'a) (s: Stream) : 'a Source.Phrase =
   let left = pos s in
   let x = f s in
-  let right = pos s in
-  x @@ region s left right
+  x @@ left
 
 
 
@@ -450,7 +444,7 @@ and instrBlock' s es =
   | _ ->
     let pos = pos s in
     let e' = instr s in
-    instrBlock' s ((e' @@ region s pos pos) :: es)
+    instrBlock' s ((e' @@ pos) :: es)
 
 let const1 s =
   let c = at instrBlock s in
@@ -695,4 +689,4 @@ let makeModule s =
       imports=imports; exports=exports; elems=elems; data=data; start=start}
 
 
-let decode (name: string) (bs: byte array) = at makeModule (stream name bs)
+let decode (bs: byte array) = at makeModule (stream bs)
