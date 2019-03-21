@@ -5,11 +5,6 @@ module Fun =
 
 
 module String =
-  let implode cs =
-    let buf = Buffer.create 80 in
-    List.iter (Buffer.add_char buf) cs;
-    Buffer.contents buf
-
   let explode (s: string) =
     let cs = ref [] in
     for i = s.Length - 1 downto 0 do cs := s.[i] :: !cs done;
@@ -17,12 +12,12 @@ module String =
 
 
 module List =
-  let rec map_filter f = function
+  let rec mapFilter f = function
     | [] -> []
     | x::xs ->
       match f x with
-      | None -> map_filter f xs
-      | Some y -> y :: map_filter f xs
+      | None -> mapFilter f xs
+      | Some y -> y :: mapFilter f xs
 
 
 (* Are these functions inteded for lists of signed or unsigned integers? *)
@@ -65,14 +60,14 @@ module Array32 =
 
   let length a = Array.length a
 
-  let index_of_int32 i =
+  let indexOfInt32 i =
     if i < 0l || i > (1 <<< 30) then -1 else
     i
 
-  let get a i = Array.get a (index_of_int32 i)
-  let set a i x = Array.set a (index_of_int32 i) x
+  let get a i = Array.get a (indexOfInt32 i)
+  let set a i x = Array.set a (indexOfInt32 i) x
   let blit a1 i1 a2 i2 n =
-    Array.blit a1 (index_of_int32 i1) a2 (index_of_int32 i2) (index_of_int32 n)
+    Array.blit a1 (indexOfInt32 i1) a2 (indexOfInt32 i2) (indexOfInt32 n)
 
 
 module Option =
