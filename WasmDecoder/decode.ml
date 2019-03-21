@@ -697,4 +697,4 @@ let module_ s =
       imports=imports; exports=exports; elems=elems; data=data; start=start}
 
 
-let decode name bs = at module_ (stream name bs)
+let decode (name: string) (bs: byte array) = at module_ (stream name bs)

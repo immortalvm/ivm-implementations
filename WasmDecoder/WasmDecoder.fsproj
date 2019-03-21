@@ -16,6 +16,7 @@
     <Compile Include="ast.ml" />
     <Compile Include="operators.ml" />
     <Compile Include="decode.ml" />
+    <Compile Include="Program.fs" />
   </ItemGroup>
 
 </Project>
