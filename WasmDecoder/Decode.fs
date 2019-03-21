@@ -463,7 +463,7 @@ let const1 s =
 
 (* Sections *)
 
-type ItestSection =
+type Section =
     | CustomSection
     | TypeSection
     | ImportSection
