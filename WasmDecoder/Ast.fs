@@ -47,11 +47,11 @@ module I64Op = IntOp
 module F32Op = FloatOp
 module F64Op = FloatOp
 
-type unop = (I32Op.unop, I64Op.unop, F32Op.unop, F64Op.unop) Values.op
-type binop = (I32Op.binop, I64Op.binop, F32Op.binop, F64Op.binop) Values.op
-type testop = (I32Op.testop, I64Op.testop, F32Op.testop, F64Op.testop) Values.op
-type relop = (I32Op.relop, I64Op.relop, F32Op.relop, F64Op.relop) Values.op
-type cvtop = (I32Op.cvtop, I64Op.cvtop, F32Op.cvtop, F64Op.cvtop) Values.op
+type unop = Values.op<I32Op.unop, I64Op.unop, F32Op.unop, F64Op.unop>
+type binop = Values.op<I32Op.binop, I64Op.binop, F32Op.binop, F64Op.binop>
+type testop = Values.op<I32Op.testop, I64Op.testop, F32Op.testop, F64Op.testop>
+type relop = Values.op<I32Op.relop, I64Op.relop, F32Op.relop, F64Op.relop>
+type cvtop = Values.op<I32Op.cvtop, I64Op.cvtop, F32Op.cvtop, F64Op.cvtop>
 
 type 'a memop =
   {ty : value_type; align : int; offset : Memory.offset; sz : 'a option}

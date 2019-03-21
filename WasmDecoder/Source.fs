@@ -16,8 +16,8 @@ let string_of_pos pos =
   if pos.line = -1 then
     Printf.sprintf "0x%x" pos.column
   else
-    string pos.line ^ "." ^ string (pos.column + 1)
+    string pos.line + "." + string (pos.column + 1)
 
 let string_of_region r =
-  r.left.file ^ ":" ^ string_of_pos r.left ^
-  (if r.right = r.left then "" else "-" ^ string_of_pos r.right)
+  r.left.file + ":" + string_of_pos r.left +
+  (if r.right = r.left then "" else "-" + string_of_pos r.right)

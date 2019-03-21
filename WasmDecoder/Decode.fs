@@ -46,7 +46,7 @@ let get_string n = guard (get_string0 n)
 let skip n = guard (skip0 n)
 
 let expect b s msg = require (guard get s = b) s (pos s - 1) msg
-let illegal s pos b = error s pos ("illegal opcode " ^ string_of_byte b)
+let illegal s pos b = error s pos ("illegal opcode " + string_of_byte b)
 
 
 (* Since F# does not seem to support local scopes, Source.(....). *)
