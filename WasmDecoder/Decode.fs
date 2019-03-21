@@ -1,7 +1,8 @@
+module Decode
+
 (* Decoding stream *)
 
-type stream =
-{
+type stream = {
   name : string;
   bytes : byte array;
   pos : int ref;
@@ -474,7 +475,7 @@ type ItestSection =
     | StartSection
     | ElemSection
     | CodeSection
-    | DataSection;
+    | DataSection
 
 let id s =
   let bo = peek s in

@@ -8,14 +8,14 @@
 
   <ItemGroup>
     <Compile Include="Buffer.fs" />
-    <Compile Include="lib.ml" />
-    <Compile Include="types.ml" />
-    <Compile Include="source.ml" />
-    <Compile Include="values.ml" />
-    <Compile Include="memory.ml" />
-    <Compile Include="ast.ml" />
-    <Compile Include="operators.ml" />
-    <Compile Include="decode.ml" />
+    <Compile Include="Lib.fs" />
+    <Compile Include="Types.fs" />
+    <Compile Include="Source.fs" />
+    <Compile Include="Values.fs" />
+    <Compile Include="Memory.fs" />
+    <Compile Include="Ast.fs" />
+    <Compile Include="Operators.fs" />
+    <Compile Include="Decode.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

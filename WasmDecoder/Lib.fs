@@ -1,11 +1,10 @@
+module Lib
+
 module Fun =
-struct
   let uncurry f (x, y) = f x y
-end
 
 
 module String =
-struct
   let implode cs =
     let buf = Buffer.create 80 in
     List.iter (Buffer.add_char buf) cs;
@@ -15,23 +14,19 @@ struct
     let cs = ref [] in
     for i = s.Length - 1 downto 0 do cs := s.[i] :: !cs done;
     !cs
-end
 
 
 module List =
-struct
   let rec map_filter f = function
     | [] -> []
     | x::xs ->
       match f x with
       | None -> map_filter f xs
       | Some y -> y :: map_filter f xs
-end
 
 
 (* Are these functions inteded for lists of signed or unsigned integers? *)
 module List32 =
-struct
   let rec make n x = make' n x []
   and make' (n: uint32) x xs =
     if n = 0ul then xs else make' (n - 1ul) x (x::xs)
@@ -60,11 +55,9 @@ struct
     | 0l, _ -> xs
     | n, _::xs' when n > 0l -> drop (n - 1) xs'
     | _ -> failwith "drop"
-end
 
 
 module Array32 =
-struct
   let make n x =
     if n < 0l || n > (1 <<< 30) then
       raise (System.ArgumentException("Array32.make"));
@@ -80,11 +73,9 @@ struct
   let set a i x = Array.set a (index_of_int32 i) x
   let blit a1 i1 a2 i2 n =
     Array.blit a1 (index_of_int32 i1) a2 (index_of_int32 i2) (index_of_int32 n)
-end
 
 
 module Option =
-struct
   let get o x =
     match o with
     | Some y -> y
@@ -97,4 +88,3 @@ struct
   let app f = function
     | Some x -> f x
     | None -> ()
-end

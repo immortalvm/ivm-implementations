@@ -1,3 +1,5 @@
+module Operators
+
 open Source
 open Types
 open Values
@@ -207,4 +209,3 @@ let f64_reinterpret_i64 = Convert (F64 F64Op.ReinterpretInt)
 
 let memory_size = MemorySize
 let memory_grow = MemoryGrow
-

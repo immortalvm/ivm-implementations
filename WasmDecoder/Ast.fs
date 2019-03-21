@@ -1,3 +1,5 @@
+module Ast
+
 (*
  * Throughout the implementation we use consistent naming conventions for
  * syntactic elements, associated with the types defined here and in a few
@@ -22,7 +24,6 @@ open Types
 (* Operators *)
 
 module IntOp =
-struct
   type unop = Clz | Ctz | Popcnt
   type binop = Add | Sub | Mul | DivS | DivU | RemS | RemU
              | And | Or | Xor | Shl | ShrS | ShrU | Rotl | Rotr
@@ -31,10 +32,8 @@ struct
   type cvtop = ExtendSI32 | ExtendUI32 | WrapI64
              | TruncSF32 | TruncUF32 | TruncSF64 | TruncUF64
              | ReinterpretFloat
-end
 
 module FloatOp =
-struct
   type unop = Neg | Abs | Ceil | Floor | Trunc | Nearest | Sqrt
   type binop = Add | Sub | Mul | Div | Min | Max | CopySign
   type testop = unit (* Does this make sense? *)
@@ -42,7 +41,6 @@ struct
   type cvtop = ConvertSI32 | ConvertUI32 | ConvertSI64 | ConvertUI64
              | PromoteF32 | DemoteF64
              | ReinterpretInt
-end
 
 module I32Op = IntOp
 module I64Op = IntOp
@@ -102,43 +100,38 @@ and instr' =
 
 type constant = instr list Source.phrase
 
-type global1 = global' Source.phrase
-and global' =
-{
+type global' = {
   gtype : global_type;
   value : constant;
 }
+type global1 = global' Source.phrase
 
-type func = func' Source.phrase
-and func' =
-{
+type func' = {
   ftype : var;
   locals : value_type list;
   body : instr list;
 }
+type func = func' Source.phrase
 
 
 (* Tables & Memories *)
 
-type table = table' Source.phrase
-and table' =
-{
+type table' = {
   ttype : table_type;
 }
+type table = table' Source.phrase
 
-type memory = memory' Source.phrase
-and memory' =
-{
+type memory' = {
   mtype : memory_type;
 }
+type memory = memory' Source.phrase
 
-type 'data segment = 'data segment' Source.phrase
-and 'data segment' =
-{
+type 'data segment' = {
   index : var;
   offset : constant;
   init : 'data;
 }
+type 'data segment = 'data segment' Source.phrase
 
 type table_segment = var list segment
 type memory_segment = string segment
@@ -155,31 +148,27 @@ and export_desc' =
   | MemoryExport of var
   | GlobalExport of var
 
-type export = export' Source.phrase
-and export' =
-{
+type export' = {
   name : string;
   edesc : export_desc;
 }
+type export = export' Source.phrase
 
-type import_desc = import_desc' Source.phrase
-and import_desc' =
+type import_desc' =
   | FuncImport of var
   | TableImport of table_type
   | MemoryImport of memory_type
   | GlobalImport of global_type
+type import_desc = import_desc' Source.phrase
 
-type import = import' Source.phrase
-and import' =
-{
+type import' = {
   module_name : string;
   item_name : string;
   idesc : import_desc;
 }
+type import = import' Source.phrase
 
-type module_ = module_' Source.phrase
-and module_' =
-{
+type module_' = {
   types : type_ list;
   globals : global1 list;
   tables : table list;
@@ -191,12 +180,12 @@ and module_' =
   imports : import list;
   exports : export list;
 }
+type module_ = module_' Source.phrase
 
 
 (* Auxiliary functions *)
 
-let empty_module =
-{
+let empty_module = {
   types = [];
   globals = [];
   tables = [];
