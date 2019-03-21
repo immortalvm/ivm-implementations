@@ -7,15 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="buffer.ml" />
+    <Compile Include="Buffer.fs" />
     <Compile Include="lib.ml" />
     <Compile Include="types.ml" />
     <Compile Include="source.ml" />
     <Compile Include="values.ml" />
-    <Compile Include="ast.ml" />
     <Compile Include="memory.ml" />
+    <Compile Include="ast.ml" />
     <Compile Include="operators.ml" />
-    <Compile Include="utf8.ml" />
     <Compile Include="decode.ml" />
   </ItemGroup>
 

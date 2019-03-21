@@ -37,7 +37,7 @@ module FloatOp =
 struct
   type unop = Neg | Abs | Ceil | Floor | Trunc | Nearest | Sqrt
   type binop = Add | Sub | Mul | Div | Min | Max | CopySign
-  type testop
+  type testop = unit (* Does this make sense? *)
   type relop = Eq | Ne | Lt | Gt | Le | Ge
   type cvtop = ConvertSI32 | ConvertUI32 | ConvertSI64 | ConvertUI64
              | PromoteF32 | DemoteF64
@@ -63,9 +63,8 @@ type storeop = Memory.pack_size memop
 
 (* Expressions *)
 
-type var = int32 Source.phrase
+type var = uint32 Source.phrase
 type literal = Values.value Source.phrase
-type name = int list
 
 type instr = instr' Source.phrase
 and instr' =
@@ -101,13 +100,13 @@ and instr' =
 
 (* Globals & Functions *)
 
-type const = instr list Source.phrase
+type constant = instr list Source.phrase
 
-type global = global' Source.phrase
+type global1 = global' Source.phrase
 and global' =
 {
   gtype : global_type;
-  value : const;
+  value : constant;
 }
 
 type func = func' Source.phrase
@@ -137,7 +136,7 @@ type 'data segment = 'data segment' Source.phrase
 and 'data segment' =
 {
   index : var;
-  offset : const;
+  offset : constant;
   init : 'data;
 }
 
@@ -159,7 +158,7 @@ and export_desc' =
 type export = export' Source.phrase
 and export' =
 {
-  name : name;
+  name : string;
   edesc : export_desc;
 }
 
@@ -173,8 +172,8 @@ and import_desc' =
 type import = import' Source.phrase
 and import' =
 {
-  module_name : name;
-  item_name : name;
+  module_name : string;
+  item_name : string;
   idesc : import_desc;
 }
 
@@ -182,13 +181,13 @@ type module_ = module_' Source.phrase
 and module_' =
 {
   types : type_ list;
-  globals : global list;
+  globals : global1 list;
   tables : table list;
   memories : memory list;
   funcs : func list;
   start : var option;
   elems : var list segment list;
-  data : string segment list;
+  data : (byte array) segment list;
   imports : import list;
   exports : export list;
 }
@@ -209,49 +208,3 @@ let empty_module =
   imports = [];
   exports = [];
 }
-
-open Source
-
-let func_type_for (m : module_) (x : var) : func_type =
-  (Lib.List32.nth m.it.types x.it).it
-
-let import_type (m : module_) (im : import) : extern_type =
-  let {idesc; _} = im.it in
-  match idesc.it with
-  | FuncImport x -> ExternFuncType (func_type_for m x)
-  | TableImport t -> ExternTableType t
-  | MemoryImport t -> ExternMemoryType t
-  | GlobalImport t -> ExternGlobalType t
-
-let export_type (m : module_) (ex : export) : extern_type =
-  let {edesc; _} = ex.it in
-  let its = List.map (import_type m) m.it.imports in
-  let open Lib.List32 in
-  match edesc.it with
-  | FuncExport x ->
-    let fts =
-      funcs its @ List.map (fun f -> func_type_for m f.it.ftype) m.it.funcs
-    in ExternFuncType (nth fts x.it)
-  | TableExport x ->
-    let tts = tables its @ List.map (fun t -> t.it.ttype) m.it.tables in
-    ExternTableType (nth tts x.it)
-  | MemoryExport x ->
-    let mts = memories its @ List.map (fun m -> m.it.mtype) m.it.memories in
-    ExternMemoryType (nth mts x.it)
-  | GlobalExport x ->
-    let gts = globals its @ List.map (fun g -> g.it.gtype) m.it.globals in
-    ExternGlobalType (nth gts x.it)
-
-let string_of_name n =
-  let b = Buffer.create 16 in
-  let escape uc =
-    if uc < 0x20 || uc >= 0x7f then
-      Buffer.add_string b (Printf.sprintf "\\u{%02x}" uc)
-    else begin
-      let c = Char.chr uc in
-      if c = '\"' || c = '\\' then Buffer.add_char b '\\';
-      Buffer.add_char b c
-    end
-  in
-  List.iter escape n;
-  Buffer.contents b
