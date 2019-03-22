@@ -1,5 +1,30 @@
 module Decode
 
+open Basics
+open Ast
+open Operators
+
+
+(* From Lib *)
+
+module Fun =
+  let uncurry f (x, y) = f x y
+
+
+(* Are these functions inteded for lists of signed or unsigned integers? *)
+module List32 =
+  let rec make n x = make' n x []
+  and make' (n: uint32) x xs =
+    if n = 0ul then xs else make' (n - 1ul) x (x::xs)
+
+
+module Option =
+  let map f = function
+    | Some x -> Some (f x)
+    | None -> None
+
+
+
 (* Decoding stream *)
 
 type Stream = {
@@ -44,11 +69,7 @@ let expect b s msg = require (guard get s = b) s (pos s - 1) msg
 let illegal s pos b = error s pos ("illegal opcode " + stringOfByte b)
 
 
-(* Since F# does not seem to support local scopes, Source.(....). *)
-let (@@) = Source.(@@)
-
-
-let at (f: Stream -> 'a) (s: Stream) : 'a Source.Phrase =
+let at (f: Stream -> 'a) (s: Stream) : 'a Phrase =
   let left = pos s in
   let x = f s in
   x @@ left
@@ -132,8 +153,6 @@ let sized f s =
 
 (* Types *)
 
-open Types
-
 let ValueType s =
   match vs7 s with
   | -0x01 -> I32Type
@@ -188,9 +207,6 @@ let globalType s =
 
 
 (* Decode instructions *)
-
-open Ast
-open Operators
 
 let var (s: Stream) : uint32 = vu32 s
 
@@ -470,7 +486,7 @@ type Section =
 
 let id s =
   let bo = peek s in
-  Lib.Option.map
+  Option.map
     (function
     | 0uy -> CustomSection
     | 1uy -> TypeSection
@@ -602,10 +618,10 @@ let code _ s =
   let ns = List.map (fun (n, _) -> int64 n) nts in
   require ((List.fold (+) 0L ns) < 0x1_0000_0000L)
     s pos "too many locals";
-  let locals = List.ofSeq  (Seq.collect (Lib.Fun.uncurry Lib.List32.make) nts) in
+  let locals = List.ofSeq  (Seq.collect (Fun.uncurry List32.make) nts) in
   let body = instrBlock s in
   end1 s;
-  {locals=locals; body=body; ftype = ((uint32 -1) @@ Source.noRegion)}
+  {locals=locals; body=body; ftype = ((uint32 -1) @@ noRegion)}
 
 let codeSection s =
   section CodeSection (vec (at (sized code))) [] s

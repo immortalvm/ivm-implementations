@@ -6,12 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Buffer.fs" />
-    <Compile Include="Lib.fs" />
-    <Compile Include="Types.fs" />
-    <Compile Include="Source.fs" />
-    <Compile Include="Values.fs" />
-    <Compile Include="Memory.fs" />
+    <Compile Include="Basics.fs" />
     <Compile Include="Ast.fs" />
     <Compile Include="Operators.fs" />
     <Compile Include="Decode.fs" />

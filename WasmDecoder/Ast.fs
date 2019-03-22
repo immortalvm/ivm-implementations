@@ -18,7 +18,7 @@ module Ast
  * These conventions mostly follow standard practice in language semantics.
  *)
 
-open Types
+open Basics
 
 
 (* Operators *)
@@ -47,24 +47,24 @@ module I64Op = IntOp
 module F32Op = FloatOp
 module F64Op = FloatOp
 
-type Unop = Values.Op<I32Op.Unop, I64Op.Unop, F32Op.Unop, F64Op.Unop>
-type Binop = Values.Op<I32Op.Binop, I64Op.Binop, F32Op.Binop, F64Op.Binop>
-type Testop = Values.Op<I32Op.Testop, I64Op.Testop, F32Op.Testop, F64Op.Testop>
-type Relop = Values.Op<I32Op.Relop, I64Op.Relop, F32Op.Relop, F64Op.Relop>
-type Cvtop = Values.Op<I32Op.Cvtop, I64Op.Cvtop, F32Op.Cvtop, F64Op.Cvtop>
+type Unop = Op<I32Op.Unop, I64Op.Unop, F32Op.Unop, F64Op.Unop>
+type Binop = Op<I32Op.Binop, I64Op.Binop, F32Op.Binop, F64Op.Binop>
+type Testop = Op<I32Op.Testop, I64Op.Testop, F32Op.Testop, F64Op.Testop>
+type Relop = Op<I32Op.Relop, I64Op.Relop, F32Op.Relop, F64Op.Relop>
+type Cvtop = Op<I32Op.Cvtop, I64Op.Cvtop, F32Op.Cvtop, F64Op.Cvtop>
 
 type 'a Memop =
-  {ty : ValueType; align : int; offset : Memory.Offset; sz : 'a option}
-type Loadop = (Memory.PackSize * Memory.Extension) Memop
-type Storeop = Memory.PackSize Memop
+  {ty : ValueType; align : int; offset : Offset; sz : 'a option}
+type Loadop = (PackSize * Extension) Memop
+type Storeop = PackSize Memop
 
 
 (* Expressions *)
 
-type Var = uint32 Source.Phrase
-type Literal = Values.Value Source.Phrase
+type Var = uint32 Phrase
+type Literal = Value Phrase
 
-type Instr = Instr' Source.Phrase
+type Instr = Instr' Phrase
 and Instr' =
   | Unreachable                       (* trap unconditionally *)
   | Nop                               (* do nothing *)
@@ -98,20 +98,20 @@ and Instr' =
 
 (* Globals & Functions *)
 
-type Constant = Instr list Source.Phrase
+type Constant = Instr list Phrase
 
 type Global1' = {
   gtype : GlobalType;
   value : Constant;
 }
-type Global1 = Global1' Source.Phrase
+type Global1 = Global1' Phrase
 
 type Func' = {
   ftype : Var;
   locals : ValueType list;
   body : Instr list;
 }
-type Func = Func' Source.Phrase
+type Func = Func' Phrase
 
 
 (* Tables & Memories *)
@@ -119,26 +119,26 @@ type Func = Func' Source.Phrase
 type Table' = {
   ttype : TableType;
 }
-type Table = Table' Source.Phrase
+type Table = Table' Phrase
 
 type Mem' = {
   mtype : MemoryType;
 }
-type Mem = Mem' Source.Phrase
+type Mem = Mem' Phrase
 
 type 'data Segment' = {
   index : Var;
   offset : Constant;
   init : 'data;
 }
-type 'data Segment = 'data Segment' Source.Phrase
+type 'data Segment = 'data Segment' Phrase
 
 
 (* Modules *)
 
-type Type = FuncType Source.Phrase
+type Type = FuncType Phrase
 
-type ExportDesc = ExportDesc' Source.Phrase
+type ExportDesc = ExportDesc' Phrase
 and ExportDesc' =
   | FuncExport of Var
   | TableExport of Var
@@ -149,21 +149,21 @@ type Export' = {
   name : string;
   edesc : ExportDesc;
 }
-type Export = Export' Source.Phrase
+type Export = Export' Phrase
 
 type ImportDesc' =
   | FuncImport of Var
   | TableImport of TableType
   | MemoryImport of MemoryType
   | GlobalImport of GlobalType
-type ImportDesc = ImportDesc' Source.Phrase
+type ImportDesc = ImportDesc' Phrase
 
 type Import' = {
   moduleName : string;
   itemName : string;
   idesc : ImportDesc;
 }
-type Import = Import' Source.Phrase
+type Import = Import' Phrase
 
 type ModuleType = {
   types : Type list;
