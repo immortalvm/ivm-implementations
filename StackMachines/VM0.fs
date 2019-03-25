@@ -208,6 +208,17 @@ let swap i j =
         [GET; SET; SET]
     ]
 
+// Get "off the ground", starting from
+// <prog> 0 <args> 0 0
+// with stack counter after the last 0.
+let obtainProperStack words =
+    List.concat [
+        [ADD; ADD] // Essentially pop the last two zeros, so that we do not cause stack overflow.
+        [PUSH; words; ALLOCATE] // Allocate stack with space for 'words' 32-bit words.
+        copy 0 @ [GET_STACK] @ subtractC 2 @ [SET] // Push current argument pointer to new stack
+        addC 1 @ [SET_STACK]
+    ]
+
 
 // ------------ Example(s) ------------
 
@@ -219,7 +230,6 @@ let swap i j =
 //
 // The two zeros at the end are for the initial stack.
 let runExample program arguments inputString =
-    let input = Seq.map uint32 ""
     let output (s: seq<uint32>) = for x in s do printfn "Output: %d" x
     let machine = Machine (Seq.map uint32 (program @ [0] @ arguments @ [0;0]),
                            Seq.map uint32 inputString,
@@ -232,10 +242,7 @@ let runExample program arguments inputString =
 let example1 () =
     let program =
         List.concat [
-            [ADD; ADD] // Essentially pop the last two zeros, so that we do not cause stack overflow.
-            [PUSH; 1<<<14; ALLOCATE] // Allocate 16k 32-bit word stack
-            copy 0 @ [GET_STACK] @ subtractC 2 @ [SET] // Push current argument pointer to new stack
-            addC 1 @ [SET_STACK]
+            obtainProperStack (1<<<14)
             copy 0
             doWhileNotZero <| subtractC 1 @ copy 0 @ [GET]
             addC 1
