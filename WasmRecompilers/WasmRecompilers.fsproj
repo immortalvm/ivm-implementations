@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="VM0Compiler.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../WasmDecoder/WasmDecoder.fsproj">
+      <Name>WasmDecoder.fsproj</Name>
+    </ProjectReference>
+    <ProjectReference Include="../StackMachines/StackMachines.fsproj">
+      <Name>StackMachines.fsproj</Name>
+    </ProjectReference>
+  </ItemGroup>
+
+</Project>
