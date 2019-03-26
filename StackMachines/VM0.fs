@@ -180,46 +180,19 @@ let multiplyC n = [PUSH; n; MULTIPLY]
 // Push a copy of the n'th element of the stack on top of the stack, counting from 0.
 let copy i = [GET_STACK] @ subtractC (i + 1) @ [GET]
 
-let resolveLabels (block: (int -> int list) -> (int -> int list) -> (int -> int -> int) -> int list) : int list =
-    let labref i = [ GET_PC; PUSH; i - 1; ADD ]
-    let labrefL = labref 0 |> List.length // The length of each label reference
-
-    let b1 = block (fun x -> [x]) (fun x -> [-x-1]) (fun x y -> x)
-    let b2 = block (fun x -> [-x-1]) (fun x -> [x]) (fun x y -> y)
-
-    let positions = List.map2 (fun x y -> if x > y && y < 0 then 0 else if y > x && x < 0 then labrefL else 1) b1 b2
-                  |> List.mapFold (fun x y -> x, x + y) 0
-                  |> fst
-                  |> List.toArray
-
-    let labels = List.mapi2 (fun i x y -> if x > y && y < 0 then Some (x, positions.[i]) else None) b1 b2
-               |> List.choose id
-               |> Map.ofSeq
-
-    List.mapi2 (fun i x y ->
-                if x > y && y < 0 then []
-                else if y > x && x < 0 then labels.[y] - positions.[i] |> labref
-                else if x <> y then [labels.[x] - labels.[y]]
-                else [x]) b1 b2
-    |> List.concat
-
-
 // Repeat until 0.
 // Pops top of stack after each iteration. Uses relative jump.
 // Pushes the PC on the stack every iteration in order to avoid polluting the stack.
 // It would be faster to do this once at the start, or at compile time (if the
 // location is fixed).
 let doWhileNotZero block =
-    resolveLabels (fun label reference labelDiff ->
-                   List.concat [
-                       label 100
-                       block
-                       [IS_ZERO]
-                       multiplyC <| labelDiff 101 100
-                       reference 100
-                       [ADD; JUMP]
-                       label 101
-                   ])
+    let n = List.length block
+    List.concat [
+        block
+        [IS_ZERO] @ multiplyC (n + 10)
+        [GET_PC] @ subtractC (n + 5)
+        [ADD; JUMP]
+    ]
 
 // Remove the top n elements from the stack.
 let removeTop n = [GET_STACK] @ subtractC n @ [SET_STACK]
