@@ -61,7 +61,7 @@ type Machine(program: seq<uint32>, input: seq<uint32>, output: seq<uint32> -> un
     // Reverse ordering
     let mutable arrays = [ (uint32 0, Seq.toArray program) ]
 
-    let mutable nextUnused = let (_, arr) = arrays.[0] in uint32(Array.length arr)
+    let mutable nextUnused = arrays.[0] |> snd |> Array.length |> uint32
 
     let getArray (location: uint32) =
         match List.skipWhile
@@ -70,7 +70,7 @@ type Machine(program: seq<uint32>, input: seq<uint32>, output: seq<uint32> -> un
         | [] -> raise AccessException
         | (start, arr) :: _ ->
             if location < start + uint32 (Array.length arr)
-            then (arr, int (location - start))
+            then arr, int (location - start)
             else raise AccessException
 
     let load location =
