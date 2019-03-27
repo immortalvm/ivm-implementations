@@ -128,7 +128,7 @@ type Machine(program: seq<uint32>, input: seq<uint32>, output: seq<uint32> -> un
 
     let step () =
         let op = nextOp () |> int
-        // printfn "Top: %6d, op: %2d" (if stackPointer > uint32 0 then load (stackPointer - 1u) |> int else -1) op
+        // printfn "Top: %6d, op: %2d" (if stackPointer > uint32 0 then load (stackPointer - 1u) |> int else -999) op
 
         match op with
         | EXIT -> terminated <- true
@@ -156,18 +156,20 @@ type Machine(program: seq<uint32>, input: seq<uint32>, output: seq<uint32> -> un
     // For testing:
 
     member this.ProgramCounter
-        with get () = programCounter
-        and set (value) = programCounter <- value
+        with get () = int programCounter
+        and set (value) = programCounter <- uint32 value
 
     member this.StackPointer
-        with get () = stackPointer
-        and set (value) = stackPointer <- value
+        with get () = int stackPointer
+        and set (value) = stackPointer <- uint32 value
 
     member this.Allocated = List.rev [ for (start, arr) in arrays ->
-                                       (start, start + uint32 (Array.length arr)) ]
+                                       (int start, int start + Array.length arr) ]
 
-    member this.Get location = load location
+    member this.Get location = uint32 location |> load  |> int
 
+    member this.Stack n = [this.StackPointer - n .. this.StackPointer - 1]
+                          |> Seq.map (this.Get >> int)
 
 // ------------ Pseudo operations ------------
 

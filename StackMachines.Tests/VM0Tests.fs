@@ -11,15 +11,20 @@ open Swensen.Unquote
 
 // This file is work in progress.
 
-let setupNoIO code stackContents freeStack : Machine =
-    let data = Seq.concat [code; [EXIT] :> seq<int>; stackContents; {1..freeStack}] |> Seq.map uint32 |> Seq.toArray
-    let m = Machine(data,
-                    seq { for i in 0 .. 10 do raise (Exception "Unexpected input")},
-                    fun _ -> raise (Exception "Unexpected output"))
-    m.StackPointer <- uint32 (Array.length data - freeStack)
-    m
+let runNoIO code stackContents freeStack : Machine * int list =
+    let data = Seq.concat [code @ [EXIT] :> seq<int>; stackContents |> Seq.rev; {1..freeStack}]
+               |> Seq.map uint32 |> Seq.toArray
+    let stackBottom = List.length code + 1
+    let input = seq { for i in 0 .. 0 do raise (Exception "Unexpected input")}
+    let output = fun _ -> raise (Exception "Unexpected output")
+    let mac = Machine(data, input, output)
+    mac.StackPointer <- Array.length data - freeStack
+    mac.Run()
+    (mac, mac.StackPointer - stackBottom |> mac.Stack |> Seq.rev |> Seq.toList)
 
-let run (program: int list) (input: string) : string =
+let runStack c s f = runNoIO c s f |> snd
+
+let runIO (program: int list) (input: string) : string =
     let mutable output: string = ""
 
     let out (s: seq<uint32>) =
@@ -32,13 +37,21 @@ let run (program: int list) (input: string) : string =
 
     output
 
+let arraySwap (a: int array) i j =
+    let x = a.[i]
+    a.[i] <- a.[j]
+    a.[j] <- x
+
 [<Tests>]
 let tests =
     testList "VM tests" [
-        testProperty "Immediate exit, no output" <| fun (NonNull input) -> run [EXIT] input = ""
-
-        testProperty "Add constant" <| fun m n ->
-            let machine = setupNoIO (addC m) [n] 1
-            machine.Run()
-            test <@ machine.Get (machine.StackPointer - 1u) = uint32 (m + n) @>
+        testProperty "Immediate exit" <| fun () -> test <@ runStack [] [] 0 |> List.isEmpty @>
+        testProperty "Add constant" <| fun m n -> test <@ runStack (addC m) [n] 1 = [m + n] @>
+        testProperty "Subtraction" <| fun m n -> test <@ runStack subtract [n; m] 1 = [m - n] @>
+        testProperty "Swap" <| fun (stack : int list) ->
+            stack <> [] ==> lazy (
+                (0, List.length stack - 1) |> Gen.choose |> Gen.two |> Arb.fromGen |> Prop.forAll <| fun (i, j) ->
+                    let a = List.toArray stack
+                    arraySwap a i j
+                    test <@ runStack (swap i j) stack 6 = Array.toList a @>)
     ]
