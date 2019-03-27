@@ -204,7 +204,7 @@ let jumpRelLength = jumpRel 0 |> List.length
 
 // Pop arg from stack and jump to one of two relative positions
 // depending on whether the value is 0.
-let jumpRelIf offset1 offset2 =
+let switchJump offset1 offset2 =
     List.concat [
         [IS_ZERO]
         multiplyC (offset1 - offset2)
@@ -212,21 +212,21 @@ let jumpRelIf offset1 offset2 =
         [GET_PC; ADD; JUMP]
     ]
 
-let jumpRelIfLength = jumpRelIf 0 0 |> List.length
+let switchJumpLength = switchJump 0 0 |> List.length
 
 // Repeat until 0.
 // Pops top of stack after each iteration. Uses relative jump.
 let doWhileNotZero block =
-    let n = List.length block + jumpRelIfLength
-    block @ jumpRelIf 0 -n
+    let n = List.length block + switchJumpLength
+    block @ switchJump 0 -n
 
 // The (pop and) check is done between 'before' and 'after'.
 let loopUntilZero before after =
     let m = List.length after + jumpRelLength
-    let n = List.length before + jumpRelIfLength + m
+    let n = List.length before + switchJumpLength + m
     List.concat [
         before
-        jumpRelIf m 0
+        switchJump m 0
         after
         jumpRel -n
     ]
@@ -241,7 +241,7 @@ let obtainProperStack words =
     List.concat [
         [ADD; ADD] // Essentially pop the last two zeros, so that we do not cause stack overflow.
         [PUSH; words; ALLOCATE] // Allocate stack with space for 'words' 32-bit words.
-        copy 0 @ [GET_STACK] @ subtractC 2 @ [STORE] // Push current argument pointer to new stack
+        copy 0 @ [GET_STACK] @ subtractC 2 @ [STORE] // Push current argument pointer to new stack.
         addC 1 @ [SET_STACK]
     ]
 
@@ -256,7 +256,7 @@ let copyRange =
                     ])
     loop @ removeTop 3
 
-// Store list of words in memory location on top of stack.
+// Store list of words in memory (starting at location on top of stack).
 let storeLiterally data =
     let m = List.length copyRange + jumpRelLength
     let n = List.length data
