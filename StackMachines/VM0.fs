@@ -1,9 +1,7 @@
 ﻿module VM0
 
 open System
-
-exception AccessException
-exception UndefinedException
+open VmBase
 
 [<Literal>]
 let EXIT = 0
@@ -56,120 +54,36 @@ let NOT = 15
 [<Literal>]
 let IS_ZERO = 16
 
-type Machine(program: seq<uint32>, input: seq<uint32>, output: seq<uint32> -> unit) =
 
-    // Reverse ordering
-    let mutable arrays = [ (uint32 0, Seq.toArray program) ]
+type Machine(program, input, output) =
 
-    let mutable nextUnused = arrays.[0] |> snd |> Array.length |> uint32
+    inherit BaseMachine(program, input, output)
 
-    let getArray (location: uint32) =
-        match List.skipWhile
-            (fun (start, _) -> start > location)
-            arrays with
-        | [] -> raise AccessException
-        | (start, arr) :: _ ->
-            if location < start + uint32 (Array.length arr)
-            then arr, int (location - start)
-            else raise AccessException
-
-    let load location =
-        let (a, i) = getArray location in a.[i]
-
-    let store location value = // Arguments order: as popped from the stack
-        let (a, i) = getArray location in a.[i] <- value
-
-
-    let mutable programCounter = 0u // program counter (next location)
-    let mutable stackPointer = nextUnused // stack pointer (next location)
-    let mutable terminated = false
-
-
-    let nextOp () =
-        let op = load programCounter
-        programCounter <- programCounter + 1u
-        op
-
-    let pop () =
-        stackPointer <- stackPointer - 1u
-        load stackPointer
-
-    let push value =
-        store stackPointer value
-        stackPointer <- stackPointer + 1u
-
-    let allocate size =
-        let start = nextUnused
-        arrays <- (start, Array.zeroCreate (int size)) :: arrays
-        nextUnused <- start + size
-        start
-
-    let deallocate start =
-        let rec de arrs =
-            match arrs with
-            | [] -> raise AccessException
-            | (st, a) :: rest ->
-                if st > start then (st, a) :: de rest
-                elif st.Equals(start) then rest
-                else raise AccessException
-        arrays <- de arrays
-
-    let output start stop =
-        Seq.map load { start .. stop - 1u} |> output
-
-    let input start stop =
-        let mutable counter = 0
-        for (i, data) in Seq.zip {start .. stop - 1u} input do
-            counter <- counter + 1
-            store i data
-        start + uint32 counter
-
-    let flip f x y = f y x // Useful since arguments are popped.
-
-    let step () =
-        let op = nextOp () |> int
+    override m.Step () =
+        let op = m.NextOp () |> int
         // printfn "Top: %6d, op: %2d" (if stackPointer > uint32 0 then load (stackPointer - 1u) |> int else -999) op
 
         match op with
-        | EXIT -> terminated <- true
-        | JUMP -> programCounter <- pop ()
-        | SET_STACK -> stackPointer <- pop ()
-        | PUSH -> nextOp () |> push
-        | GET_PC -> push programCounter
-        | GET_STACK -> push stackPointer
-        | LOAD -> pop () |> load |> push
-        | STORE -> store (pop ()) (pop ()) // Address on top!
-        | ALLOCATE -> pop () |> allocate |> push
-        | DEALLOCATE -> pop () |> deallocate
-        | OUTPUT -> flip output (pop ()) (pop ())
-        | INPUT -> flip input (pop ()) (pop ()) |> push
-        | ADD -> pop () + pop () |> push
-        | MULTIPLY -> pop () * pop () |> push
-        | AND -> pop () &&& pop () |> push
-        | NOT -> ~~~ (pop ()) |> push
-        | IS_ZERO -> (if pop() = 0u then 1 else 0) |> uint32 |> push
+        | EXIT -> m.Terminated <- true
+        | JUMP -> m.ProgramCounter <- m.Pop ()
+        | SET_STACK -> m.StackPointer <- m.Pop ()
+        | PUSH -> m.NextOp () |> m.Push
+        | GET_PC -> m.Push m.ProgramCounter
+        | GET_STACK -> m.Push m.StackPointer
+        | LOAD -> m.Pop () |> m.Load |> m.Push
+        | STORE -> m.Store (m.Pop ()) (m.Pop ()) // Address on top!
+        | ALLOCATE -> m.Pop () |> m.Allocate |> m.Push
+        | DEALLOCATE -> m.Pop () |> m.Deallocate
+        | OUTPUT -> flip m.Output (m.Pop ()) (m.Pop ())
+        | INPUT -> flip m.Input (m.Pop ()) (m.Pop ()) |> m.Push
+        | ADD -> m.Pop () + m.Pop () |> m.Push
+        | MULTIPLY -> m.Pop () * m.Pop () |> m.Push
+        | AND -> m.Pop () &&& m.Pop () |> m.Push
+        | NOT -> ~~~ (m.Pop ()) |> m.Push
+        | IS_ZERO -> (if m.Pop() = 0u then 1 else 0) |> uint32 |> m.Push
         | _ -> raise UndefinedException
 
-    member this.Run () = while not terminated do step ()
 
-
-    // For testing:
-
-    member this.ProgramCounter
-        with get () = int programCounter
-        and set (value) = programCounter <- uint32 value
-
-    member this.StackPointer
-        with get () = int stackPointer
-        and set (value) = stackPointer <- uint32 value
-
-    member this.Allocated = List.rev [ for (start, arr) in arrays ->
-                                       (int start, int start + Array.length arr) ]
-
-    member this.Get location = uint32 location |> load  |> int
-
-    member this.Stack n = [this.StackPointer - n .. this.StackPointer - 1]
-                          |> Seq.map (this.Get >> int)
 
 // ------------ Pseudo operations ------------
 

@@ -16,9 +16,9 @@ let runNoIO code stackContents freeStack : Machine * int list =
     let input = seq { for i in 0 .. 0 do raise (Exception "Unexpected input")}
     let output = fun _ -> raise (Exception "Unexpected output")
     let mac = Machine(data, input, output)
-    mac.StackPointer <- Array.length data - freeStack
+    mac.StackPointer <- uint32 <| Array.length data - freeStack
     mac.Run()
-    (mac, mac.StackPointer - stackBottom |> mac.Stack |> Seq.rev |> Seq.toList)
+    (mac, int mac.StackPointer - stackBottom |> mac.Stack |> Seq.rev |> Seq.toList)
 
 let runStack c s f = runNoIO c s f |> snd
 
