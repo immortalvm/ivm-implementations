@@ -616,7 +616,7 @@ let code _ s =
   let pos = pos s in
   let nts = vec local s in
   let ns = List.map (fun (n, _) -> int64 n) nts in
-  require ((List.fold (+) 0L ns) < 0x1_0000_0000L)
+  require (List.sum ns < 0x1_0000_0000L)
     s pos "too many locals";
   let locals = List.ofSeq  (Seq.collect (Fun.uncurry List32.make) nts) in
   let body = instrBlock s in
