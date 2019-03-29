@@ -8,6 +8,7 @@
   <ItemGroup>
     <Compile Include="VmBase.fs" />
     <Compile Include="VM0.fs" />
+    <Compile Include="VM1.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
