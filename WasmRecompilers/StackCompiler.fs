@@ -4,7 +4,7 @@ open System.Collections.Generic
 
 open Basics
 open Ast
-open VM0
+open VmBase
 
 exception CompilationException of string
 
@@ -76,46 +76,42 @@ let vtWords valueType: int =
     | I32Type | F32Type -> 1
     | _ -> 2
 
-let compile (wasm : byte array) (stackSize : int): uint32 array =
-    let wa = (Decode.decode wasm).it
+type Compiler (a: BaseArchitecture) =
 
-    let program = new List<int>() // We'll mostly work with signed integers, for convenience.
-    let res = program.AddRange
-    let pos = program.Count
+    let compile (wasm : byte array) (stackSize : int): uint32 array =
+        let wa = (Decode.decode wasm).it
 
-    stackSize |> obtainProperStack |> res
+        let program = new List<int>() // We'll mostly work with signed integers, for convenience.
+        let (res: OpSeq -> unit) = program.AddRange
+        let pos = program.Count
 
-    let sysRefs = systemFunctionReferences wa.imports
-    let (minMem, maxMem) = match wa.memories.[0].it.mtype with MemoryType lim -> limitsToWords lim
-    let (minTab, maxTab) = match wa.tables.[0].it.ttype with TableType (lim, _) -> limitsToWords lim
+        stackSize |> a.ObtainProperStack |> res
 
-    let typeWords i : int*int =
-        let sum = List.map vtWords >> List.sum
-        match wa.types.[i].it with FuncType (ins, outs) -> sum ins, sum outs
+        let sysRefs = systemFunctionReferences wa.imports
+        let (minMem, maxMem) = match wa.memories.[0].it.mtype with MemoryType lim -> limitsToWords lim
+        let (minTab, maxTab) = match wa.tables.[0].it.ttype with TableType (lim, _) -> limitsToWords lim
 
-    let globalOffsets =
-        wa.globals
-        |> Seq.map (fun g -> match g.it.gtype with GlobalType (t, _) -> vtWords t)
-        |> Seq.scan (+) 4 // Offset of first global
-        |> Seq.toArray
+        let typeWords i : int*int =
+            let sum = List.map vtWords >> List.sum
+            match wa.types.[i].it with FuncType (ins, outs) -> sum ins, sum outs
 
-    // Allocate space for the store
-    [PUSH; int <| Array.last globalOffsets; ALLOCATE] |> res
+        let globalOffsets =
+            wa.globals
+            |> Seq.map (fun g -> match g.it.gtype with GlobalType (t, _) -> vtWords t)
+            |> Seq.scan (+) 4 // Offset of first global
+            |> Seq.toArray
 
-    // Allocate space for the memory
-    [PUSH; int minMem; ALLOCATE]
-    @ copy 0 @ copy 2
-    @ [STORE; PUSH; int minMem; ADD]
-    @ copy 1 @ [STORE] |> res
+        // Allocate space for the store
+        Array.last globalOffsets |> a.AllocateC |> res
 
+        // Allocate space for the memory
+        a.AllocateC (int minMem) |> res
+        a.Get 0 @ a.Get 2 @ a.Store |> res             // store[0] := memory start
+        a.AddC (int minMem) @ a.Get 1 @ a.Store |> res // store[1] := memory stop
 
+        // Keep track of the stack index holding the store pointer.
+        let mutable storePointer = 0
 
+        // -----------------------
 
-    let mutable storePointer = 0
-
-
-
-
-    // -----------------------
-
-    program |> Seq.map uint32 |> Seq.toArray
+        program |> Seq.map uint32 |> Seq.toArray

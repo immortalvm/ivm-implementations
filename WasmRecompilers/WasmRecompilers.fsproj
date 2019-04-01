@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="VM0Compiler.fs" />
+    <Compile Include="StackCompiler.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
