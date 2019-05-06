@@ -46,13 +46,10 @@ let ADD = 12
 let MULTIPLY = 13
 
 [<Literal>]
-let AND = 14
+let NOT = 14
 
 [<Literal>]
-let NOT = 15
-
-[<Literal>]
-let IS_ZERO = 16
+let IS_ZERO = 15
 
 
 type Machine(initialMemory, input, output) =
@@ -86,7 +83,6 @@ type Machine(initialMemory, input, output) =
         | INPUT -> flip m.Input (m.Pop ()) (m.Pop ()) |> m.Push
         | ADD -> m.Pop () + m.Pop () |> m.Push
         | MULTIPLY -> m.Pop () * m.Pop () |> m.Push
-        | AND -> m.Pop () &&& m.Pop () |> m.Push
         | NOT -> ~~~ (m.Pop ()) |> m.Push
         | IS_ZERO -> (if m.Pop() = 0u then 1 else 0) |> uint32 |> m.Push
         | _ -> raise UndefinedException
