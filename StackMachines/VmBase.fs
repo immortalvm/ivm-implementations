@@ -214,6 +214,10 @@ type BaseArchitecture() =
     // Store data in memory (starting at location on top of stack).
     abstract member StoreLiterally: data: int list -> OpSeq
 
+    // <Start address in words> <Offset in bytes, little-endian> -> <zero-padded byte>
+    abstract member LoadByte: OpSeq
+    abstract member StoreByte: OpSeq
+
     // ------------
 
     member a.RunExample program arguments (inputString: string) =

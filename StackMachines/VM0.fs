@@ -134,3 +134,6 @@ type Architecture() =
             copyAndJump
             data
         ]
+
+    override a.LoadByte = raise UndefinedException // TODO
+    override a.StoreByte = raise UndefinedException // TODO
