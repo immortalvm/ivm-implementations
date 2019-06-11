@@ -189,7 +189,7 @@ type Architecture(?offsetBits: int) =
     override a.Get i = withAddr i LOAD
     override a.Set i = withAddr i STORE
 
-    override a.Pop n = withAddr (n-1) SET_STACK
+    override a.Pop n = if n=0 then [] else withAddr (n-1) SET_STACK
     override a.Jump n = if possibleOffset n
                         then iC n JUMP
                         // This is not very elegant, but presumably it is rare.

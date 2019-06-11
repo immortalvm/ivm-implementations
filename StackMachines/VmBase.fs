@@ -149,8 +149,9 @@ type BaseArchitecture() =
     default a.Swap i j = a.Get i @ a.Get (j + 1) @ a.Set (i + 2) @ a.Set (j + 1)
 
     // Pop n elements from stack.
+    // Negative n means make room on stack.
     abstract member Pop: int -> OpSeq
-    default a.Pop n = a.Addr (n-1) @ a.SetStack
+    default a.Pop n = if n = 0 then [] else a.Addr (n-1) @ a.SetStack
 
     // Jump to relative address.
     abstract member Jump: int -> OpSeq
