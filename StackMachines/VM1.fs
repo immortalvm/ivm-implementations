@@ -51,6 +51,12 @@ let NOT = 14
 [<Literal>]
 let SKIP_IF_ZERO = 15
 
+[<Literal>]
+let LOAD_BYTE = 16
+
+[<Literal>]
+let STORE_BYTE = 17
+
 
 type Machine(offsetBits, program, input, output) =
     inherit BaseMachine(program, input, output)
@@ -61,6 +67,19 @@ type Machine(offsetBits, program, input, output) =
         if y >>> (bits - 1) = 0u
         then y
         else y ||| ~~~mask
+
+    // Little-endian
+    member m.LoadByte start offset =
+        let addr = start + (offset >>> 2)
+        let word = m.Load addr
+        0xffu &&& (word >>> (8 * int (offset &&& 3u)))
+
+    // Only the lower 8 bits of value will be used.
+    member m.StoreByte start offset value =
+        let addr = start + (offset >>> 2)
+        let shift = 8 * int (offset &&& 3u)
+        let word = m.Load addr ^^^ ~~~ (0xffu <<< shift)
+        m.Store addr (word ||| ((value &&& 0xffu)) >>> shift)
 
     // We normally start the machine with...
     // memory contents: <prog> 0 <args> 0 0 0 0
@@ -105,6 +124,14 @@ type Machine(offsetBits, program, input, output) =
         | AND -> m.Pop () &&& m.Pop () |> m.Push
         | NOT -> ~~~ (m.Pop ()) |> m.Push
         | SKIP_IF_ZERO -> if m.Pop () = 0u then m.NextOp () |> ignore
+
+        | LOAD_BYTE -> flip m.LoadByte (m.Pop ()) (m.Pop ()) |> m.Push
+        | STORE_BYTE ->
+            let value = m.Pop ()
+            let offset = m.Pop ()
+            let start = m.Pop ()
+            m.StoreByte start offset value
+
         | _ -> raise UndefinedException
 
 
@@ -162,7 +189,7 @@ type Architecture(?offsetBits: int) =
     override a.Get i = withAddr i LOAD
     override a.Set i = withAddr i STORE
 
-    override a.Pop n = withAddr (n-1) SET_STACK
+    override a.Pop n = if n=0 then [] else withAddr (n-1) SET_STACK
     override a.Jump n = if possibleOffset n
                         then iC n JUMP
                         // This is not very elegant, but presumably it is rare.
@@ -189,3 +216,6 @@ type Architecture(?offsetBits: int) =
             copyAndJump
             data
         ]
+
+    override a.LoadByte = iN 0 LOAD_BYTE
+    override a.StoreByte = iN 0 STORE_BYTE
