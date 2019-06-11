@@ -83,7 +83,9 @@ type Compiler (a: BaseArchitecture) =
 
         let program = new List<int>() // We'll mostly work with signed integers, for convenience.
         let (res: OpSeq -> unit) = program.AddRange
-        let pos = program.Count
+        let overwriteBefore (location: int) (ops: OpSeq) : unit =
+            let f i x = program.[location - i - 1] <- x
+            Seq.iteri f ops
 
         stackSize |> a.ObtainProperStack |> res
 
@@ -111,6 +113,102 @@ type Compiler (a: BaseArchitecture) =
 
         // Keep track of the stack index holding the store pointer.
         let mutable storePointer = 0
+
+        // Keep track of the sizes of the elements on the stack.
+        let mutable stackSizes : int list = [1] // The store pointer is one word.
+
+        let functionStarts = new System.Collections.Generic.Dictionary<int, int>()
+        // (function number, reference address)
+        let compilationQueue = new System.Collections.Generic.Queue<int * int>()
+        let mutable isDone = false
+
+        // -----------------------
+
+        let pushValue (v: Value) =
+            // assert (System.Bitconverter.IsLittleEndian)
+            let words = match v with
+                        | I32 x -> [x]
+                        | F32 x -> [System.BitConverter.SingleToInt32Bits x]
+                        | I64 x -> let bytes = System.BitConverter.GetBytes x
+                                   [System.BitConverter.ToInt32(bytes, 0);
+                                    System.BitConverter.ToInt32(bytes, 2)]
+                        | F64 x -> let bytes = System.BitConverter.GetBytes x
+                                   [System.BitConverter.ToInt32(bytes, 0);
+                                    System.BitConverter.ToInt32(bytes, 2)]
+            for w in words do
+                a.Push w |> res
+
+        let insertFunction fn =
+            let f = wa.funcs.[fn].it
+            // Local variables
+            let localOffsets = f.locals
+                               |> Seq.map vtWords
+                               |> Seq.scan (+) 0
+                               |> Seq.toArray
+            // Make room on stack
+            // Notice that this does not zero out the stack!
+            let locSize = Array.last localOffsets
+            -locSize |> a.Pop |> res
+            storePointer <- storePointer + locSize
+
+            for o in f.body |> Seq.map (fun o -> o.it) do
+                match o with
+                | Unreachable -> raise <| CompilationException "Unreachable"
+                | Nop -> ()
+
+                // TODO: What if the value on top of the stack uses two words?
+                // -> We need to keep track of the types of the elements on the stack!
+                | Drop -> a.Pop 1 |> res
+
+                | Select -> ()
+                | Block (st, lst) -> ()
+                | Loop (st, lst) -> ()
+                | If (st, lst1, lst2) -> ()
+                | Br {at=_; it=v} -> ()
+                | BrIf {at=_; it=v} -> ()
+                | BrTable (vl, v) -> ()
+                | Return -> ()
+                | Call {at=_; it=v} -> ()
+                | CallIndirect {at=_; it=v} -> ()
+                | LocalGet {at=_; it=v} -> ()
+                | LocalSet {at=_; it=v} -> ()
+                | LocalTee {at=_; it=v} -> ()
+                | GlobalGet {at=_; it=v} -> ()
+                | GlobalSet {at=_; it=v} -> ()
+                | Load loadop -> ()
+                | Store storeop -> ()
+                | MemorySize -> ()
+                | MemoryGrow -> ()
+                | Const {at=_; it=v} -> pushValue v
+                | Test testop -> ()
+                | Compare relop -> ()
+                | Unary unop -> ()
+                | Binary binop -> ()
+                | Convert cvop -> ()
+
+
+
+
+            // TODO
+            res <| []
+
+        // TODO: Treat main method differently?
+        insertFunction 0 // Insert main method
+
+        while not isDone do
+            let (more, next) = compilationQueue.TryDequeue()
+            if not more
+            then
+                isDone <- true
+            else
+                let (fn, loc) = next
+                let mutable addr = 0
+                if not <| functionStarts.TryGetValue(fn, ref addr)
+                then addr <- program.Count
+                     functionStarts.[fn] <- addr
+                     insertFunction fn
+                overwriteBefore loc <| a.Jump (addr - loc)
+
 
         // -----------------------
 
