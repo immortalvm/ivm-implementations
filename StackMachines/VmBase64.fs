@@ -146,6 +146,16 @@ type BaseMachine(initialMemory: byte seq, input: byte seq, output: byte seq -> u
 type OpSeq = int list
 let opLen (os: OpSeq) = List.length os
 
+(* Fixpoint operator. *)
+let withOwnLength (f: int -> OpSeq) : OpSeq =
+    let mutable length = -1
+    let mutable result = []
+    while opLen result <> length do
+        length <- opLen result
+        result <- f length
+    result
+
+
 [<AbstractClass>]
 type BaseArchitecture() =
 
@@ -159,7 +169,9 @@ type BaseArchitecture() =
     abstract member Exit: OpSeq
     abstract member Input: OpSeq
     abstract member Output: OpSeq
-    abstract member Push: int -> OpSeq // Push signed 32-bit integer
+
+    (* Push signed 32-bit integer. *)
+    abstract member Push: int -> OpSeq
 
     abstract member Allocate: OpSeq
     abstract member AllocateC: int -> OpSeq
@@ -171,22 +183,75 @@ type BaseArchitecture() =
 
     (* Add constant. For subtraction, just add a negative number. *)
     abstract member AddC: int -> OpSeq
-    default a.AddC n = a.Push n @ a.Add
+    default a.AddC n = if n=0 then [] else a.Push n @ a.Add
 
     (* Flip all bits*)
     abstract member Not: OpSeq
+
+    abstract member Neg: OpSeq
+    default a.Neg = a.Not @ a.AddC 1
+
     abstract member Subtract: OpSeq
-    default a.Subtract = a.Not @ a.AddC 1 @ a.Add
+    default a.Subtract = a.Neg @ a.Add
 
     abstract member Multiply: OpSeq
     abstract member MultiplyC: int -> OpSeq
     default a.MultiplyC n = a.Push n @ a.Multiply
 
+    abstract member Divide: OpSeq
+    abstract member Remainder: OpSeq
+    default a.Remainder = a.Get 1 @ a.Get 1 @ a.Divide @ a.Get 1 @ a.Multiply @ a.Subtract
+
+    (* -1 if stack[1] < stack[0], else 0.
+    For signed numbers, add 800.. to both numbers before comparing. *)
+    abstract member LessThan: OpSeq
+    abstract member LessThanOrEqual: OpSeq
+    default a.LessThanOrEqual =
+        let part3 = a.Pop 2 @ a.Push -1
+        let part2 = a.LessThan @ a.Jump (opLen part3)
+        let part1 = a.AddC 1 @ a.Get 0 @ a.JumpIfZero (opLen part2)
+        part1 @ part2 @ part3
+
+    abstract member And: OpSeq
+    abstract member Or: OpSeq
+    abstract member Xor: OpSeq
+    abstract member Shift: OpSeq
+    abstract member ShiftC: int -> OpSeq
+    default a.ShiftC n = if n=0 then [] else a.Push n @ a.Shift
+
+    (* 0 if positive, otherwise negative. *)
+    abstract member IsNegative: OpSeq
+    default a.IsNegative = a.ShiftC -63
+
+    abstract member Abs: OpSeq
+    default a.Abs = a.IsNegative @ a.JumpIfZero (opLen a.Neg) @ a.Neg
+
+    (* There could be more efficient ways to compile signed division. *)
+    abstract member DivideS: OpSeq
+    default a.DivideS =
+        List.concat [
+            a.Get 1 @ a.Abs
+            a.Get 1 @ a.Abs
+            a.Divide
+            a.Get 2
+            a.Get 2
+            a.Multiply
+            a.IsNegative
+            a.JumpIfZero (opLen a.Neg)
+            a.Neg
+            a.Set 2
+            a.Pop 2
+        ]
+
+    abstract member RemainderS: OpSeq
+    // TODO: Is this optimal, or even correct?
+    default a.RemainderS = a.Get 1 @ a.Get 1 @ a.DivideS @ a.Get 1 @ a.Multiply @ a.Subtract
+
     abstract member SignN: int -> OpSeq
-    abstract member LoadUN: int -> OpSeq
+    abstract member LoadN: int -> OpSeq
     abstract member LoadSN: int -> OpSeq
     default a.LoadSN n =
-        let u = a.LoadUN n
+        let u = a.LoadN n
         if n = 8 then u
         else u @ a.SignN n
 
@@ -198,7 +263,7 @@ type BaseArchitecture() =
 
     // Push value of i'th stack element, which becomes (i+1)th element.
     abstract member Get: int -> OpSeq
-    default a.Get i = a. Addr i @ a.LoadUN 8
+    default a.Get i = a. Addr i @ a.LoadN 8
 
     // Replace i'th stack element, which becomes the (i-1)th element.
     abstract member Set: int -> OpSeq
@@ -210,41 +275,23 @@ type BaseArchitecture() =
 
     // Pop n elements from stack.
     abstract member Pop: int -> OpSeq
-    default a.Pop n = a.Addr (n-1) @ a.SetStack
+    default a.Pop n = if n=0 then [] else a.Addr n @ a.SetStack
 
     // Jump to relative address.
     abstract member Jump: int -> OpSeq
-    member a.JumpL = a.Jump 0 |> opLen
-
     abstract member JumpIfZero: int -> OpSeq
-    member a.JumpIfZeroL = a.JumpIfZero 0 |> opLen
-
     abstract member JumpIfNotZero: int -> OpSeq
-    member a.JumpIfNotZeroL = a.JumpIfNotZero 0 |> opLen
 
     abstract member WhileNotZero: beforeCheck:OpSeq -> afterCheck:OpSeq -> OpSeq
     default a.WhileNotZero beforeCheck afterCheck =
         if List.isEmpty afterCheck
         then
-            // Minor optimization
-            beforeCheck @ a.JumpIfNotZero -(opLen beforeCheck + a.JumpIfNotZeroL)
+            withOwnLength <| fun length ->
+                beforeCheck @ a.JumpIfNotZero -length
         else
-            let m = opLen afterCheck + a.JumpL
-            let n = opLen beforeCheck + a.JumpIfZeroL + m
-            List.concat [
-                beforeCheck
-                a.JumpIfZero m
-                afterCheck
-                a.Jump -n
-            ]
-
-    // Insert "breaks" between consecutive sequences.
-    member a.Loop (blocks: OpSeq list) : OpSeq =
-        let n = List.length blocks
-        let positions = blocks |> Seq.scan (fun pos b -> pos + opLen b + a.JumpL) 0 |> Seq.toList
-        let dest i = if i < n-1 then positions.[n] - positions.[i] else -positions.[n]
-        let blockAndJump i b = b @ a.Jump (dest i)
-        blocks |> Seq.mapi blockAndJump |> List.concat
+            withOwnLength <| fun totLength ->
+                let firstPart = withOwnLength <| fun fstLength -> beforeCheck @ a.JumpIfZero (totLength - fstLength)
+                firstPart @ afterCheck @ a.Jump -totLength
 
     // In order to get "off the ground".
     abstract member ObtainProperStack: stackSize:int -> OpSeq
@@ -265,7 +312,7 @@ type BaseArchitecture() =
         let loop = a.WhileNotZero
                        (a.Get 1  @ a.Get 1 @ a.Subtract)
                        (List.concat [
-                            a.Get 0 @ a.LoadUN 1 @ a.Get 3 @ a.StoreN 1
+                            a.Get 0 @ a.LoadN 1 @ a.Get 3 @ a.StoreN 1
                             a.Get 2 @ a.AddC 1 @ a.Set 3
                             a.AddC 1
                         ])
@@ -291,7 +338,7 @@ module Examples =
             List.concat [
                 a.ObtainProperStack (1<<<16) // 64 KiB
                 a.Get 0
-                a.WhileNotZero (a.AddC -1 @ a.Get 0 @ a.LoadUN 1) []
+                a.WhileNotZero (a.AddC -1 @ a.Get 0 @ a.LoadN 1) []
                 a.AddC 1
                 a.Swap 0 1
                 a.Output

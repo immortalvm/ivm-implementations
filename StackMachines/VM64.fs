@@ -101,11 +101,13 @@ let ADD = 32
 let MULTIPLY = 33
 
 [<Literal>]
-let DIVIDE_U = 34 // Unsigned. Leaves qutieont and remainder on stack (remainder on top).
+let DIVIDE = 34 // Unsigned.
 
 [<Literal>]
-let DIVIDE_S = 35 // Signed
+let REMAINDER = 35 // Unsigned.
 
+[<Literal>]
+let LESS_THAN = 36 // Unsigned. 0: false. FF...F: true.
 
 // 36-39: Unused
 
@@ -182,16 +184,9 @@ type Machine(initialMemory, input, output) =
 
         | ADD -> m.Pop () + m.Pop () |> m.Push
         | MULTIPLY -> m.Pop () * m.Pop () |> m.Push
-        | DIVIDE_U ->
-            let x = m.Pop ()
-            let y = m.Pop ()
-            x / y |> m.Push
-            x % y |> m.Push
-        | DIVIDE_S ->
-            let x = m.Pop () |> int64
-            let y = m.Pop () |> int64
-            x / y |> uint64 |> m.Push
-            x % y |> uint64 |> m.Push
+        | DIVIDE -> flip (/) (m.Pop ()) (m.Pop ()) |> m.Push
+        | REMAINDER -> flip (%) (m.Pop ()) (m.Pop ()) |> m.Push
+        | LESS_THAN -> (if m.Pop () > m.Pop () then -1 else 0) |> uint64 |> m.Push
 
         | AND -> (m.Pop ()) &&& (m.Pop ()) |> m.Push
         | OR -> (m.Pop ()) ||| (m.Pop ()) |> m.Push
@@ -268,21 +263,29 @@ type Architecture() =
     override a.Add = [ADD]
     override a.Not = [NOT]
     override a.Multiply = [MULTIPLY]
+    override a.Divide = [DIVIDE]
+    override a.LessThan = [LESS_THAN]
+    override a.And = [AND]
+    override a.Or = [OR]
+    override a.Xor = [NOT]
+    override a.Shift = [SHIFT]
 
     override a.SignN n = [signN n]
-    override a.LoadUN n = [loadN n]
+    override a.LoadN n = [loadN n]
 
     override a.StoreN n = [storeN n]
     override a.SetStack = [SET_STACK]
 
-    override a.Addr i = if i=0 then [GET_STACK] else [GET_STACK] @ a.AddC (i*8)
+    override a.Addr i = [GET_STACK] @ a.AddC (i*8)
+    override a.Pop n = if n=1 then [JUMP_IF_ZERO; 0] else base.Pop n
+
     override a.Jump offset = a.Push (offset+2) @ [GET_PC; ADD; JUMP]
     override a.JumpIfZero offset =
-        if offset < -128 || offset > 127 then raise UndefinedException
-        [JUMP_IF_ZERO; offset]
-    // TODO: Not efficient
-    override a.JumpIfNotZero offset = [JUMP_IF_ZERO; 4; PUSH1; 0; JUMP_IF_ZERO; offset]
+        if offset >= -128 && offset <= 127
+        then [JUMP_IF_ZERO; offset]
+        else let jump = a.Jump offset in a.JumpIfNotZero (opLen jump) @ jump
 
+    override a.JumpIfNotZero offset = a.Push 1 @ a.LessThan @ a.JumpIfZero offset
 
     override a.StoreLiterally data =
         let copyAndJump = a.CopyRange @ a.Jump (opLen data)
