@@ -1,7 +1,7 @@
 ﻿# TODO
 
 label1:
-  push!  # No-op
+  push # No-op
   push! 1  # Push one number (64 bits)
   push!! 2 3  # Push two numbers
   push! label1
@@ -26,6 +26,7 @@ label2:
   push! &1  # Push SP + 8.
   push! &-2  # Push SP - 16.
 
+  n = -13
   push! $n  # Push the (64 bit) value at SP + n * 8.
   add  # Pop two values and push their sum.
   add! 7  # Add 7, i.e. do 'push! 7', then 'add'.

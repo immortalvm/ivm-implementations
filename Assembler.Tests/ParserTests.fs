@@ -72,3 +72,31 @@ let ExpressionTests =
         ]
         // TODO: This is more suitable for property based testing
     ]
+
+[<Tests>]
+let StatementTests =
+    let str = System.IO.File.ReadAllText "test_code/example1.s"
+    let expected = [
+        SLabel "label1"
+        SPush []
+        SPush [ENum 1L]
+        SPush [ENum 2L; ENum 3L]
+        SPush [ELabel "label1"]
+        SJump None
+        SJump (Some (ELabel "label1"))
+        SJumpZero None
+        SJumpZero (Some (ELabel "label1", None))
+        SJumpZero (Some (EPeek (ENum 3L), Some (ELabel "label1")))
+        SLabel "label2"
+        SPush [EPc]
+        SPush [EStack (ENum 0L)]
+        SPush [EStack (ENum 1L)]
+        SPush [EStack (EMinus (ENum 2L))]
+        SDef ("n",EMinus (ENum 13L))
+        SPush [EPeek (ELabel "n")]
+        SAdd None
+        SAdd (Some (ENum 7L, None))
+    ]
+    testList "Examples" [
+        testCase "Example 1" <| fun () -> success expected program str
+    ]

@@ -8,8 +8,10 @@
     <Folder Include="test_code\" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="test_code\example1.s">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <Compile Include="ParserTests.fs" />
-    <None Include="test_code\example1.s" />
     <PackageReference Include="Expecto" Version="8.10.1" />
     <PackageReference Include="Expecto.FsCheck" Version="8.10.1" />
     <PackageReference Include="FsCheck" Version="2.14.0" />
@@ -17,8 +19,6 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.2.0" />
     <PackageReference Include="Unquote" Version="5.0.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.8.0" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\Assembler\Assembler.fsproj" />
   </ItemGroup>
 </Project>
