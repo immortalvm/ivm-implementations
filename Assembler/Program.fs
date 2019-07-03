@@ -9,4 +9,5 @@ let test p str =
 
 [<EntryPoint>]
 let main argv =
+    test statement "jump! xyz"
     0 // return an integer exit code

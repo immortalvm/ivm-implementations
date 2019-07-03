@@ -10,14 +10,14 @@ label1:
 
   # Pop two from the stack.
   # Jump to the address popped first if the value popped second is zero.
-  jumpZero
+  jump_zero
 
   # Pop value and jump to label1 if the value is zero.
   # Equivalent to 'push! label jumpZero'.
-  jumpZero! label1
+  jump_zero! label1
 
   # Jump to label1 if the value at SP + 3 * 8 is zero.
-  jumpZero!! $3 label1
+  jump_zero!! $3 label1
 
 label2:
   push! $pc  # Push the program counter (PC).
