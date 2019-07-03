@@ -76,6 +76,9 @@ let expression: Parser<Expression, unit> =
     ]
     expr
 
+let data: Parser<uint8 list, unit> =
+    between (strWs "[") (strWs "]") <| many (puint8 .>> whitespace |>> byte)
+
 let statement: Parser<Statement, unit> =
     let isLabel = charReturn ':' -1 .>> whitespace
     let isDef = charReturn '=' -2 .>> whitespace
@@ -94,6 +97,7 @@ let statement: Parser<Statement, unit> =
         if numArgs = -1 then preturn <| SLabel id
         else if numArgs = -2 then expression |>> fun e -> SDef (id, e)
         else match id with
+             | "data" -> data |>> SData
              | "exit" -> limArgs 0 >>. preturn SExit
              | "push" -> args |>> (Array.toList >> SPush)
              | "set_sp" -> args1 |>> SSetSp

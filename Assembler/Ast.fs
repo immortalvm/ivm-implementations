@@ -39,6 +39,8 @@ type MaxTwoArguments = (Expression * Expression option) option
 type Statement =
     | SLabel of string
     | SDef of string * Expression
+    | SData of uint8 list
+
     | SExit
     | SPush of Expression list
     | SSetSp of MaxOneArgument
