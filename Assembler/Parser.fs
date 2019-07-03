@@ -6,11 +6,13 @@ let comment: Parser<unit, unit> = skipChar '#' >>. skipRestOfLine true
 let whitespace = skipSepBy spaces comment
 
 // Based on http://www.quanttec.com/fparsec/tutorial.html#parsing-string-data.
-let identifier : Parser<string, unit> =
+let ident: Parser<string, unit> =
     let isIdentifierFirstChar c = isLetter c || c = '_'
     let isIdentifierChar c = isLetter c || isDigit c || c = '_'
     many1Satisfy2L isIdentifierFirstChar isIdentifierChar "identifier"
-    .>> whitespace // Skip trailing whitespace
+
+let identifier : Parser<string, unit> =
+    ident .>> whitespace // Skip trailing whitespace
 
 let positiveNumeral: Parser<int64, unit> = puint64 .>> whitespace |>> int64
 
@@ -42,8 +44,41 @@ let expression: Parser<Expression, unit> =
             // Use many1 to require at least one.
             strWs "+" >>. many eParser |>> ESum
             strWs "*" >>. many eParser |>> EProd
+
             strWs "&" >>. many eParser |>> EConj
             strWs "|" >>. many eParser |>> EDisj
+
+            strWs "=" >>. (eParser .>>. eParser) |>> EEq
+
+            (skipString "load" >>. choice [
+                    strWs "1" >>. eParser |>> ELoad1
+                    strWs "2" >>. eParser |>> ELoad2
+                    strWs "4" >>. eParser |>> ELoad4
+                    strWs "8" >>. eParser |>> ELoad8])
+            (skipString "sign" >>. choice [
+                    strWs "1" >>. eParser |>> ESign1
+                    strWs "2" >>. eParser |>> ESign2
+                    strWs "4" >>. eParser |>> ESign4])
+            (skipChar '<' >>. choice [
+                strWs "<" >>. (eParser .>>. eParser) |>> EShift
+                strWs "=" >>. (eParser .>>. eParser) |>> ELtE
+                whitespace >>. (eParser .>>. eParser) |>> ELt])
+            (skipChar '>' >>. choice [
+                    strWs "=" >>. (eParser .>>. eParser) |>> EGtE
+                    whitespace >>. (eParser .>>. eParser) |>> EGt
+                ]
+            )
         ] .>> whitespace .>> skipChar ')'
     ]
     eParser
+
+//let statement: Parser<Statement, unit> =
+    //let isLabel = charReturn ':' -1
+    //let countArgs = many (skipChar '!') |>> List.length
+    //let stmt (id, args) =
+    //    if args = -1
+    //    then SLabel id
+    //    else match id with
+    //         | "exit" -> SExit
+    //         | _ -> raise 
+    //ident .>>. (isLabel <|> countArgs) |>> stmt

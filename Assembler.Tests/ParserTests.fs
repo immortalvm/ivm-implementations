@@ -44,6 +44,8 @@ let BasicTests =
 
 [<Tests>]
 let ExpressionTests =
+    let x = ELabel "x"
+    let y = ELabel "y"
     testList "Expression" [
         testList "Leaf" [
             testCase "Numeral" <| fun () -> success (ENum 17L) expression "17"
@@ -63,4 +65,10 @@ let ExpressionTests =
             testCase "Product" <| fun () -> success (EProd[ENum 3L |> EPeek;  ESum [ENum 16L; ENum 0L |> EPeek]]) expression "(* $3 (+ 0x10 $0))"
             testCase "Disjunction" <| fun () -> success (EDisj [ENum 8L |> EPeek;  ELabel "lab"]) expression "(|\t$0o10 lab)"
         ]
+        testList "Less" [
+            testCase "Shift" <| fun () -> success (EShift (x, y)) expression "(<< x y)"
+            testCase "Or equal" <| fun () -> success (ELtE (x, y)) expression "(<= x y)"
+            testCase "Less than" <| fun () -> success (ELt (x, y)) expression "(< x y)"
+        ]
+        // TODO: This is more suitable for property based testing
     ]
