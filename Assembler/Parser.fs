@@ -77,7 +77,9 @@ let expression: Parser<Expression, unit> =
     expr
 
 let data: Parser<uint8 list, unit> =
-    between (strWs "[") (strWs "]") <| many (puint8 .>> whitespace |>> byte)
+    let neg = skipChar '-' >>. puint8 |>> (int8 >> (~-) >> uint8)
+    let either = (puint8 <|> neg) .>> whitespace
+    between (strWs "[") (strWs "]") <| many either
 
 let statement: Parser<Statement, unit> =
     let isLabel = charReturn ':' -1 .>> whitespace

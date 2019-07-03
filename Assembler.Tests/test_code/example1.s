@@ -30,3 +30,6 @@ label2:
   push! $n  # Push the (64 bit) value at SP + n * 8.
   add  # Pop two values and push their sum.
   add! 7  # Add 7, i.e. do 'push! 7', then 'add'.
+
+label3:
+  data [ 0 1 0xff -0xff]

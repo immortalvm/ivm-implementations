@@ -96,6 +96,8 @@ let StatementTests =
         SPush [EPeek (ELabel "n")]
         SAdd None
         SAdd (Some (ENum 7L, None))
+        SLabel "label3"
+        SData [ 0uy; 1uy; 0xffuy; 1uy ]
     ]
     testList "Examples" [
         testCase "Example 1" <| fun () -> success expected program str
