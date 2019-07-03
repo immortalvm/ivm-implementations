@@ -46,21 +46,22 @@ let BasicTests =
 let ExpressionTests =
     let x = ELabel "x"
     let y = ELabel "y"
+    let pc = ELabel "pc" |> EPeek // Quick and dirty
     testList "Expression" [
         testList "Leaf" [
             testCase "Numeral" <| fun () -> success (ENum 17L) expression "17"
             testCase "Label" <| fun () -> success (ELabel "u17_X_") expression "u17_X_"
-            testCase "PC" <| fun () -> success EPc expression "$pc"
+            testCase "PC" <| fun () -> success pc expression "$pc"
         ]
         testList "Unary" [
             testCase "Minus" <| fun () -> success (EMinus <| ELabel "x") expression "-x"
-            testCase "Negation" <| fun () -> success (ENeg  <| EPc) expression "~$pc"
+            testCase "Negation" <| fun () -> success (ENeg  <| pc) expression "~$pc"
             testCase "Minus-negation" <| fun () -> success (ENum 0xaL |> ENeg |> EMinus) expression "-~0xa"
             testCase "Peek" <| fun () -> success (ENum 0L |> EPeek) expression "$0"
             testCase "Stack" <| fun () -> success (ELabel "x" |> EStack ) expression "&x"
         ]
         testList "Binary" [
-            testCase "Sum" <| fun () -> success (ESum[EPc;  ENum 1L]) expression "(+ $pc 1)"
+            testCase "Sum" <| fun () -> success (ESum[pc;  ENum 1L]) expression "(+ $pc 1)"
             testCase "Conjunction" <| fun () -> success (EConj [ENum 0o10L |> EStack;  ELabel "lab"]) expression "( & &0o10 lab)"
             testCase "Product" <| fun () -> success (EProd[ENum 3L |> EPeek;  ESum [ENum 16L; ENum 0L |> EPeek]]) expression "(* $3 (+ 0x10 $0))"
             testCase "Disjunction" <| fun () -> success (EDisj [ENum 8L |> EPeek;  ELabel "lab"]) expression "(|\t$0o10 lab)"
@@ -88,7 +89,6 @@ let StatementTests =
         SJumpZero (Some (ELabel "label1", None))
         SJumpZero (Some (EPeek (ENum 3L), Some (ELabel "label1")))
         SLabel "label2"
-        SPush [EPc]
         SPush [EStack (ENum 0L)]
         SPush [EStack (ENum 1L)]
         SPush [EStack (EMinus (ENum 2L))]

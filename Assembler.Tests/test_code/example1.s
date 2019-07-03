@@ -20,8 +20,6 @@ label1:
   jump_zero!! $3 label1
 
 label2:
-  push! $pc  # Push the program counter (PC).
-
   push! &0  # Push the stack pointer (SP).
   push! &1  # Push SP + 8.
   push! &-2  # Push SP - 16.

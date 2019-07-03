@@ -33,9 +33,7 @@ let expression: Parser<Expression, unit> =
         positiveNumeral |>> ENum
         skipChar '-' >>. expr |>> EMinus
         skipChar '~' >>. expr |>> ENeg
-        skipChar '$' >>. choice [
-            stringReturn "pc" EPc .>> whitespace
-            expr |>> EPeek]
+        skipChar '$' >>. expr |>> EPeek
         skipChar '&' >>.  expr |>> EStack
         between (strWs "(") (strWs ")") <| choice [
             // Notice that we allow zero arguments to these operators.

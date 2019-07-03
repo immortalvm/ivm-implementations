@@ -3,7 +3,6 @@
 type Expression =
     | ENum of int64
     | ELabel of string
-    | EPc  // $pc
     | EStack of Expression  // &n = SP + n * 8
     | EPeek of Expression  // $n = Value at (SP + n * 8)
 
