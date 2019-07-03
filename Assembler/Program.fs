@@ -9,7 +9,4 @@ let test p str =
 
 [<EntryPoint>]
 let main argv =
-    //test (genWs .>> eof) " \t  # abcd\n  \t #7 \n a"
-    test (numeral .>> eof) "17L"
-    test numeral "0xffffffffffffffff"
     0 // return an integer exit code

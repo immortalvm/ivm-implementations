@@ -4,8 +4,8 @@ type Expression =
     | ENum of int64
     | ELabel of string
     | EPc  // $pc
-    | EStack of int64  // &n - SP + x * 8
-    | EPeek of int64  // $n - Value at (SP + n * 8)
+    | EStack of Expression  // &n = SP + n * 8
+    | EPeek of Expression  // $n = Value at (SP + n * 8)
 
     | ESum of Expression list
     | EProd of Expression list

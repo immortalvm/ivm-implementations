@@ -30,17 +30,16 @@ let BasicTests =
         testCase "Comment" <| fun () -> success () comment "# abc\n"
         testCase "Whitespace" <| fun () -> success () whitespace " \r# abcd\n  \t #7"
         testCase "Identifier" <| fun () -> success "xY_123" identifier "xY_123  # comment"
-        testCase "Numeral-dec" <| fun () -> success  1234L numeral "1234 # comment"
-        testCase "Numeral-oct-neg" <| fun () -> success  -08L numeral "-0o10 # comment"
-        testCase "Numeral-hex-big"<| fun () -> success -1L numeral <| "0x" + String.replicate 16 "f"
-        testCase "Numeral-hex-small"<| fun () -> success 1L numeral <| "-0x" + String.replicate 16 "f"
+        testCase "Numeral-dec" <| fun () -> success  1234L positiveNumeral "1234 # comment"
+        testCase "Numeral-oct" <| fun () -> success  08L positiveNumeral "0o10 # comment"
+        testCase "Numeral-hex-big"<| fun () -> success -1L positiveNumeral <| "0x" + String.replicate 16 "f"
 
         testCase "Comment-fail" <| fun () -> failure "Expecting: '#'" comment "not a comment"
         testCase "Whitespace-fail" <| fun () -> failure stopError whitespace "#\n777"
         testCase "Identifier-fail" <| fun () -> failure "Expecting: identifier" identifier "64"
-        testCase "Numeral-dec-fail" <| fun () -> failure stopError numeral "123a"
-        testCase "Numeral-oct-fail" <| fun () -> failure stopError numeral "0o18"
-        testCase "Numeral-hex-fail" <| fun () -> failure "outside the allowable range" numeral <| "0x" + String.replicate 17 "f"
+        testCase "Numeral-dec-fail" <| fun () -> failure stopError positiveNumeral "123a"
+        testCase "Numeral-oct-fail" <| fun () -> failure stopError positiveNumeral "0o18"
+        testCase "Numeral-hex-fail" <| fun () -> failure "outside the allowable range" positiveNumeral <| "0x" + String.replicate 17 "f"
     ]
 
 [<Tests>]
@@ -50,17 +49,18 @@ let ExpressionTests =
             testCase "Numeral" <| fun () -> success (ENum 17L) expression "17"
             testCase "Label" <| fun () -> success (ELabel "u17_X_") expression "u17_X_"
             testCase "PC" <| fun () -> success EPc expression "$pc"
-            testCase "Peek" <| fun () -> success (EPeek -94L) expression "$-94"
-            testCase "Stack" <| fun () -> success (EStack 26L) expression "&0x1a"
         ]
-        testList "Depth1" [
-            testCase "Sum" <| fun () -> success (ESum[EPc;  ENum -3L]) expression "(+ $pc -3)"
-            testCase "Conjunction" <| fun () -> success (EConj [EStack 8L;  ELabel "lab"]) expression "( & &0o10 lab)"
-            testCase "Minus" <| fun () -> success (EMinus <| EPeek 16L) expression "-$0x10"
+        testList "Unary" [
+            testCase "Minus" <| fun () -> success (EMinus <| ELabel "x") expression "-x"
+            testCase "Negation" <| fun () -> success (ENeg  <| EPc) expression "~$pc"
+            testCase "Minus-negation" <| fun () -> success (ENum 0xaL |> ENeg |> EMinus) expression "-~0xa"
+            testCase "Peek" <| fun () -> success (ENum 0L |> EPeek) expression "$0"
+            testCase "Stack" <| fun () -> success (ELabel "x" |> EStack ) expression "&x"
         ]
-        testList "Depth2" [
-            testCase "Product" <| fun () -> success (EProd[EPeek 3L;  ESum [ENum 16L; EPeek 0L]]) expression "(* $3 (+ 0x10 $0))"
-            testCase "Disjunction" <| fun () -> success (EDisj [EPeek 8L;  ELabel "lab"]) expression "(|\t$0o10 lab)"
-            testCase "Negation" <| fun () -> success (EPc |> ENeg |> ENeg) expression "~~$pc"
+        testList "Binary" [
+            testCase "Sum" <| fun () -> success (ESum[EPc;  ENum 1L]) expression "(+ $pc 1)"
+            testCase "Conjunction" <| fun () -> success (EConj [ENum 0o10L |> EStack;  ELabel "lab"]) expression "( & &0o10 lab)"
+            testCase "Product" <| fun () -> success (EProd[ENum 3L |> EPeek;  ESum [ENum 16L; ENum 0L |> EPeek]]) expression "(* $3 (+ 0x10 $0))"
+            testCase "Disjunction" <| fun () -> success (EDisj [ENum 8L |> EPeek;  ELabel "lab"]) expression "(|\t$0o10 lab)"
         ]
     ]

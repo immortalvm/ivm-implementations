@@ -12,72 +12,38 @@ let identifier : Parser<string, unit> =
     many1Satisfy2L isIdentifierFirstChar isIdentifierChar "identifier"
     .>> whitespace // Skip trailing whitespace
 
-let positiveNumeral: Parser<int64, unit> = puint64 |>> int64
-
-// We allow both signed and unsigned values in full 64 bit range (with wraparound).
-let numeral: Parser<int64, unit> =
-    // This definition is more natural, but mentions '-' in the overflow error message:
-    // let f s v = match s with Some _ -> - int64 v | None -> int64 v
-    // pipe2 (opt (pchar '-' )) puint64 f .>> whitespace
-    let n64 = skipChar '-' >>. positiveNumeral |>> (~-)
-    (positiveNumeral <|> n64) .>> whitespace
+let positiveNumeral: Parser<int64, unit> = puint64 .>> whitespace |>> int64
 
 let strWs s = skipString s >>. whitespace
 
-let expression: Parser<Expression, unit> =
-    // We simply purely constant expressions on the fly.
-    let splitNum f g e = match e with ENum n -> f n |> ENum | _ -> g e
-
+// Not used  yet. Postpone until the labels can also be evaluated.
+let splitNum f g e = match e with ENum n -> f n |> ENum | _ -> g e
+let splitNums f g lst =
     let num e = match e with ENum n -> Some n | _ -> None
-    let splitNums f g lst =
-        let o = List.map num lst
-        if List.forall Option.isSome o
-        then List.map Option.get o |> f |> ENum
-        else g lst
+    let o = List.map num lst
+    if List.forall Option.isSome o
+    then List.map Option.get o |> f |> ENum
+    else g lst
 
+let expression: Parser<Expression, unit> =
     let eParser, eParserRef = createParserForwardedToRef<Expression, unit>()
     // Why do we need 'do' here?
     do eParserRef := choice [
-        skipChar '-' >>. eParser |>> splitNum (~-) EMinus
-        skipChar '~' >>. eParser |>> splitNum (~~~) ENeg
-        numeral |>> ENum
         identifier |>> ELabel
+        positiveNumeral |>> ENum
+        skipChar '-' >>. eParser |>> EMinus
+        skipChar '~' >>. eParser |>> ENeg
         skipChar '$' >>. choice [
             stringReturn "pc" EPc .>> whitespace
-            numeral |>> EPeek]
-        skipChar '&' >>. numeral |>> EStack
+            eParser |>> EPeek]
+        skipChar '&' >>.  eParser |>> EStack
         skipChar '(' >>. whitespace >>. choice [
-            strWs "+" >>. many1 eParser |>> splitNums List.sum ESum
-            strWs "*" >>. many1 eParser |>> splitNums (List.fold (*) 1L) EProd
-            strWs "&" >>. many1 eParser |>> splitNums (List.fold (&&&) -1L) EConj
-            strWs "|" >>. many1 eParser |>> splitNums (List.fold (|||) 0L) EDisj
+            // Notice that we allow zero arguments to these operators.
+            // Use many1 to require at least one.
+            strWs "+" >>. many eParser |>> ESum
+            strWs "*" >>. many eParser |>> EProd
+            strWs "&" >>. many eParser |>> EConj
+            strWs "|" >>. many eParser |>> EDisj
         ] .>> whitespace .>> skipChar ')'
     ]
-
-
-    // do ePaserRef := 
     eParser
-
-    //let expression: Parser<Expression, unit> =
-    //let eParser, ePaserRef = createParserForwardedToRef<Expression, unit>()
-    //let strWs s = skipString s >>. whitespace
-    //// Why do we need 'do' here?
-    //do ePaserRef := choice [
-    //    numeral |>> ENum
-    //    identifier |>> ELabel
-    //    skipChar '$' >>. choice [
-    //        stringReturn "pc" EPc .>> whitespace
-    //        numeral |>> EPeek]
-    //    skipChar '&' >>. numeral |>> EStack
-    //    skipChar '(' >>. whitespace >>. choice [
-    //        strWs "+" >>. many1 eParser |>> ESum
-    //        strWs "*" >>. many1 eParser |>> EProd
-    //        strWs "-" >>. eParser |>> EMinus
-
-    //        strWs "&" >>. many1 eParser |>> EConj
-    //        strWs "|" >>. many1 eParser |>> EDisj
-    //        strWs "~" >>. eParser |>> ENeg
-
-    //    ] .>> whitespace .>> skipChar ')'
-    //]
-    //eParser
