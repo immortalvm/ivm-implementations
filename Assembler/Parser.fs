@@ -75,10 +75,12 @@ let expression: Parser<Expression, unit> =
     expr
 
 let statement: Parser<Statement, unit> =
-    let isLabel = charReturn ':' -1
-    let countArgs = many (skipChar '!') |>> List.length
+    let isLabel = charReturn ':' -1 .>> whitespace
+    let isDef = charReturn '=' -2 .>> whitespace
+    let countArgs = many (skipChar '!' .>> whitespace) |>> List.length
+
     let stmt (id, numArgs) =
-        let args = whitespace >>. parray numArgs expression
+        let args = parray numArgs expression
         let limArgs n = if numArgs <= n then args
                         else fun _ -> Reply(Error, unexpected "Too many arguments.")
         let args1 = limArgs 1 |>> Array.tryHead
@@ -87,8 +89,8 @@ let statement: Parser<Statement, unit> =
             then None
             else Some (a.[0], Array.tryItem 1 a)
 
-        if numArgs = -1
-        then preturn <| SLabel id
+        if numArgs = -1 then preturn <| SLabel id
+        else if numArgs = -2 then expression |>> fun e -> SDef (id, e)
         else match id with
              | "exit" -> limArgs 0 >>. preturn SExit
              | "push" -> args |>> (Array.toList >> SPush)
@@ -135,4 +137,6 @@ let statement: Parser<Statement, unit> =
 
              // Better error message than simply 'fail'.
              | _ -> fun _ -> Reply(Error, expected "valid instruction")
-    ident .>>. (isLabel <|> countArgs) >>= stmt
+    identifier .>>. (isLabel <|> isDef <|> countArgs) >>= stmt
+
+let program = whitespace >>. many statement
