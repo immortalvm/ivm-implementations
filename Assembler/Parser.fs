@@ -144,4 +144,4 @@ let statement: Parser<Statement, unit> =
              | _ -> fun _ -> Reply (Error, expected "valid instruction")
     identifier .>>. (isLabel <|> isDef <|> countArgs) >>= stmt
 
-let program = whitespace >>. many statement
+let program = whitespace >>. many statement .>> eof
