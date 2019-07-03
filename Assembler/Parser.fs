@@ -6,13 +6,10 @@ let comment: Parser<unit, unit> = skipChar '#' >>. skipRestOfLine true
 let whitespace = skipSepBy spaces comment
 
 // Based on http://www.quanttec.com/fparsec/tutorial.html#parsing-string-data.
-let ident: Parser<string, unit> =
-    let isIdentifierFirstChar c = isLetter c || c = '_'
-    let isIdentifierChar c = isLetter c || isDigit c || c = '_'
-    many1Satisfy2L isIdentifierFirstChar isIdentifierChar "identifier"
-
-let identifier : Parser<string, unit> =
-    ident .>> whitespace // Skip trailing whitespace
+let identifier: Parser<string, unit> =
+    let first c = isLetter c || c = '_'
+    let rest c = isLetter c || isDigit c || c = '_'
+    many1Satisfy2L first rest "identifier" .>> whitespace
 
 let positiveNumeral: Parser<int64, unit> = puint64 .>> whitespace |>> int64
 
