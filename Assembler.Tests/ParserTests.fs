@@ -92,7 +92,7 @@ let StatementTests =
         SPush [EStack (ENum 0L)]
         SPush [EStack (ENum 1L)]
         SPush [EStack (EMinus (ENum 2L))]
-        SDef ("n",EMinus (ENum 13L))
+        SDef ("n", EMinus (ENum 13L))
         SPush [EPeek (ELabel "n")]
         SAdd None
         SAdd (Some (ENum 7L, None))

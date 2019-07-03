@@ -53,23 +53,25 @@ let expression: Parser<Expression, unit> =
             strWs "=" >>. expr2 |>> EEq
 
             (skipString "load" >>. choice [
-                    strWs "1" >>. expr |>> ELoad1
-                    strWs "2" >>. expr |>> ELoad2
-                    strWs "4" >>. expr |>> ELoad4
-                    strWs "8" >>. expr |>> ELoad8])
+                strWs "1" >>. expr |>> ELoad1
+                strWs "2" >>. expr |>> ELoad2
+                strWs "4" >>. expr |>> ELoad4
+                strWs "8" >>. expr |>> ELoad8
+            ])
             (skipString "sign" >>. choice [
-                    strWs "1" >>. expr |>> ESign1
-                    strWs "2" >>. expr |>> ESign2
-                    strWs "4" >>. expr |>> ESign4])
+                strWs "1" >>. expr |>> ESign1
+                strWs "2" >>. expr |>> ESign2
+                strWs "4" >>. expr |>> ESign4
+            ])
             (skipChar '<' >>. choice [
                 strWs "<" >>. expr2 |>> EShift
                 strWs "=" >>. expr2 |>> ELtE
-                whitespace >>. expr2 |>> ELt])
+                whitespace >>. expr2 |>> ELt
+            ])
             (skipChar '>' >>. choice [
-                    strWs "=" >>. expr2 |>> EGtE
-                    whitespace >>. expr2 |>> EGt
-                ]
-            )
+                strWs "=" >>. expr2 |>> EGtE
+                whitespace >>. expr2 |>> EGt
+            ])
         ] .>> whitespace .>> skipChar ')'
     ]
     expr
@@ -82,7 +84,7 @@ let statement: Parser<Statement, unit> =
     let stmt (id, numArgs) =
         let args = parray numArgs expression
         let limArgs n = if numArgs <= n then args
-                        else fun _ -> Reply(Error, unexpected "Too many arguments.")
+                        else fun _ -> Reply (Error, unexpected "Too many arguments.")
         let args1 = limArgs 1 |>> Array.tryHead
         let args2 = limArgs 2 |>> fun a ->
             if Array.isEmpty a
@@ -136,7 +138,7 @@ let statement: Parser<Statement, unit> =
              | "dealloc" -> args1 |>> SDealloc
 
              // Better error message than simply 'fail'.
-             | _ -> fun _ -> Reply(Error, expected "valid instruction")
+             | _ -> fun _ -> Reply (Error, expected "valid instruction")
     identifier .>>. (isLabel <|> isDef <|> countArgs) >>= stmt
 
 let program = whitespace >>. many statement
