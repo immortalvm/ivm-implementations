@@ -40,7 +40,7 @@ let expression: Parser<Expression, unit> =
             stringReturn "pc" EPc .>> whitespace
             expr |>> EPeek]
         skipChar '&' >>.  expr |>> EStack
-        skipChar '(' >>. whitespace >>. choice [
+        between (strWs "(") (strWs ")") <| choice [
             // Notice that we allow zero arguments to these operators.
             // Use many1 to require at least one.
             strWs "+" >>. many expr |>> ESum
@@ -72,7 +72,7 @@ let expression: Parser<Expression, unit> =
                 strWs "=" >>. expr2 |>> EGtE
                 whitespace >>. expr2 |>> EGt
             ])
-        ] .>> whitespace .>> skipChar ')'
+        ]
     ]
     expr
 
