@@ -5,6 +5,7 @@ label1:
   push! 1  # Push one number (64 bits)
   push!! 2 3  # Push two numbers
   push! label1
+
   jump  # Go to the address on top of the stack
   jump! label1  # Go to label1. Equilvalent to 'push! label1 jump'.
 

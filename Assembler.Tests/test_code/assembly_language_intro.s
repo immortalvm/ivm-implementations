@@ -60,12 +60,12 @@ my_label:
     push! my_label      # Push the address of my_label.
     push! prime_number  # Push the result of expanding its definition.
 
-    n = 7       # An arbitrary number
-    push! &n    # Push the address PC + n * 8 (of the n'th elemnt on the stack).
-    push! $n    # Push the (64-bit) value at PC + n * 8.
+    n = 7      # An arbitrary number
+    push! &n   # Push the address PC + n * 8 (of the n'th element on the stack).
+    push! $n   # Push the (64-bit) value at PC + n * 8.
 
     # It is also possible to push the value of complex (Lisp style) expressions.
-    push! (+ my_label -$0)  # Push the label address minus the top stack element.
+    push! (+ my_label -$0) # Push the label address minus the top stack element.
 
     # This will be explained in detail later, but observe that
     #
@@ -97,6 +97,7 @@ my_label:
     jump_zero!! (+ myprime -$4) my_label
 
     # The jump_not_zero statement is similar.
+    jump_not_zero
 
 
     ### 4. LOAD, SIGN
@@ -245,4 +246,3 @@ my_label:
     set_sp! xx  # Sugar for 'push! xx set_sp'.
 
     exit        # Terminate the machine.
-

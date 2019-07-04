@@ -79,25 +79,26 @@ let StatementTests =
     let str = System.IO.File.ReadAllText "test_code/example1.s"
     let expected = [
         SLabel "label1"
-        SPush []
         SPush [ENum 1L]
         SPush [ENum 2L; ENum 3L]
         SPush [ELabel "label1"]
-        SJump None
-        SJump (Some (ELabel "label1"))
-        SJumpZero None
-        SJumpZero (Some (ELabel "label1", None))
-        SJumpZero (Some (EPeek (ENum 3L), Some (ELabel "label1")))
+
+        SJump
+        SPush [ELabel "label1"]; SJump
+        SJumpZero
+        SPush [ELabel "label1"]; SJumpZero
+        SPush [EPeek (ENum 3L); ELabel "label1"]; SJumpZero
+
         SLabel "label2"
         SPush [EStack (ENum 0L)]
         SPush [EStack (ENum 1L)]
         SPush [EStack (EMinus (ENum 2L))]
         SDef ("n", EMinus (ENum 13L))
         SPush [EPeek (ELabel "n")]
-        SAdd None
-        SAdd (Some (ENum 7L, None))
+        SAdd
+        SPush [ENum 7L]; SAdd
         SLabel "label3"
-        SData [ 0uy; 1uy; 0xffuy; 1uy ]
+        SData [0uy; 1uy; 0xffuy; 1uy]
     ]
     testList "Examples" [
         testCase "Example 1" <| fun () -> success expected program str
@@ -114,75 +115,63 @@ let IntroTests =
         SPush [ENum 13L]
         SPush [EMinus (ENum 1L)]
         SPush [ENum 0L; ENum 1L]
-        SPush []
         SPush [ELabel "my_label"]
         SPush [ELabel "prime_number"]
-        SDef ("n",ENum 7L)
+        SDef ("n", ENum 7L)
         SPush [EStack (ELabel "n")]
         SPush [EPeek (ELabel "n")]
         SPush [ESum [ELabel "my_label"; EMinus (EPeek (ENum 0L))]]
 
-        SJump None
-        SJump (Some (ELabel "my_label"))
-        SJumpZero None
-        SJumpZero (Some (ELabel "my_label", None))
+        SJump
+        SPush [ELabel "my_label"]; SJump
         SJumpZero
-          (Some
-             (ESum [ELabel "myprime"; EMinus (EPeek (ENum 4L))],
-              Some (ELabel "my_label")))
-        SLoad1 None
-        SLoad2 None
-        SLoad4 None
-        SLoad8 None
-        SLoad4 (Some (ELabel "my_label"))
-        SSign4 None
-        SSign1 (Some (ENum 255L))
-        SStore1 None
-        SStore2 None
-        SStore4 None
-        SStore8 None
-        SStore4 (Some (ELabel "my_label", None))
-        SStore8 (Some (ELabel "prime_number", Some (ELabel "my_label")))
+        SPush [ELabel "my_label"]; SJumpZero
 
-        SDef ("xx",ENum 99L)
-        SDef ("yy",EMinus (ENum 13L))
-        SAdd None
-        SAdd (Some (ELabel "xx", None))
-        SAdd (Some (ELabel "xx", Some (ELabel "yy")))
-        SSub None
-        SSub (Some (ELabel "xx", None))
-        SSub (Some (ELabel "xx", Some (ELabel "yy")))
-        SMult None
-        SMinus None
-        SDivU None
-        SDivS None
-        SRemU None
-        SRemS None
-        SAnd None
-        SAnd (Some (ENum 127L, None))
-        SAnd (Some (ENum 4095L, Some (ELabel "prime_number")))
-        SOr None
-        SXor None
-        SNeg None
-        SShift (Some (EMinus (ENum 4L), None))
-        SShift (Some (EMinus (ENum 4L), None))
-        SEq None
-        SEq (Some (ENum 7L, None))
-        SEq (Some (ELabel "xx", Some (ELabel "yy")))
-        SLtU None
-        SLtS None
-        SLtEU None
-        SLtES None
-        SGtU None
-        SGtS None
-        SGtEU None
-        SGtES None
-        SAlloc None
-        SAlloc (Some (ELabel "my_prime"))
-        SDealloc None
-        SDealloc (Some (EPeek (ENum 8L)))
-        SSetSp None
-        SSetSp (Some (ELabel "xx"))
+        SPush [ESum [ELabel "myprime"
+                     EMinus (EPeek (ENum 4L))]
+               ELabel "my_label"]
+        SJumpZero
+        SJumpNotZero
+
+        SLoad1; SLoad2; SLoad4; SLoad8
+        SPush [ELabel "my_label"]; SLoad4
+        SSign4
+        SPush [ENum 255L]; SSign1
+
+        SStore1; SStore2; SStore4; SStore8
+        SPush [ELabel "my_label"]; SStore4
+        SPush [ELabel "prime_number"; ELabel "my_label"]; SStore8
+
+        SDef ("xx", ENum 99L)
+        SDef ("yy", EMinus (ENum 13L))
+        SAdd
+        SPush [ELabel "xx"]; SAdd
+        SPush [ELabel "xx"; ELabel "yy"]; SAdd
+        SSub
+        SPush [ELabel "xx"]; SSub
+        SPush [ELabel "xx"; ELabel "yy"]; SSub
+        SMult; SMinus
+        SDivU; SDivS; SRemU; SRemS
+
+        SAnd
+        SPush [ENum 127L]; SAnd
+        SPush [ENum 4095L; ELabel "prime_number"]; SAnd
+        SOr; SXor; SNeg
+        SPush [EMinus (ENum 4L)]; SShift
+        SPush [EMinus (ENum 4L)]; SShiftS
+
+        SEq
+        SPush [ENum 7L]; SEq
+        SPush [ELabel "xx"; ELabel "yy"]; SEq
+        SLtU; SLtS; SLtEU; SLtES
+        SGtU; SGtS; SGtEU; SGtES
+
+        SAlloc
+        SPush [ELabel "my_prime"]; SAlloc
+        SDealloc
+        SPush [EPeek (ENum 8L)]; SDealloc
+        SSetSp
+        SPush [ELabel "xx"]; SSetSp
         SExit
     ]
     testList "Intro" [

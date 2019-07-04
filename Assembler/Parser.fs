@@ -76,75 +76,75 @@ let data: Parser<uint8 list, unit> =
     let either = (puint8 <|> neg) .>> whitespace
     between (strWs "[") (strWs "]") <| many either
 
-let statement: Parser<Statement, unit> =
+let statement: Parser<Statement list, unit> =
     let isLabel = charReturn ':' -1 .>> whitespace
     let isDef = charReturn '=' -2 .>> whitespace
     let countArgs = many (skipChar '!' .>> whitespace) |>> List.length
 
     let stmt (id, numArgs) =
-        let args = parray numArgs expression
-        let limArgs n = if numArgs <= n then args
-                        else fun _ -> Reply (Error, unexpected "Too many arguments.")
-        let args1 = limArgs 1 |>> Array.tryHead
-        let args2 = limArgs 2 |>> fun a ->
-            if Array.isEmpty a
-            then None
-            else Some (a.[0], Array.tryItem 1 a)
+        if numArgs = -1 then preturn <| [SLabel id]
+        else if numArgs = -2 then expression |>> fun e -> [SDef (id, e)]
+        else
+            let pushArgs = if numArgs < 1 then preturn []
+                           else parray numArgs expression
+                                |>> (Array.toList >> SPush >> List.singleton)
+            let argsOp op = pushArgs |>> fun a -> List.append a [op]
+            let nArgs n op =
+                if numArgs <= n then argsOp op
+                else fun _ -> Reply (Error, unexpected "Too many arguments.")
 
-        if numArgs = -1 then preturn <| SLabel id
-        else if numArgs = -2 then expression |>> fun e -> SDef (id, e)
-        else match id with
-             | "data" -> data |>> SData
-             | "exit" -> limArgs 0 >>. preturn SExit
-             | "push" -> args |>> (Array.toList >> SPush)
-             | "set_sp" -> args1 |>> SSetSp
-             | "jump" -> args1 |>> SJump
-             | "jump_zero" -> args2 |>> SJumpZero
-             | "jump_not_zero" -> args2 |>> SJumpNotZero
+            match id with
+             | "data" -> data |>> (SData >> List.singleton)
+             | "exit" -> nArgs 0 SExit
+             | "push" -> pushArgs
+             | "set_sp" -> nArgs 1 SSetSp
+             | "jump" -> nArgs 1 SJump
+             | "jump_zero" -> nArgs 2 SJumpZero
+             | "jump_not_zero" -> nArgs 2 SJumpNotZero
 
-             | "load1" -> args1 |>> SLoad1
-             | "load2" -> args1 |>> SLoad2
-             | "load4" -> args1 |>> SLoad4
-             | "load8" -> args1 |>> SLoad8
-             | "sign1" -> args1 |>> SSign1
-             | "sign2" -> args1 |>> SSign2
-             | "sign4" -> args1 |>> SSign4
-             | "store1" -> args2 |>> SStore1
-             | "store2" -> args2 |>> SStore2
-             | "store4" -> args2 |>> SStore4
-             | "store8" -> args2 |>> SStore8
+             | "load1" -> nArgs 1 SLoad1
+             | "load2" -> nArgs 1 SLoad2
+             | "load4" -> nArgs 1 SLoad4
+             | "load8" -> nArgs 1 SLoad8
+             | "sign1" -> nArgs 1 SSign1
+             | "sign2" -> nArgs 1 SSign2
+             | "sign4" -> nArgs 1 SSign4
+             | "store1" -> nArgs 2 SStore1
+             | "store2" -> nArgs 2 SStore2
+             | "store4" -> nArgs 2 SStore4
+             | "store8" -> nArgs 2 SStore8
 
-             | "add" -> args2 |>> SAdd
-             | "sub" -> args2 |>> SSub
-             | "mult" -> args2 |>> SMult
-             | "minus" -> args1 |>> SMinus
-             | "and" -> args2 |>> SAnd
-             | "or" -> args2 |>> SOr
-             | "xor" -> args2 |>> SXor
-             | "neg" -> args1 |>> SNeg
-             | "shift" -> args2 |>> SShift
-             | "shift_s" -> args2 |>> SShift
+             | "add" -> nArgs 2 SAdd
+             | "sub" -> nArgs 2 SSub
+             | "mult" -> nArgs 2 SMult
+             | "minus" -> nArgs 1 SMinus
+             | "and" -> nArgs 2 SAnd
+             | "or" -> nArgs 2 SOr
+             | "xor" -> nArgs 2 SXor
+             | "neg" -> nArgs 1 SNeg
+             | "shift" -> nArgs 2 SShift
+             | "shift_s" -> nArgs 2 SShiftS
 
-             | "div_u" -> args2 |>> SDivU
-             | "div_s" -> args2 |>> SDivS
-             | "rem_u" -> args2 |>> SRemU
-             | "rem_s" -> args2 |>> SRemS
+             | "div_u" -> nArgs 2 SDivU
+             | "div_s" -> nArgs 2 SDivS
+             | "rem_u" -> nArgs 2 SRemU
+             | "rem_s" -> nArgs 2 SRemS
 
-             | "lt_u" -> args2 |>> SLtU
-             | "lt_s" -> args2 |>> SLtS
-             | "lte_u" -> args2 |>> SLtEU
-             | "lte_s" -> args2 |>> SLtES
-             | "eq" -> args2 |>> SEq
-             | "gte_u" -> args2 |>> SGtEU
-             | "gte_s" -> args2 |>> SGtES
-             | "gt_u" -> args2 |>> SGtU
-             | "gt_s" -> args2 |>> SGtS
+             | "lt_u" -> nArgs 2 SLtU
+             | "lt_s" -> nArgs 2 SLtS
+             | "lte_u" -> nArgs 2 SLtEU
+             | "lte_s" -> nArgs 2 SLtES
+             | "eq" -> nArgs 2 SEq
+             | "gte_u" -> nArgs 2 SGtEU
+             | "gte_s" -> nArgs 2 SGtES
+             | "gt_u" -> nArgs 2 SGtU
+             | "gt_s" -> nArgs 2 SGtS
 
-             | "alloc" -> args1 |>> SAlloc
-             | "dealloc" -> args1 |>> SDealloc
+             | "alloc" -> nArgs 1 SAlloc
+             | "dealloc" -> nArgs 1 SDealloc
 
              // Better error message than simply 'fail'.
              | _ -> fun _ -> Reply (Error, expected "valid statement")
     identifier .>>. (isLabel <|> isDef <|> countArgs) >>= stmt
 
-let program = whitespace >>. many statement .>> eof
+let program = whitespace >>. many statement |>> List.concat .>> eof
