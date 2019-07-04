@@ -11,6 +11,9 @@
     <None Include="test_code\example1.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="test_code\assembly_language_intro.s">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <Compile Include="ParserTests.fs" />
     <PackageReference Include="Expecto" Version="8.10.1" />
     <PackageReference Include="Expecto.FsCheck" Version="8.10.1" />

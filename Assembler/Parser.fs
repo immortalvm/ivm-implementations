@@ -115,6 +115,7 @@ let statement: Parser<Statement, unit> =
              | "store8" -> args2 |>> SStore8
 
              | "add" -> args2 |>> SAdd
+             | "sub" -> args2 |>> SSub
              | "mult" -> args2 |>> SMult
              | "minus" -> args1 |>> SMinus
              | "and" -> args2 |>> SAnd
@@ -122,24 +123,28 @@ let statement: Parser<Statement, unit> =
              | "xor" -> args2 |>> SXor
              | "neg" -> args1 |>> SNeg
              | "shift" -> args2 |>> SShift
-             | "shiftS" -> args2 |>> SShift
+             | "shift_s" -> args2 |>> SShift
 
              | "div_u" -> args2 |>> SDivU
              | "div_s" -> args2 |>> SDivS
              | "rem_u" -> args2 |>> SRemU
              | "rem_s" -> args2 |>> SRemS
 
-             | "lt" -> args2 |>> SLt
-             | "lte" -> args2 |>> SLtE
+             | "lt_u" -> args2 |>> SLtU
+             | "lt_s" -> args2 |>> SLtS
+             | "lte_u" -> args2 |>> SLtEU
+             | "lte_s" -> args2 |>> SLtES
              | "eq" -> args2 |>> SEq
-             | "gte" -> args2 |>> SGtE
-             | "gt" -> args2 |>> SGt
+             | "gte_u" -> args2 |>> SGtEU
+             | "gte_s" -> args2 |>> SGtES
+             | "gt_u" -> args2 |>> SGtU
+             | "gt_s" -> args2 |>> SGtS
 
              | "alloc" -> args1 |>> SAlloc
              | "dealloc" -> args1 |>> SDealloc
 
              // Better error message than simply 'fail'.
-             | _ -> fun _ -> Reply (Error, expected "valid instruction")
+             | _ -> fun _ -> Reply (Error, expected "valid statement")
     identifier .>>. (isLabel <|> isDef <|> countArgs) >>= stmt
 
 let program = whitespace >>. many statement .>> eof

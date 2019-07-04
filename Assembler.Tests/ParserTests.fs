@@ -102,3 +102,89 @@ let StatementTests =
     testList "Examples" [
         testCase "Example 1" <| fun () -> success expected program str
     ]
+
+[<Tests>]
+let IntroTests =
+    let str = System.IO.File.ReadAllText "test_code/assembly_language_intro.s"
+    let expected = [
+        SLabel "my_label"
+        SDef ("prime_number",ENum 982451653L)
+        SData [0uy; 1uy; 254uy; 128uy; 1uy]
+
+        SPush [ENum 13L]
+        SPush [EMinus (ENum 1L)]
+        SPush [ENum 0L; ENum 1L]
+        SPush []
+        SPush [ELabel "my_label"]
+        SPush [ELabel "prime_number"]
+        SDef ("n",ENum 7L)
+        SPush [EStack (ELabel "n")]
+        SPush [EPeek (ELabel "n")]
+        SPush [ESum [ELabel "my_label"; EMinus (EPeek (ENum 0L))]]
+
+        SJump None
+        SJump (Some (ELabel "my_label"))
+        SJumpZero None
+        SJumpZero (Some (ELabel "my_label", None))
+        SJumpZero
+          (Some
+             (ESum [ELabel "myprime"; EMinus (EPeek (ENum 4L))],
+              Some (ELabel "my_label")))
+        SLoad1 None
+        SLoad2 None
+        SLoad4 None
+        SLoad8 None
+        SLoad4 (Some (ELabel "my_label"))
+        SSign4 None
+        SSign1 (Some (ENum 255L))
+        SStore1 None
+        SStore2 None
+        SStore4 None
+        SStore8 None
+        SStore4 (Some (ELabel "my_label", None))
+        SStore8 (Some (ELabel "prime_number", Some (ELabel "my_label")))
+
+        SDef ("xx",ENum 99L)
+        SDef ("yy",EMinus (ENum 13L))
+        SAdd None
+        SAdd (Some (ELabel "xx", None))
+        SAdd (Some (ELabel "xx", Some (ELabel "yy")))
+        SSub None
+        SSub (Some (ELabel "xx", None))
+        SSub (Some (ELabel "xx", Some (ELabel "yy")))
+        SMult None
+        SMinus None
+        SDivU None
+        SDivS None
+        SRemU None
+        SRemS None
+        SAnd None
+        SAnd (Some (ENum 127L, None))
+        SAnd (Some (ENum 4095L, Some (ELabel "prime_number")))
+        SOr None
+        SXor None
+        SNeg None
+        SShift (Some (EMinus (ENum 4L), None))
+        SShift (Some (EMinus (ENum 4L), None))
+        SEq None
+        SEq (Some (ENum 7L, None))
+        SEq (Some (ELabel "xx", Some (ELabel "yy")))
+        SLtU None
+        SLtS None
+        SLtEU None
+        SLtES None
+        SGtU None
+        SGtS None
+        SGtEU None
+        SGtES None
+        SAlloc None
+        SAlloc (Some (ELabel "my_prime"))
+        SDealloc None
+        SDealloc (Some (EPeek (ENum 8L)))
+        SSetSp None
+        SSetSp (Some (ELabel "xx"))
+        SExit
+    ]
+    testList "Intro" [
+        testCase "Intro" <| fun () -> success expected program str
+    ]

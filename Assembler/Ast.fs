@@ -61,6 +61,7 @@ type Statement =
 
     | SAdd of MaxTwoArguments
     | SMult of MaxTwoArguments
+    | SSub of MaxTwoArguments  // Subtract top.
     | SMinus of MaxOneArgument
     | SAnd of MaxTwoArguments
     | SOr of MaxTwoArguments
@@ -75,11 +76,15 @@ type Statement =
     | SRemS of MaxTwoArguments
 
     // Return -1 for true and 0 for false:
-    | SLt of MaxTwoArguments
-    | SLtE of MaxTwoArguments
+    | SLtU of MaxTwoArguments
+    | SLtS of MaxTwoArguments
+    | SLtEU of MaxTwoArguments
+    | SLtES of MaxTwoArguments
     | SEq of MaxTwoArguments
-    | SGtE of MaxTwoArguments
-    | SGt of MaxTwoArguments
+    | SGtEU of MaxTwoArguments
+    | SGtES of MaxTwoArguments
+    | SGtU of MaxTwoArguments
+    | SGtS of MaxTwoArguments
 
     | SAlloc of MaxOneArgument
     | SDealloc of MaxOneArgument
