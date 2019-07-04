@@ -144,7 +144,7 @@ let statement: Parser<Statement list, unit> =
              | "dealloc" -> nArgs 1 SDealloc
 
              // Better error message than simply 'fail'.
-             | _ -> fun _ -> Reply (Error, expected "valid statement")
+             | _ -> fun _ -> Reply (Error, unexpectedString id)
     identifier .>>. (isLabel <|> isDef <|> countArgs) >>= stmt
 
 let program = whitespace >>. many statement |>> List.concat .>> eof
