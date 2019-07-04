@@ -12,12 +12,12 @@ open Assembler.Parser
 
 // NB. Opposite order of Expect.* (for convenience).
 let success expected parser input =
-    match run (parser .>> eof) input with
+    match runParserOnString(parser .>> eof) initialState "" input with
     | Success(result, _, _)   -> test <@ result = expected @>
     | Failure(errorMsg, _, _) -> raise <| new AssertException (sprintf "Failure: %s" errorMsg)
 
 let failure pattern parser input =
-    match run (parser .>> eof) input with
+    match runParserOnString(parser .>> eof) initialState "" input with
     | Success(result, _, _)   -> raise <| new AssertException (sprintf "Success: %O" result)
     | Failure(errorMsg, _, _) ->
         Expect.isMatch errorMsg pattern
@@ -77,6 +77,7 @@ let ExpressionTests =
 [<Tests>]
 let StatementTests =
     let str = System.IO.File.ReadAllText "test_code/example1.s"
+    let n = EMinus (ENum 13L)
     let expected = [
         SLabel "label1"
         SPush [ENum 1L]
@@ -93,8 +94,7 @@ let StatementTests =
         SPush [EStack (ENum 0L)]
         SPush [EStack (ENum 1L)]
         SPush [EStack (EMinus (ENum 2L))]
-        SDef ("n", EMinus (ENum 13L))
-        SPush [EPeek (ELabel "n")]
+        SPush [EPeek n]
         SAdd
         SPush [ENum 7L]; SAdd
         SLabel "label3"
@@ -106,20 +106,22 @@ let StatementTests =
 
 [<Tests>]
 let IntroTests =
-    let str = System.IO.File.ReadAllText "test_code/assembly_language_intro.s"
+    let prime = ENum 982451653L
+    let n = ENum 7L
+    let xx = ENum 99L
+    let yy = EMinus (ENum 13L)
+    let xx2 = ENum 9L
     let expected = [
         SLabel "my_label"
-        SDef ("prime_number",ENum 982451653L)
         SData [0uy; 1uy; 254uy; 128uy; 1uy]
 
         SPush [ENum 13L]
         SPush [EMinus (ENum 1L)]
         SPush [ENum 0L; ENum 1L]
         SPush [ELabel "my_label"]
-        SPush [ELabel "prime_number"]
-        SDef ("n", ENum 7L)
-        SPush [EStack (ELabel "n")]
-        SPush [EPeek (ELabel "n")]
+        SPush [prime]
+        SPush [EStack n]
+        SPush [EPeek n]
         SPush [ESum [ELabel "my_label"; EMinus (EPeek (ENum 0L))]]
 
         SJump
@@ -127,7 +129,7 @@ let IntroTests =
         SJumpZero
         SPush [ELabel "my_label"]; SJumpZero
 
-        SPush [ESum [ELabel "myprime"
+        SPush [ESum [prime
                      EMinus (EPeek (ENum 4L))]
                ELabel "my_label"]
         SJumpZero
@@ -140,40 +142,39 @@ let IntroTests =
 
         SStore1; SStore2; SStore4; SStore8
         SPush [ELabel "my_label"]; SStore4
-        SPush [ELabel "prime_number"; ELabel "my_label"]; SStore8
+        SPush [prime; ELabel "my_label"]; SStore8
 
-        SDef ("xx", ENum 99L)
-        SDef ("yy", EMinus (ENum 13L))
         SAdd
-        SPush [ELabel "xx"]; SAdd
-        SPush [ELabel "xx"; ELabel "yy"]; SAdd
+        SPush [xx]; SAdd
+        SPush [xx; yy]; SAdd
         SSub
-        SPush [ELabel "xx"]; SSub
-        SPush [ELabel "xx"; ELabel "yy"]; SSub
+        SPush [xx]; SSub
+        SPush [xx; yy]; SSub
         SMult; SMinus
         SDivU; SDivS; SRemU; SRemS
 
         SAnd
         SPush [ENum 127L]; SAnd
-        SPush [ENum 4095L; ELabel "prime_number"]; SAnd
+        SPush [ENum 4095L; prime]; SAnd
         SOr; SXor; SNeg
         SPush [EMinus (ENum 4L)]; SShift
         SPush [EMinus (ENum 4L)]; SShiftS
 
         SEq
         SPush [ENum 7L]; SEq
-        SPush [ELabel "xx"; ELabel "yy"]; SEq
+        SPush [xx; yy]; SEq
         SLtU; SLtS; SLtEU; SLtES
         SGtU; SGtS; SGtEU; SGtES
 
         SAlloc
-        SPush [ELabel "my_prime"]; SAlloc
+        SPush [prime]; SAlloc
         SDealloc
         SPush [EPeek (ENum 8L)]; SDealloc
         SSetSp
-        SPush [ELabel "xx"]; SSetSp
+        SPush [xx2]; SSetSp
         SExit
     ]
+    let str = System.IO.File.ReadAllText "test_code/assembly_language_intro.s"
     testList "Intro" [
         testCase "Intro" <| fun () -> success expected program str
     ]

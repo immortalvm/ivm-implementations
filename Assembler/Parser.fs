@@ -2,16 +2,19 @@
 open FParsec
 open Assembler.Ast
 
-let comment: Parser<unit, unit> = skipChar '#' >>. skipRestOfLine true
+type UserState = Map<string, Expression>
+let initialState = new Map<string, Expression>([])
+
+let comment: Parser<unit, UserState> = skipChar '#' >>. skipRestOfLine true
 let whitespace = skipSepBy spaces comment
 
 // Based on http://www.quanttec.com/fparsec/tutorial.html#parsing-string-data.
-let identifier: Parser<string, unit> =
+let identifier: Parser<string, UserState> =
     let first c = isLetter c || c = '_'
     let rest c = isLetter c || isDigit c || c = '_'
     many1Satisfy2L first rest "identifier" .>> whitespace
 
-let positiveNumeral: Parser<int64, unit> = puint64 .>> whitespace |>> int64
+let positiveNumeral: Parser<int64, UserState> = puint64 .>> whitespace |>> int64
 
 let strWs s = skipString s >>. whitespace
 
@@ -24,12 +27,14 @@ let splitNums f g lst =
     then List.map Option.get o |> f |> ENum
     else g lst
 
-let expression: Parser<Expression, unit> =
-    let expr, exprRef = createParserForwardedToRef<Expression, unit>()
+let expression: Parser<Expression, UserState> =
+    let expr, exprRef = createParserForwardedToRef<Expression, UserState>()
     let expr2 = expr .>>. expr
     // Why do we need 'do' here?
     do exprRef := choice [
-        identifier |>> ELabel
+        identifier >>= fun id str -> Reply <| match str.UserState.TryFind id with
+                                              | Some e -> e
+                                              | None -> ELabel id
         positiveNumeral |>> ENum
         skipChar '-' >>. expr |>> EMinus
         skipChar '~' >>. expr |>> ENeg
@@ -71,19 +76,21 @@ let expression: Parser<Expression, unit> =
     ]
     expr
 
-let data: Parser<uint8 list, unit> =
+let data: Parser<uint8 list, UserState> =
     let neg = skipChar '-' >>. puint8 |>> (int8 >> (~-) >> uint8)
     let either = (puint8 <|> neg) .>> whitespace
     between (strWs "[") (strWs "]") <| many either
 
-let statement: Parser<Statement list, unit> =
+let statement: Parser<Statement list, UserState> =
     let isLabel = charReturn ':' -1 .>> whitespace
     let isDef = charReturn '=' -2 .>> whitespace
     let countArgs = many (skipChar '!' .>> whitespace) |>> List.length
 
     let stmt (id, numArgs) =
-        if numArgs = -1 then preturn <| [SLabel id]
-        else if numArgs = -2 then expression |>> fun e -> [SDef (id, e)]
+        if numArgs = -1 then preturn [SLabel id] .>>
+                             updateUserState<UserState> (fun us -> us.Remove id)
+        else if numArgs = -2 then expression >>= fun e -> preturn [] .>>
+                                                          updateUserState<UserState> (fun us -> us.Add (id, e))
         else
             let pushArgs = if numArgs < 1 then preturn []
                            else parray numArgs expression

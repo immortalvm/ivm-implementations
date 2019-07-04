@@ -93,8 +93,8 @@ my_label:
 
     # Similarly, 'jump_zero!! x y' is sugar for 'push!! x y jump_zero'.
     # The following statement jumps to my_label if the fourth element on the
-    # stack (counting from 0) is equal to myprime.
-    jump_zero!! (+ myprime -$4) my_label
+    # stack (counting from 0) is equal to prime_number.
+    jump_zero!! (+ prime_number -$4) my_label
 
     # The jump_not_zero statement is similar.
     jump_not_zero
@@ -225,7 +225,7 @@ my_label:
     # byte back onto the stack. Undefined if x is 0.
     alloc
 
-    alloc! my_prime  # Sugar for 'push! myprime alloc'.
+    alloc! prime_number  # Sugar for 'push! prime_number alloc'.
 
     # The dealloc statement an address A from the stack. If it is the address of
     # a previously allocated range of memory which has not in the mean time been
@@ -241,6 +241,8 @@ my_label:
 
 
     #### 11. SET_SP, EXIT
+
+    xx = 9      # Override previous definition of 9.
 
     set_sp      # Pop A from the stack, and set the stack pointer to A.
     set_sp! xx  # Sugar for 'push! xx set_sp'.

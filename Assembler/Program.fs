@@ -3,7 +3,7 @@ open FParsec
 open Assembler.Parser
 
 let test p str =
-    match run p str with
+    match runParserOnString p initialState "" str with
     | Success(result, _, _)   -> printfn "Success: %A" result
     | Failure(errorMsg, _, _) -> printfn "Failure: %s" errorMsg
 
