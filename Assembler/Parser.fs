@@ -2,19 +2,54 @@
 open FParsec
 open Assembler.Ast
 
-type UserState = Map<string, Expression>
-let initialState = new Map<string, Expression>([])
 
-let comment: Parser<unit, UserState> = skipChar '#' >>. skipRestOfLine true
+type State = {
+        Defs: Map<string, Expression> // Definitions
+        Missing: Set<string>          // Labels referenced but not yet defined
+        Known: Set<string>            // Labels defined
+    }
+    with
+        static member Default = {
+            Defs = new Map<string, Expression>([])
+            Missing = set []
+            Known = set []
+        }
+
+        static member TryExpand id (str: CharStream<State>) =
+            let s = str.UserState
+            match s.Defs.TryFind id with
+            | Some e -> e
+            | None ->
+                if not <| s.Known.Contains id
+                then str.UserState <- { s with Missing = s.Missing.Add id }
+                ELabel id
+            |> Reply
+
+        static member ObsLabel id (str: CharStream<State>) =
+            let s = str.UserState
+            str.UserState <- {
+                s with
+                    Defs = s.Defs.Remove id
+                    Missing = s.Missing.Remove id
+                    Known = s.Known.Add id
+            }
+            Reply <| [SLabel id]
+
+        static member AddDef id e =
+            updateUserState<State> <|
+            fun s -> { s with Defs = s.Defs.Add (id, e) }
+
+
+let comment: Parser<unit, State> = skipChar '#' >>. skipRestOfLine true
 let whitespace = skipSepBy spaces comment
 
 // Based on http://www.quanttec.com/fparsec/tutorial.html#parsing-string-data.
-let identifier: Parser<string, UserState> =
+let identifier: Parser<string, State> =
     let first c = isLetter c || c = '_'
     let rest c = isLetter c || isDigit c || c = '_'
     many1Satisfy2L first rest "identifier" .>> whitespace
 
-let positiveNumeral: Parser<int64, UserState> = puint64 .>> whitespace |>> int64
+let positiveNumeral: Parser<int64, State> = puint64 .>> whitespace |>> int64
 
 let strWs s = skipString s >>. whitespace
 
@@ -27,14 +62,12 @@ let splitNums f g lst =
     then List.map Option.get o |> f |> ENum
     else g lst
 
-let expression: Parser<Expression, UserState> =
-    let expr, exprRef = createParserForwardedToRef<Expression, UserState>()
+let expression: Parser<Expression, State> =
+    let expr, exprRef = createParserForwardedToRef<Expression, State>()
     let expr2 = expr .>>. expr
     // Why do we need 'do' here?
     do exprRef := choice [
-        identifier >>= fun id str -> Reply <| match str.UserState.TryFind id with
-                                              | Some e -> e
-                                              | None -> ELabel id
+        identifier >>= State.TryExpand
         positiveNumeral |>> ENum
         skipChar '-' >>. expr |>> EMinus
         skipChar '~' >>. expr |>> ENeg
@@ -76,21 +109,23 @@ let expression: Parser<Expression, UserState> =
     ]
     expr
 
-let data: Parser<uint8 list, UserState> =
+let data: Parser<uint8 list, State> =
     let neg = skipChar '-' >>. puint8 |>> (int8 >> (~-) >> uint8)
     let either = (puint8 <|> neg) .>> whitespace
     between (strWs "[") (strWs "]") <| many either
 
-let statement: Parser<Statement list, UserState> =
+let statement: Parser<Statement list, State> =
     let isLabel = charReturn ':' -1 .>> whitespace
     let isDef = charReturn '=' -2 .>> whitespace
     let countArgs = many (skipChar '!' .>> whitespace) |>> List.length
 
     let stmt (id, numArgs) =
-        if numArgs = -1 then preturn [SLabel id] .>>
-                             updateUserState<UserState> (fun us -> us.Remove id)
-        else if numArgs = -2 then expression >>= fun e -> preturn [] .>>
-                                                          updateUserState<UserState> (fun us -> us.Add (id, e))
+        if numArgs = -1
+        then State.ObsLabel id
+
+        else if numArgs = -2
+        then expression >>=
+             fun e -> preturn [] .>> State.AddDef id e
         else
             let pushArgs = if numArgs < 1 then preturn []
                            else parray numArgs expression
@@ -155,3 +190,16 @@ let statement: Parser<Statement list, UserState> =
     identifier .>>. (isLabel <|> isDef <|> countArgs) >>= stmt
 
 let program = whitespace >>. many statement |>> List.concat .>> eof
+
+exception ParseException of string
+
+let parseProgram (stream: System.IO.Stream): Statement list =
+    match runParserOnStream program State.Default "" stream System.Text.Encoding.UTF8 with
+    | Success(result, s, _) ->
+        let c = s.Missing.Count
+        if c = 0 then result
+        else sprintf "Label%s not found: %s"
+                 (if c > 1 then "s" else "")
+                 (System.String.Join(", ", s.Missing))
+             |> ParseException |> raise
+    | Failure(errorMsg, _, _) -> errorMsg |> ParseException |> raise

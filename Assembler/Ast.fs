@@ -39,53 +39,29 @@ type Statement =
     | SLabel of string
     | SData of uint8 list
 
-    | SExit
     | SPush of Expression list
-    | SSetSp
-    | SJump
-    | SJumpZero
-    | SJumpNotZero
+    | SExit | SSetSp
+    | SJump | SJumpZero | SJumpNotZero
 
-    | SLoad1
-    | SLoad2
-    | SLoad4
-    | SLoad8
-    | SSign1
-    | SSign2
-    | SSign4
-    | SStore1
-    | SStore2
-    | SStore4
-    | SStore8
+    | SLoad1 | SLoad2 | SLoad4 | SLoad8
+    | SSign1 | SSign2 | SSign4
+    | SStore1 | SStore2 | SStore4 | SStore8
 
-    | SAdd
-    | SMult
+    | SAdd | SMult
     | SSub  // Subtract top.
     | SMinus
-    | SAnd
-    | SOr
-    | SXor
-    | SNeg
+    | SAnd | SOr | SXor | SNeg
     | SShift // Second argument (top) signed.
     | SShiftS // Both arguments signed.
 
-    | SDivU
-    | SDivS
-    | SRemU
-    | SRemS
+    | SDivU | SDivS
+    | SRemU | SRemS
 
     // Return -1 for true and 0 for false:
-    | SLtU
-    | SLtS
-    | SLtEU
-    | SLtES
+    | SLtU | SLtS | SLtEU | SLtES
     | SEq
-    | SGtEU
-    | SGtES
-    | SGtU
-    | SGtS
+    | SGtEU | SGtES | SGtU | SGtS
 
-    | SAlloc
-    | SDealloc
+    | SAlloc | SDealloc
 
     // TODO: Input and output

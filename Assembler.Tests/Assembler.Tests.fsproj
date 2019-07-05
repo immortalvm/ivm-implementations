@@ -14,7 +14,7 @@
     <None Include="test_code\assembly_language_intro.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <Compile Include="ParserTests.fs" />
+    <Compile Include="GenParserTests.fs" />
     <PackageReference Include="Expecto" Version="8.10.1" />
     <PackageReference Include="Expecto.FsCheck" Version="8.10.1" />
     <PackageReference Include="FsCheck" Version="2.14.0" />
@@ -23,5 +23,6 @@
     <PackageReference Include="Unquote" Version="5.0.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.8.0" />
     <ProjectReference Include="..\Assembler\Assembler.fsproj" />
+    <Compile Include="ProgParserTests.fs" />
   </ItemGroup>
 </Project>
