@@ -12,16 +12,15 @@ open Assembler.Parser
 
 // NB. Opposite order of Expect.* (for convenience).
 let success expected parser input =
-    match runParserOnString(parser .>> eof) initialState "" input with
+    match runParserOnString(parser .>> eof) State.Default "" input with
     | Success(result, _, _)   -> test <@ result = expected @>
-    | Failure(errorMsg, _, _) -> raise <| new AssertException (sprintf "Failure: %s" errorMsg)
+    | Failure(errorMsg, _, _) -> failwith <| sprintf "Failure: %s" errorMsg
 
 let failure pattern parser input =
-    match runParserOnString(parser .>> eof) initialState "" input with
-    | Success(result, _, _)   -> raise <| new AssertException (sprintf "Success: %O" result)
-    | Failure(errorMsg, _, _) ->
-        Expect.isMatch errorMsg pattern
-            "Unexpected error message"
+    match runParserOnString(parser .>> eof) State.Default "" input with
+    | Success(result, _, _)   -> sprintf "Success: %O" result |> failwith
+    | Failure(errorMsg, _, _) -> Expect.isMatch errorMsg pattern
+                                                "Unexpected error message"
 
 [<Tests>]
 let BasicTests =
