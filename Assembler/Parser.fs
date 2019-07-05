@@ -7,12 +7,14 @@ type State = {
         Defs: Map<string, Expression> // Definitions
         Missing: Set<string>          // Labels referenced but not yet defined
         Known: Set<string>            // Labels defined
+        Offset: int                   // Stack offset
     }
     with
         static member Default = {
             Defs = new Map<string, Expression>([])
             Missing = set []
             Known = set []
+            Offset = 0
         }
 
         static member TryExpand id (str: CharStream<State>) =
@@ -39,6 +41,12 @@ type State = {
             updateUserState<State> <|
             fun s -> { s with Defs = s.Defs.Add (id, e) }
 
+        static member IncOffset =
+            updateUserState<State> <| fun s -> { s with Offset = s.Offset + 1 }
+
+        static member ResetOffset =
+            updateUserState<State> <| fun s -> { s with Offset = 0 }
+
 
 let comment: Parser<unit, State> = skipChar '#' >>. skipRestOfLine true
 let whitespace = skipSepBy spaces comment
@@ -62,6 +70,16 @@ let splitNums f g lst =
     then List.map Option.get o |> f |> ENum
     else g lst
 
+let offset e (str: CharStream<State>) =
+    let off = str.UserState.Offset |> int64
+    if off = 0L then e
+    else match e with
+         | ENum n -> ENum <| off + n
+         | ESum lst -> ESum <| [ENum off] @ lst
+         // Everything above are optimizations.
+         | _ -> ESum [ENum off; e]
+    |> Reply
+
 let expression: Parser<Expression, State> =
     let expr, exprRef = createParserForwardedToRef<Expression, State>()
     let expr2 = expr .>>. expr
@@ -71,8 +89,8 @@ let expression: Parser<Expression, State> =
         positiveNumeral |>> ENum
         skipChar '-' >>. expr |>> EMinus
         skipChar '~' >>. expr |>> ENeg
-        skipChar '$' >>. expr |>> EPeek
-        skipChar '&' >>.  expr |>> EStack
+        skipChar '$' >>. expr >>= offset |>> EPeek
+        skipChar '&' >>. expr >>= offset |>> EStack
         between (strWs "(") (strWs ")") <| choice [
             // Notice that we allow zero arguments to these operators.
             // Use many1 to require at least one.
@@ -128,8 +146,9 @@ let statement: Parser<Statement list, State> =
              fun e -> preturn [] .>> State.AddDef id e
         else
             let pushArgs = if numArgs < 1 then preturn []
-                           else parray numArgs expression
-                                |>> (Array.toList >> SPush >> List.singleton)
+                           else parray numArgs (expression .>> State.IncOffset)
+                                .>> State.ResetOffset
+                                |>> (Array.toList >> List.map SPush)
             let argsOp op = pushArgs |>> fun a -> List.append a [op]
             let nArgs n op =
                 if numArgs <= n then argsOp op

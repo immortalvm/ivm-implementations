@@ -39,7 +39,7 @@ type Statement =
     | SLabel of string
     | SData of uint8 list
 
-    | SPush of Expression list
+    | SPush of Expression
     | SExit | SSetSp
     | SJump | SJumpZero | SJumpNotZero
 
