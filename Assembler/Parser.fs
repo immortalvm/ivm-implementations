@@ -1,6 +1,7 @@
 ﻿module Assembler.Parser
 open FParsec
 open Assembler.Ast
+open Assembler.Transformations
 
 
 type State = {
@@ -137,6 +138,14 @@ let statement: Parser<Statement list, State> =
     let isDef = charReturn '=' -2 .>> whitespace
     let countArgs = many (skipChar '!' .>> whitespace) |>> List.length
 
+    let pushArgs numArgs = parray numArgs (expression .>> State.IncOffset)
+                           .>> State.ResetOffset
+                           |>> (Array.toList >> List.map SPush)
+    // Computed once for efficiency
+    let pushArgs0 = preturn []
+    let pushArgs1 = pushArgs 1
+    let pushArgs2 = pushArgs 2
+
     let stmt (id, numArgs) =
         if numArgs = -1
         then State.ObsLabel id
@@ -145,19 +154,20 @@ let statement: Parser<Statement list, State> =
         then expression >>=
              fun e -> preturn [] .>> State.AddDef id e
         else
-            let pushArgs = if numArgs < 1 then preturn []
-                           else parray numArgs (expression .>> State.IncOffset)
-                                .>> State.ResetOffset
-                                |>> (Array.toList >> List.map SPush)
-            let argsOp op = pushArgs |>> fun a -> List.append a [op]
-            let nArgs n op =
-                if numArgs <= n then argsOp op
+            let pArgs = match numArgs with
+                        | 0 -> pushArgs0
+                        | 1 -> pushArgs1
+                        | 2 -> pushArgs2
+                        | _ -> pushArgs numArgs
+            let argsOp op = pArgs |>> fun a -> a @ [op]
+            let nArgs maxArgs op =
+                if numArgs <= maxArgs then argsOp op
                 else fun _ -> Reply (Error, unexpected "Too many arguments.")
 
             match id with
              | "data" -> data |>> (SData >> List.singleton)
              | "exit" -> nArgs 0 SExit
-             | "push" -> pushArgs
+             | "push" -> pArgs
              | "set_sp" -> nArgs 1 SSetSp
              | "jump" -> nArgs 1 <| SJump None
              | "jump_zero" -> nArgs 2 <| SJumpZero None
@@ -206,32 +216,13 @@ let statement: Parser<Statement list, State> =
 
              // Better error message than simply 'fail'.
              | _ -> fun _ -> Reply (Error, unexpectedString id)
+
+    // Eliminating >>= might lead to better performance.
     identifier .>>. (isLabel <|> isDef <|> countArgs) >>= stmt
+
 
 let program = whitespace >>. many statement |>> List.concat .>> eof
 
-// One of many passes
-let mergePushLabelJumps (prog: Statement seq): Statement seq =
-    let p = prog.GetEnumerator ()
-    let mutable pending : string option = None
-    let flush replacement =
-        let prev = pending
-        pending <- replacement
-        match prev with
-        | Some label -> [SPush (ELabel label)]
-        | None -> []
-    seq {
-        while p.MoveNext() do
-            match p.Current with
-            | SJump None -> yield (SJump pending); pending <- None
-            | SJumpZero None -> yield (SJumpZero pending); pending <- None
-            | SJumpNotZero None -> yield (SJumpNotZero pending); pending <- None
-            | SPush (ELabel label) -> yield! flush <| Some label
-            | _ -> yield! flush None; yield p.Current
-
-        // It would be strange to end the program with a push, though.
-        yield! flush None
-    }
 
 exception ParseException of string
 
