@@ -35,13 +35,13 @@ let example1 =
         SLabel "label1"
         SPush <| ENum 1L
         SPush <| ENum 2L; SPush <| ENum 3L
-        SPush <| ELabel "label1"
 
-        SJump
-        SPush <| ELabel "label1"; SJump
-        SJumpZero
-        SPush <| ELabel "label1"; SJumpZero
-        SPush <| ELoad8 (EStack (ENum 3L)); SPush <| ELabel "label1"; SJumpZero
+        SJump <| Some "label1"
+
+        SJump <| Some "label1"
+        SJumpZero None
+        SJumpZero <| Some "label1"
+        SPush <| ELoad8 (EStack (ENum 3L)); SJumpZero <| Some "label1"
 
         SLabel "label2"
         SPush <| EStack (ENum 0L)
@@ -73,16 +73,14 @@ let assemblyLanguageIntro =
         SPush <| ELoad8 (EStack n)
         SPush <| ESum [ELabel "my_label"; EMinus (ELoad8 (EStack (ENum 0L)))]
 
-        SJump
-        SPush <| ELabel "my_label"; SJump
-        SJumpZero
-        SPush <| ELabel "my_label"; SJumpZero
+        SJump None
+        SJump <| Some "my_label"
+        SJumpZero None
+        SJumpZero <| Some "my_label"
 
-        SPush <| ESum [prime
-                       EMinus (ELoad8 (EStack (ENum 4L)))]
-        SPush <| ELabel "my_label"
-        SJumpZero
-        SJumpNotZero
+        SPush <| ESum [prime; EMinus (ELoad8 (EStack (ENum 4L)))]
+        SJumpZero <| Some "my_label"
+        SJumpNotZero None
 
         SLoad1; SLoad2; SLoad4; SLoad8
         SPush <| ELabel "my_label"; SLoad4

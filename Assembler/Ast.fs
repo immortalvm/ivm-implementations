@@ -40,7 +40,10 @@ type Statement =
 
     | SPush of Expression
     | SExit | SSetSp
-    | SJump | SJumpZero | SJumpNotZero
+    // [SPush label; SJump None] -> [SJump (Some label)]
+    | SJump of string option
+    | SJumpZero of string option
+    | SJumpNotZero of string option
 
     | SLoad1 | SLoad2 | SLoad4 | SLoad8
     | SSign1 | SSign2 | SSign4

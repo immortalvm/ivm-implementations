@@ -159,9 +159,9 @@ let statement: Parser<Statement list, State> =
              | "exit" -> nArgs 0 SExit
              | "push" -> pushArgs
              | "set_sp" -> nArgs 1 SSetSp
-             | "jump" -> nArgs 1 SJump
-             | "jump_zero" -> nArgs 2 SJumpZero
-             | "jump_not_zero" -> nArgs 2 SJumpNotZero
+             | "jump" -> nArgs 1 <| SJump None
+             | "jump_zero" -> nArgs 2 <| SJumpZero None
+             | "jump_not_zero" -> nArgs 2 <| SJumpNotZero None
 
              | "load1" -> nArgs 1 SLoad1
              | "load2" -> nArgs 1 SLoad2
@@ -210,13 +210,36 @@ let statement: Parser<Statement list, State> =
 
 let program = whitespace >>. many statement |>> List.concat .>> eof
 
+// One of many passes
+let mergePushLabelJumps (prog: Statement seq): Statement seq =
+    let p = prog.GetEnumerator ()
+    let mutable pending : string option = None
+    let flush replacement =
+        let prev = pending
+        pending <- replacement
+        match prev with
+        | Some label -> [SPush (ELabel label)]
+        | None -> []
+    seq {
+        while p.MoveNext() do
+            match p.Current with
+            | SJump None -> yield (SJump pending); pending <- None
+            | SJumpZero None -> yield (SJumpZero pending); pending <- None
+            | SJumpNotZero None -> yield (SJumpNotZero pending); pending <- None
+            | SPush (ELabel label) -> yield! flush <| Some label
+            | _ -> yield! flush None; yield p.Current
+
+        // It would be strange to end the program with a push, though.
+        yield! flush None
+    }
+
 exception ParseException of string
 
-let parseProgram (stream: System.IO.Stream): Statement list =
+let parseProgram (stream: System.IO.Stream): Statement seq =
     match runParserOnStream program State.Default "" stream System.Text.Encoding.UTF8 with
     | Success(result, s, _) ->
         let c = s.Missing.Count
-        if c = 0 then result
+        if c = 0 then result |> mergePushLabelJumps
         else sprintf "Label%s not found: %s"
                  (if c > 1 then "s" else "")
                  (System.String.Join(", ", s.Missing))
