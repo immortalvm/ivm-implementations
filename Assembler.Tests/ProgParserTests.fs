@@ -41,13 +41,13 @@ let example1 =
         SPush <| ELabel "label1"; SJump
         SJumpZero
         SPush <| ELabel "label1"; SJumpZero
-        SPush <| EPeek (ENum 3L); SPush <| ELabel "label1"; SJumpZero
+        SPush <| ELoad8 (EStack (ENum 3L)); SPush <| ELabel "label1"; SJumpZero
 
         SLabel "label2"
         SPush <| EStack (ENum 0L)
         SPush <| EStack (ENum 1L)
         SPush <| EStack (EMinus (ENum 2L))
-        SPush <| EPeek n
+        SPush <| ELoad8 (EStack n)
         SAdd
         SPush <| ENum 7L; SAdd
         SLabel "label3"
@@ -70,8 +70,8 @@ let assemblyLanguageIntro =
         SPush <| ELabel "my_label"
         SPush <| prime
         SPush <| EStack n
-        SPush <| EPeek n
-        SPush <| ESum [ELabel "my_label"; EMinus (EPeek (ENum 0L))]
+        SPush <| ELoad8 (EStack n)
+        SPush <| ESum [ELabel "my_label"; EMinus (ELoad8 (EStack (ENum 0L)))]
 
         SJump
         SPush <| ELabel "my_label"; SJump
@@ -79,7 +79,7 @@ let assemblyLanguageIntro =
         SPush <| ELabel "my_label"; SJumpZero
 
         SPush <| ESum [prime
-                       EMinus (EPeek (ENum 4L))]
+                       EMinus (ELoad8 (EStack (ENum 4L)))]
         SPush <| ELabel "my_label"
         SJumpZero
         SJumpNotZero
@@ -118,7 +118,7 @@ let assemblyLanguageIntro =
         SAlloc
         SPush <| prime; SAlloc
         SDealloc
-        SPush <| EPeek (ENum 8L); SDealloc
+        SPush <| ELoad8 (EStack (ENum 8L)); SDealloc
         SSetSp
         SPush <| xx2; SSetSp
         SExit
@@ -143,7 +143,7 @@ let BasicTests =
     testList "Prog basics" [
         testCase "Offset num" <|
             success
-                ([0..3] |> List.map (int64 >> ENum >> EPeek >> SPush))
+                ([0..3] |> List.map (int64 >> ENum >> EStack >> ELoad8 >> SPush))
                 "push!!!! $0 $0 $0 $0"
         testCase "Offset sum" <|
             success

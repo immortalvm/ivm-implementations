@@ -44,7 +44,7 @@ let BasicTests =
 let ExpressionTests =
     let x = ELabel "x"
     let y = ELabel "y"
-    let pc = ELabel "pc" |> EPeek // Quick and dirty
+    let pc = ELabel "pc" |> EStack |> ELoad8
     testList "Expression" [
         testList "Leaf" [
             testCase "Numeral" <| success (ENum 17L) expression "17"
@@ -55,14 +55,14 @@ let ExpressionTests =
             testCase "Minus" <| success (EMinus <| ELabel "x") expression "-x"
             testCase "Negation" <| success (ENeg  <| pc) expression "~$pc"
             testCase "Minus-negation" <| success (ENum 0xaL |> ENeg |> EMinus) expression "-~0xa"
-            testCase "Peek" <| success (ENum 0L |> EPeek) expression "$0"
+            testCase "Peek" <| success (ENum 0L |> EStack |> ELoad8) expression "$0"
             testCase "Stack" <| success (ELabel "x" |> EStack ) expression "&x"
         ]
         testList "Binary" [
             testCase "Sum" <| success (ESum[pc;  ENum 1L]) expression "(+ $pc 1)"
             testCase "Conjunction" <| success (EConj [ENum 0o10L |> EStack;  ELabel "lab"]) expression "( & &0o10 lab)"
-            testCase "Product" <| success (EProd[ENum 3L |> EPeek;  ESum [ENum 16L; ENum 0L |> EPeek]]) expression "(* $3 (+ 0x10 $0))"
-            testCase "Disjunction" <| success (EDisj [ENum 8L |> EPeek;  ELabel "lab"]) expression "(|\t$0o10 lab)"
+            testCase "Product" <| success (EProd[ENum 3L|> EStack |> ELoad8;  ESum [ENum 16L; ENum 0L|> EStack |> ELoad8]]) expression "(* $3 (+ 0x10 $0))"
+            testCase "Disjunction" <| success (EDisj [ENum 8L|> EStack |> ELoad8;  ELabel "lab"]) expression "(|\t$0o10 lab)"
         ]
         testList "Less" [
             testCase "Shift" <| success (EShift (x, y)) expression "(<< x y)"

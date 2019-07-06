@@ -89,7 +89,7 @@ let expression: Parser<Expression, State> =
         positiveNumeral |>> ENum
         skipChar '-' >>. expr |>> EMinus
         skipChar '~' >>. expr |>> ENeg
-        skipChar '$' >>. expr >>= offset |>> EPeek
+        skipChar '$' >>. expr >>= offset |>> (EStack >> ELoad8)
         skipChar '&' >>. expr >>= offset |>> EStack
         between (strWs "(") (strWs ")") <| choice [
             // Notice that we allow zero arguments to these operators.
