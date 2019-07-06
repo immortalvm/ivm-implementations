@@ -50,7 +50,6 @@ type Statement =
     | SStore1 | SStore2 | SStore4 | SStore8
 
     | SAdd | SMult
-    | SSub  // Subtract top.
     | SMinus
     | SAnd | SOr | SXor | SNeg
     | SShift // Second argument (top) signed.

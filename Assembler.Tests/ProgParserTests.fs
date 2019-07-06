@@ -68,7 +68,7 @@ let assemblyLanguageIntro =
         SPush <| EMinus (ENum 1L)
         SPush <| ENum 0L; SPush <| ENum 1L
         SPush <| ELabel 1
-        SPush <| prime
+        SPush prime
         SPush <| EStack n
         SPush <| ELoad8 (EStack n)
         SPush <| ESum [ELabel 1; EMinus (ELoad8 (EStack (ENum 0L)))]
@@ -89,14 +89,14 @@ let assemblyLanguageIntro =
 
         SStore1; SStore2; SStore4; SStore8
         SPush <| ELabel 1; SStore4
-        SPush <| prime; SPush <| ELabel 1; SStore8
+        SPush prime; SPush <| ELabel 1; SStore8
 
         SAdd
-        SPush <| xx; SAdd
-        SPush <| xx; SPush <| yy; SAdd
-        SSub
-        SPush <| xx; SSub
-        SPush <| xx; SPush <| yy; SSub
+        SPush xx; SAdd
+        SPush xx; SPush yy; SAdd
+        SMinus; SAdd
+        SPush xx; SMinus; SAdd
+        SPush xx; SPush yy; SMinus; SAdd
         SMult; SMinus
         SDivU; SDivS; SRemU; SRemS
 
@@ -109,16 +109,16 @@ let assemblyLanguageIntro =
 
         SEq
         SPush <| ENum 7L; SEq
-        SPush <| xx; SPush <| yy; SEq
+        SPush xx; SPush yy; SEq
         SLtU; SLtS; SLtEU; SLtES
         SGtU; SGtS; SGtEU; SGtES
 
         SAlloc
-        SPush <| prime; SAlloc
+        SPush prime; SAlloc
         SDealloc
         SPush <| ELoad8 (EStack (ENum 8L)); SDealloc
         SSetSp
-        SPush <| xx2; SSetSp
+        SPush xx2; SSetSp
         SExit
     ]
 

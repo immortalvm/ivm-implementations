@@ -176,60 +176,60 @@ let statement: Parser<Statement list, State> =
                         | 1 -> pushArgs1
                         | 2 -> pushArgs2
                         | _ -> pushArgs numArgs
-            let argsOp op = pArgs |>> fun a -> a @ [op]
-            let nArgs maxArgs op =
-                if numArgs <= maxArgs then argsOp op
+            let argsOp ops = pArgs |>> fun a -> a @ ops
+            let nArgs maxArgs ops =
+                if numArgs <= maxArgs then argsOp ops
                 else fun _ -> Reply (Error, unexpected "Too many arguments.")
 
             match id with
              | "data" -> data |>> (SData >> List.singleton)
-             | "exit" -> nArgs 0 SExit
+             | "exit" -> nArgs 0 [SExit]
              | "push" -> pArgs
-             | "set_sp" -> nArgs 1 SSetSp
-             | "jump" -> nArgs 1 <| SJump None
-             | "jump_zero" -> nArgs 2 <| SJumpZero None
-             | "jump_not_zero" -> nArgs 2 <| SJumpNotZero None
+             | "set_sp" -> nArgs 1 [SSetSp]
+             | "jump" -> nArgs 1 [SJump None]
+             | "jump_zero" -> nArgs 2 [SJumpZero None]
+             | "jump_not_zero" -> nArgs 2 [SJumpNotZero None]
 
-             | "load1" -> nArgs 1 SLoad1
-             | "load2" -> nArgs 1 SLoad2
-             | "load4" -> nArgs 1 SLoad4
-             | "load8" -> nArgs 1 SLoad8
-             | "sign1" -> nArgs 1 SSign1
-             | "sign2" -> nArgs 1 SSign2
-             | "sign4" -> nArgs 1 SSign4
-             | "store1" -> nArgs 2 SStore1
-             | "store2" -> nArgs 2 SStore2
-             | "store4" -> nArgs 2 SStore4
-             | "store8" -> nArgs 2 SStore8
+             | "load1" -> nArgs 1 [SLoad1]
+             | "load2" -> nArgs 1 [SLoad2]
+             | "load4" -> nArgs 1 [SLoad4]
+             | "load8" -> nArgs 1 [SLoad8]
+             | "sign1" -> nArgs 1 [SSign1]
+             | "sign2" -> nArgs 1 [SSign2]
+             | "sign4" -> nArgs 1 [SSign4]
+             | "store1" -> nArgs 2 [SStore1]
+             | "store2" -> nArgs 2 [SStore2]
+             | "store4" -> nArgs 2 [SStore4]
+             | "store8" -> nArgs 2 [SStore8]
 
-             | "add" -> nArgs 2 SAdd
-             | "sub" -> nArgs 2 SSub
-             | "mult" -> nArgs 2 SMult
-             | "minus" -> nArgs 1 SMinus
-             | "and" -> nArgs 2 SAnd
-             | "or" -> nArgs 2 SOr
-             | "xor" -> nArgs 2 SXor
-             | "neg" -> nArgs 1 SNeg
-             | "shift" -> nArgs 2 SShift
-             | "shift_s" -> nArgs 2 SShiftS
+             | "add" -> nArgs 2 [SAdd]
+             | "sub" -> nArgs 2 [SMinus; SAdd]
+             | "mult" -> nArgs 2 [SMult]
+             | "minus" -> nArgs 1 [SMinus]
+             | "and" -> nArgs 2 [SAnd]
+             | "or" -> nArgs 2 [SOr]
+             | "xor" -> nArgs 2 [SXor]
+             | "neg" -> nArgs 1 [SNeg]
+             | "shift" -> nArgs 2 [SShift]
+             | "shift_s" -> nArgs 2 [SShiftS]
 
-             | "div_u" -> nArgs 2 SDivU
-             | "div_s" -> nArgs 2 SDivS
-             | "rem_u" -> nArgs 2 SRemU
-             | "rem_s" -> nArgs 2 SRemS
+             | "div_u" -> nArgs 2 [SDivU]
+             | "div_s" -> nArgs 2 [SDivS]
+             | "rem_u" -> nArgs 2 [SRemU]
+             | "rem_s" -> nArgs 2 [SRemS]
 
-             | "lt_u" -> nArgs 2 SLtU
-             | "lt_s" -> nArgs 2 SLtS
-             | "lte_u" -> nArgs 2 SLtEU
-             | "lte_s" -> nArgs 2 SLtES
-             | "eq" -> nArgs 2 SEq
-             | "gte_u" -> nArgs 2 SGtEU
-             | "gte_s" -> nArgs 2 SGtES
-             | "gt_u" -> nArgs 2 SGtU
-             | "gt_s" -> nArgs 2 SGtS
+             | "lt_u" -> nArgs 2 [SLtU]
+             | "lt_s" -> nArgs 2 [SLtS]
+             | "lte_u" -> nArgs 2 [SLtEU]
+             | "lte_s" -> nArgs 2 [SLtES]
+             | "eq" -> nArgs 2 [SEq]
+             | "gte_u" -> nArgs 2 [SGtEU]
+             | "gte_s" -> nArgs 2 [SGtES]
+             | "gt_u" -> nArgs 2 [SGtU]
+             | "gt_s" -> nArgs 2 [SGtS]
 
-             | "alloc" -> nArgs 1 SAlloc
-             | "dealloc" -> nArgs 1 SDealloc
+             | "alloc" -> nArgs 1 [SAlloc]
+             | "dealloc" -> nArgs 1 [SDealloc]
 
              // Better error message than simply 'fail'.
              | _ -> fun _ -> Reply (Error, unexpectedString id)
