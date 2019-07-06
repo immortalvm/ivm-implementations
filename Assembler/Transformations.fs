@@ -5,7 +5,7 @@ open Assembler.Ast
 // One of many passes
 let mergePushLabelJumps (prog: Statement seq): Statement seq =
     let p = prog.GetEnumerator ()
-    let mutable pending : string option = None
+    let mutable pending : int option = None
     let flush replacement =
         let prev = pending
         pending <- replacement

@@ -2,7 +2,7 @@
 
 type Expression =
     | ENum of int64
-    | ELabel of string
+    | ELabel of int
     | EStack of Expression  // &n = SP + n * 8
 
     | ESum of Expression list
@@ -35,15 +35,15 @@ type MaxOneArgument = Expression option
 type MaxTwoArguments = (Expression * Expression option) option
 
 type Statement =
-    | SLabel of string
+    | SLabel of int
     | SData of uint8 list
 
     | SPush of Expression
     | SExit | SSetSp
     // [SPush label; SJump None] -> [SJump (Some label)]
-    | SJump of string option
-    | SJumpZero of string option
-    | SJumpNotZero of string option
+    | SJump of int option
+    | SJumpZero of int option
+    | SJumpNotZero of int option
 
     | SLoad1 | SLoad2 | SLoad4 | SLoad8
     | SSign1 | SSign2 | SSign4

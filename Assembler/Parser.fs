@@ -6,15 +6,17 @@ open Assembler.Transformations
 
 type State = {
         Defs: Map<string, Expression> // Definitions
-        Missing: Set<string>          // Labels referenced but not yet defined
-        Known: Set<string>            // Labels defined
+        Labels: Map<string, int>      // Label numbers
+        Count: int                    // Labels defined/referenced so far
         Offset: int                   // Stack offset
+        // Count labels from 1 so that we can use negative numbers for
+        // referenced but not yet defined labels.
     }
     with
         static member Default = {
             Defs = new Map<string, Expression>([])
-            Missing = set []
-            Known = set []
+            Labels = new Map<string, int>([])
+            Count = 0
             Offset = 0
         }
 
@@ -23,20 +25,35 @@ type State = {
             match s.Defs.TryFind id with
             | Some e -> e
             | None ->
-                if not <| s.Known.Contains id
-                then str.UserState <- { s with Missing = s.Missing.Add id }
-                ELabel id
+                match s.Labels.TryFind id with
+                | Some i -> abs i
+                | None -> let i = s.Count + 1
+                          str.UserState <- {
+                            s with
+                                Labels = s.Labels.Add (id, -i)
+                                Count = i
+                          }
+                          i
+                |> ELabel
             |> Reply
 
         static member ObsLabel id (str: CharStream<State>) =
             let s = str.UserState
-            str.UserState <- {
-                s with
-                    Defs = s.Defs.Remove id
-                    Missing = s.Missing.Remove id
-                    Known = s.Known.Add id
-            }
-            Reply <| [SLabel id]
+            match s.Labels.TryFind id with
+            | Some i -> if i < 0 then str.UserState <- {
+                                        s with Labels = s.Labels.Add (id, abs i)
+                                      }
+                                      -i
+                        else i
+            | None -> let i = s.Count + 1
+                      str.UserState <- {
+                        s with
+                            Defs = s.Defs.Remove id
+                            Labels = s.Labels.Add (id, i)
+                            Count = i
+                      }
+                      i
+            |> SLabel |> List.singleton |> Reply
 
         static member AddDef id e =
             updateUserState<State> <|
@@ -229,10 +246,13 @@ exception ParseException of string
 let parseProgram (stream: System.IO.Stream): Statement seq =
     match runParserOnStream program State.Default "" stream System.Text.Encoding.UTF8 with
     | Success(result, s, _) ->
-        let c = s.Missing.Count
-        if c = 0 then result |> mergePushLabelJumps
+        let missing = [
+            for pair in s.Labels do
+            if pair.Value < 0
+            then yield pair.Key]
+        if missing.IsEmpty then result |> mergePushLabelJumps
         else sprintf "Label%s not found: %s"
-                 (if c > 1 then "s" else "")
-                 (System.String.Join(", ", s.Missing))
+                 (if missing.Length > 1 then "s" else "")
+                 (System.String.Join(", ", missing))
              |> ParseException |> raise
     | Failure(errorMsg, _, _) -> errorMsg |> ParseException |> raise

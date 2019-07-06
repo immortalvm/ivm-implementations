@@ -42,27 +42,27 @@ let BasicTests =
 
 [<Tests>]
 let ExpressionTests =
-    let x = ELabel "x"
-    let y = ELabel "y"
-    let pc = ELabel "pc" |> EStack |> ELoad8
+    let x = ELabel 1
+    let y = ELabel 2
+    let pc = ELabel 1 |> EStack |> ELoad8
     testList "Expression" [
         testList "Leaf" [
             testCase "Numeral" <| success (ENum 17L) expression "17"
-            testCase "Label" <| success (ELabel "u17_X_") expression "u17_X_"
+            testCase "Label" <| success (ELabel 1) expression "u17_X_"
             testCase "PC" <| success pc expression "$pc"
         ]
         testList "Unary" [
-            testCase "Minus" <| success (EMinus <| ELabel "x") expression "-x"
+            testCase "Minus" <| success (EMinus <| ELabel 1) expression "-x"
             testCase "Negation" <| success (ENeg  <| pc) expression "~$pc"
             testCase "Minus-negation" <| success (ENum 0xaL |> ENeg |> EMinus) expression "-~0xa"
             testCase "Peek" <| success (ENum 0L |> EStack |> ELoad8) expression "$0"
-            testCase "Stack" <| success (ELabel "x" |> EStack ) expression "&x"
+            testCase "Stack" <| success (ELabel 1 |> EStack ) expression "&x"
         ]
         testList "Binary" [
             testCase "Sum" <| success (ESum[pc;  ENum 1L]) expression "(+ $pc 1)"
-            testCase "Conjunction" <| success (EConj [ENum 0o10L |> EStack;  ELabel "lab"]) expression "( & &0o10 lab)"
+            testCase "Conjunction" <| success (EConj [ENum 0o10L |> EStack;  ELabel 1]) expression "( & &0o10 lab)"
             testCase "Product" <| success (EProd[ENum 3L|> EStack |> ELoad8;  ESum [ENum 16L; ENum 0L|> EStack |> ELoad8]]) expression "(* $3 (+ 0x10 $0))"
-            testCase "Disjunction" <| success (EDisj [ENum 8L|> EStack |> ELoad8;  ELabel "lab"]) expression "(|\t$0o10 lab)"
+            testCase "Disjunction" <| success (EDisj [ENum 8L|> EStack |> ELoad8;  ELabel 1]) expression "(|\t$0o10 lab)"
         ]
         testList "Less" [
             testCase "Shift" <| success (EShift (x, y)) expression "(<< x y)"

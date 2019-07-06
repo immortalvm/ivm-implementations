@@ -32,25 +32,25 @@ let failure pattern progString () =
 let example1 =
     let n = EMinus (ENum 13L)
     [
-        SLabel "label1"
+        SLabel 1
         SPush <| ENum 1L
         SPush <| ENum 2L; SPush <| ENum 3L
 
-        SJump <| Some "label1"
+        SJump <| Some 1
 
-        SJump <| Some "label1"
+        SJump <| Some 1
         SJumpZero None
-        SJumpZero <| Some "label1"
-        SPush <| ELoad8 (EStack (ENum 3L)); SJumpZero <| Some "label1"
+        SJumpZero <| Some 1
+        SPush <| ELoad8 (EStack (ENum 3L)); SJumpZero <| Some 1
 
-        SLabel "label2"
+        SLabel 2
         SPush <| EStack (ENum 0L)
         SPush <| EStack (ENum 1L)
         SPush <| EStack (EMinus (ENum 2L))
         SPush <| ELoad8 (EStack n)
         SAdd
         SPush <| ENum 7L; SAdd
-        SLabel "label3"
+        SLabel 3
         SData [0uy; 1uy; 0xffuy; 1uy]
     ]
 
@@ -61,35 +61,35 @@ let assemblyLanguageIntro =
     let yy = EMinus (ENum 13L)
     let xx2 = ENum 9L
     [
-        SLabel "my_label"
+        SLabel 1
         SData [0uy; 1uy; 254uy; 128uy; 1uy]
 
         SPush <| ENum 13L
         SPush <| EMinus (ENum 1L)
         SPush <| ENum 0L; SPush <| ENum 1L
-        SPush <| ELabel "my_label"
+        SPush <| ELabel 1
         SPush <| prime
         SPush <| EStack n
         SPush <| ELoad8 (EStack n)
-        SPush <| ESum [ELabel "my_label"; EMinus (ELoad8 (EStack (ENum 0L)))]
+        SPush <| ESum [ELabel 1; EMinus (ELoad8 (EStack (ENum 0L)))]
 
         SJump None
-        SJump <| Some "my_label"
+        SJump <| Some 1
         SJumpZero None
-        SJumpZero <| Some "my_label"
+        SJumpZero <| Some 1
 
         SPush <| ESum [prime; EMinus (ELoad8 (EStack (ENum 4L)))]
-        SJumpZero <| Some "my_label"
+        SJumpZero <| Some 1
         SJumpNotZero None
 
         SLoad1; SLoad2; SLoad4; SLoad8
-        SPush <| ELabel "my_label"; SLoad4
+        SPush <| ELabel 1; SLoad4
         SSign4
         SPush <| ENum 255L; SSign1
 
         SStore1; SStore2; SStore4; SStore8
-        SPush <| ELabel "my_label"; SStore4
-        SPush <| prime; SPush <| ELabel "my_label"; SStore8
+        SPush <| ELabel 1; SStore4
+        SPush <| prime; SPush <| ELabel 1; SStore8
 
         SAdd
         SPush <| xx; SAdd
@@ -146,9 +146,9 @@ let BasicTests =
         testCase "Offset sum" <|
             success
                 [
-                    SLabel "x"
+                    SLabel 1
                     ENum 0L |> SPush
-                    [ENum 1L; ELabel "x"; ELabel "x"] |> ESum |> EStack |> SPush
+                    [ENum 1L; ELabel 1; ELabel 1] |> ESum |> EStack |> SPush
                 ]
                 "x: push!! 0 &(+ x x)"
     ]
