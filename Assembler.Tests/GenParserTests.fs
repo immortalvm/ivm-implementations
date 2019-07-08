@@ -66,8 +66,8 @@ let ExpressionTests =
         ]
         testList "Less" [
             testCase "Shift" <| success (EShift (x, y)) expression "(<< x y)"
-            testCase "Or equal" <| success (ELtE (x, y)) expression "(<= x y)"
-            testCase "Less than" <| success (ELt (x, y)) expression "(< x y)"
+            testCase "Or equal" <| success (ELtEU (x, y)) expression "(<=u x y)"
+            testCase "Less than" <| success (ELtU (x, y)) expression "(<u x y)"
         ]
         // TODO: This is more suitable for property based testing
     ]

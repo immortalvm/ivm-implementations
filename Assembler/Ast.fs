@@ -14,13 +14,23 @@ type Expression =
     | EXor of Expression list
     | ENeg of Expression
     | EShift of Expression * Expression
+    | EShiftS of Expression * Expression
+
+    | EDivU of Expression * Expression
+    | EDivS of Expression * Expression
+    | ERemU of Expression * Expression
+    | ERemS of Expression * Expression
 
     // Return -1 for true and 0 for false:
-    | ELt of Expression * Expression
-    | ELtE of Expression * Expression
+    | ELtU of Expression * Expression
+    | ELtS of Expression * Expression
+    | ELtEU of Expression * Expression
+    | ELtES of Expression * Expression
     | EEq of Expression * Expression
-    | EGtE of Expression * Expression
-    | EGt of Expression * Expression
+    | EGtEU of Expression * Expression
+    | EGtES of Expression * Expression
+    | EGtU of Expression * Expression
+    | EGtS of Expression * Expression
 
     | ELoad1 of Expression
     | ELoad2 of Expression

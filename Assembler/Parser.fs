@@ -100,7 +100,52 @@ let offset e (str: CharStream<State>) =
 
 let expression: Parser<Expression, State> =
     let expr, exprRef = createParserForwardedToRef<Expression, State>()
-    let expr2 = expr .>>. expr
+    let expr1 = whitespace >>. expr
+    let expr2 = whitespace >>. expr .>>. expr
+    let exprList = whitespace >>. many expr
+    let exprHead =
+        let pred c = isLetter c || "+*&|^=<>".Contains c
+        many1Satisfy pred
+    let innerExpr stream =
+        let reply = exprHead stream
+        if reply.Status <> Ok then Reply(reply.Status, reply.Error)
+        else
+            let p = match reply.Result with
+                    | "+" -> exprList |>> ESum
+                    | "*" -> exprList |>> EProd
+                    | "&" -> exprList |>> EConj
+                    | "|" -> exprList |>> EDisj
+                    | "^" -> exprList |>> EXor
+
+                    | "<u" -> expr2 |>> ELtU
+                    | "<s" -> expr2 |>> ELtS
+                    | "<=u" -> expr2 |>> ELtEU
+                    | "<=s" -> expr2 |>> ELtES
+                    | "=" -> expr2 |>> EEq
+                    | ">u" -> expr2 |>> EGtU
+                    | ">s" -> expr2 |>> EGtS
+                    | ">=u" -> expr2 |>> EGtEU
+                    | ">=s" -> expr2 |>> EGtES
+
+                    | "<<" -> expr2 |>> EShift
+                    | "<<s" -> expr2 |>> EShiftS
+
+                    | "/u" -> expr2 |>> EDivU
+                    | "/s" -> expr2 |>> EDivS
+                    | "%u" -> expr2 |>> ERemU
+                    | "%s" -> expr2 |>> ERemS
+
+                    | "load1" -> expr1 |>> ELoad1
+                    | "load2" -> expr1 |>> ELoad2
+                    | "load4" -> expr1 |>> ELoad4
+                    | "load8" -> expr1 |>> ELoad8
+
+                    | "sign1" -> expr1 |>> ESign1
+                    | "sign2" -> expr1 |>> ESign2
+                    | "sign4" -> expr1 |>> ESign4
+                    | _ -> fail "Not an expression keyword."
+            p stream
+
     // Why do we need 'do' here?
     do exprRef := choice [
         identifier >>= State.TryExpand
@@ -109,39 +154,7 @@ let expression: Parser<Expression, State> =
         skipChar '~' >>. expr |>> ENeg
         skipChar '$' >>. expr >>= offset |>> (EStack >> ELoad8)
         skipChar '&' >>. expr >>= offset |>> EStack
-        between (strWs "(") (strWs ")") <| choice [
-            // Notice that we allow zero arguments to these operators.
-            // Use many1 to require at least one.
-            strWs "+" >>. many expr |>> ESum
-            strWs "*" >>. many expr |>> EProd
-
-            strWs "&" >>. many expr |>> EConj
-            strWs "|" >>. many expr |>> EDisj
-            strWs "^" >>. many expr |>> EXor
-
-            strWs "=" >>. expr2 |>> EEq
-
-            (skipString "load" >>. choice [
-                strWs "1" >>. expr |>> ELoad1
-                strWs "2" >>. expr |>> ELoad2
-                strWs "4" >>. expr |>> ELoad4
-                strWs "8" >>. expr |>> ELoad8
-            ])
-            (skipString "sign" >>. choice [
-                strWs "1" >>. expr |>> ESign1
-                strWs "2" >>. expr |>> ESign2
-                strWs "4" >>. expr |>> ESign4
-            ])
-            (skipChar '<' >>. choice [
-                strWs "<" >>. expr2 |>> EShift
-                strWs "=" >>. expr2 |>> ELtE
-                whitespace >>. expr2 |>> ELt
-            ])
-            (skipChar '>' >>. choice [
-                strWs "=" >>. expr2 |>> EGtE
-                whitespace >>. expr2 |>> EGt
-            ])
-        ]
+        between (strWs "(") (strWs ")") innerExpr
     ]
     expr
 
