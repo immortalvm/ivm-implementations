@@ -30,7 +30,7 @@ let failure pattern progString () =
          Expect.isMatch msg pattern "Unexpected error message"
 
 let example1 =
-    let n = EMinus (ENum 13L)
+    let n = ENum -13L
     [
         SLabel 1
         SPush <| ENum 1L
@@ -46,10 +46,12 @@ let example1 =
         SLabel 2
         SPush <| EStack (ENum 0L)
         SPush <| EStack (ENum 1L)
-        SPush <| EStack (EMinus (ENum 2L))
-        SPush <| ELoad8 (EStack n)
-        SAdd
-        SPush <| ENum 7L; SAdd
+
+        SPush <| ESum [
+            EStack (ENum -2L)
+            ELoad8 (EStack n)
+            ENum 7L
+        ]
         SLabel 3
         SData [0uy; 1uy; 0xffuy; 1uy]
     ]
@@ -65,7 +67,7 @@ let assemblyLanguageIntro =
         SData [0uy; 1uy; 254uy; 128uy; 1uy]
 
         SPush <| ENum 13L
-        SPush <| EMinus (ENum 1L)
+        SPush <| ENum -1L
         SPush <| ENum 0L; SPush <| ENum 1L
         SPush <| ELabel 1
         SPush prime
@@ -83,9 +85,8 @@ let assemblyLanguageIntro =
         SJumpNotZero None
 
         SLoad1; SLoad2; SLoad4; SLoad8
-        SPush <| ELabel 1; SLoad4
-        SSign4
-        SPush <| ENum 255L; SSign1
+        ELabel 1 |> ELoad4 |> ESign4 |> SPush
+        SPush <| ENum -1L
 
         SStore1; SStore2; SStore4; SStore8
         SPush <| ELabel 1; SStore4
@@ -93,23 +94,25 @@ let assemblyLanguageIntro =
 
         SAdd
         SPush xx; SAdd
-        SPush xx; SPush yy; SAdd
-        SMinus; SAdd
-        SPush xx; SMinus; SAdd
-        SPush xx; SPush yy; SMinus; SAdd
+
+        SPush <| ENum -(99L - 13L); SAdd
+        SPush <| ENum -99L; SAdd
+        SPush <| ENum (99L + 13L)
         SMult; SMinus
         SDivU; SDivS; SRemU; SRemS
 
         SAnd
         SPush <| ENum 127L; SAnd
-        SPush <| ENum 4095L; SPush <| prime; SAnd
-        SOr; SXor; SNeg
-        SPush <| EMinus (ENum 4L); SShift
-        SPush <| EMinus (ENum 4L); SShiftS
+        SPush <| ENum (982451653L &&& 4095L)
+        SOr; SXor; SNeg;
+        SPow2
+        SPow2; SMult
+        SPow2; SDivU
+        SPow2; SDivS
 
         SEq
         SPush <| ENum 7L; SEq
-        SPush xx; SPush yy; SEq
+        SPush <| ENum 0L // SPush xx; SPush yy; SEq
         SLtU; SLtS; SLtEU; SLtES
         SGtU; SGtS; SGtEU; SGtES
 

@@ -65,7 +65,7 @@ let ExpressionTests =
             testCase "Disjunction" <| success (EDisj [ENum 8L|> EStack |> ELoad8;  ELabel 1]) expression "(|\t$0o10 lab)"
         ]
         testList "Less" [
-            testCase "Shift" <| success (EShift (x, y)) expression "(<< x y)"
+            testCase "Shift" <| success (EProd [x; EPow2 y]) expression "(<< x y)"
             testCase "Or equal" <| success (ELtEU (x, y)) expression "(<=u x y)"
             testCase "Less than" <| success (ELtU (x, y)) expression "(<u x y)"
         ]

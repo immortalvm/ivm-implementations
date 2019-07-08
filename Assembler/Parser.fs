@@ -127,8 +127,9 @@ let expression: Parser<Expression, State> =
                     | ">=u" -> expr2 |>> EGtEU
                     | ">=s" -> expr2 |>> EGtES
 
-                    | "<<" -> expr2 |>> EShift
-                    | "<<s" -> expr2 |>> EShiftS
+                    | "<<" -> expr2 |>> fun (x, y) -> EProd [x; EPow2 y]
+                    | ">>u" -> expr2 |>> fun (x, y) -> EDivU (x, EPow2 y)
+                    | ">>s" -> expr2 |>> fun (x, y) -> EDivS (x, EPow2 y)
 
                     | "/u" -> expr2 |>> EDivU
                     | "/s" -> expr2 |>> EDivS
@@ -223,8 +224,10 @@ let statement: Parser<Statement list, State> =
              | "or" -> nArgs 2 [SOr]
              | "xor" -> nArgs 2 [SXor]
              | "neg" -> nArgs 1 [SNeg]
-             | "shift" -> nArgs 2 [SShift]
-             | "shift_s" -> nArgs 2 [SShiftS]
+             | "pow2" -> nArgs 1 [SPow2]
+             | "shift_l" -> nArgs 2 [SPow2; SMult]
+             | "shift_ru" -> nArgs 2 [SPow2; SDivU]
+             | "shift_rs" -> nArgs 2 [SPow2; SDivS]
 
              | "div_u" -> nArgs 2 [SDivU]
              | "div_s" -> nArgs 2 [SDivS]
@@ -263,7 +266,7 @@ let parseProgram (stream: System.IO.Stream): Statement seq =
             for pair in s.Labels do
             if pair.Value < 0
             then yield pair.Key]
-        if missing.IsEmpty then result |> mergePushLabelJumps
+        if missing.IsEmpty then result |> pushReduction
         else sprintf "Label%s not found: %s"
                  (if missing.Length > 1 then "s" else "")
                  (System.String.Join(", ", missing))

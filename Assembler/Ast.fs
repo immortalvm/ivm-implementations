@@ -8,13 +8,12 @@ type Expression =
     | ESum of Expression list
     | EProd of Expression list
     | EMinus of Expression
+    | EPow2 of Expression
 
     | EConj of Expression list
     | EDisj of Expression list
     | EXor of Expression list
     | ENeg of Expression
-    | EShift of Expression * Expression
-    | EShiftS of Expression * Expression
 
     | EDivU of Expression * Expression
     | EDivS of Expression * Expression
@@ -36,7 +35,6 @@ type Expression =
     | ELoad2 of Expression
     | ELoad4 of Expression
     | ELoad8 of Expression
-
     | ESign1 of Expression
     | ESign2 of Expression
     | ESign4 of Expression
@@ -62,9 +60,7 @@ type Statement =
     | SAdd | SMult
     | SMinus
     | SAnd | SOr | SXor | SNeg
-    | SShift // Second argument (top) signed.
-    | SShiftS // Both arguments signed.
-
+    | SPow2
     | SDivU | SDivS
     | SRemU | SRemS
 

@@ -187,14 +187,11 @@ my_label:
     # The reason for choosing the term "neg" instead of "not" is avoid confusion
     # with boolean negation (where every positive number is considered true).
 
-    # The shift statement pops a signed value x, then an unsigned value y and
-    # pushes the value y shifted x bits to the left. If x is negative, we shift
-    # the corresponding number of bits to the left.
-    # There is no "wrap-around". Bits going "off the edge" are lost.
-    shift! -4     # Divide unsigned value by 16.
-
-    # We have also included a shift statement with both arguments signed.
-    shift_s! -4   # Divide signed value by 16.
+    # The pow2 statement pops x (unsigned) and pushes 2 to the power of x.
+    pow2
+    shift_l       # Sugar for 'pow2 mult'
+    shift_ru      # Sugar for 'pow2 div_u'
+    shift_rs      # Sugar for 'pow2 div_s'
 
 
     #### 8. COMPARISON

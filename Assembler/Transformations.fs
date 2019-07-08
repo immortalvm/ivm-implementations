@@ -2,25 +2,253 @@
 
 open Assembler.Ast
 
-// One of many passes
-let mergePushLabelJumps (prog: Statement seq): Statement seq =
-    let p = prog.GetEnumerator ()
-    let mutable pending : int option = None
-    let flush replacement =
-        let prev = pending
-        pending <- replacement
-        match prev with
-        | Some label -> [SPush (ELabel label)]
-        | None -> []
-    seq {
-        while p.MoveNext() do
-            match p.Current with
-            | SJump None -> yield (SJump pending); pending <- None
-            | SJumpZero None -> yield (SJumpZero pending); pending <- None
-            | SJumpNotZero None -> yield (SJumpNotZero pending); pending <- None
-            | SPush (ELabel label) -> yield! flush <| Some label
-            | _ -> yield! flush None; yield p.Current
 
+let signExtend n x =
+    match n with
+    | 1 -> x |> uint8 |> int8 |> int64
+    | 2 -> x |> uint16 |> int16 |> int64
+    | 4 -> x |> uint32 |> int32 |> int64
+    | _ -> failwithf "No such byte-width: %d" n
+
+
+// More optimizations are certainly possible.
+let rec optimize (e: Expression): Expression =
+    match e with
+    | ENum _ -> e
+    | ELabel _ -> e
+    | EMinus x -> minus <| optimize x
+    | ENeg x -> neg <| optimize x
+    | EPow2 x -> pow2 <| optimize x
+    | EStack x -> EStack <| optimize x // TODO
+    | ELoad1 x -> ELoad1 <| optimize x
+    | ELoad2 x -> ELoad2 <| optimize x
+    | ELoad4 x -> ELoad4 <| optimize x
+    | ELoad8 x -> ELoad8 <| optimize x
+
+    | ESum lst -> sum [for x in lst -> optimize x]
+    | EProd lst -> prod [for x in lst -> optimize x]
+    | EConj lst -> conj [for x in lst -> optimize x]
+    | EDisj lst -> disj [for x in lst -> optimize x]
+    | EXor lst -> xor [for x in lst -> optimize x]
+    | EDivU (x, y) -> divU (optimize x) (optimize y)
+    | EDivS (x, y) -> divS (optimize x) (optimize y)
+    | ERemU (x, y) -> remU (optimize x) (optimize y)
+    | ERemS (x, y) -> remS (optimize x) (optimize y)
+    | ESign1 x -> sign 1 <| optimize x
+    | ESign2 x -> sign 2 <| optimize x
+    | ESign4 x -> sign 4 <| optimize x
+
+    | ELtU (x, y) -> liftU ELtU (x, y) (<)
+    | ELtS (x, y) -> liftS ELtS (x, y) (<)
+    | ELtEU (x, y) -> liftU ELtEU (x, y) (<=)
+    | ELtES (x, y) -> liftS ELtES (x, y) (<=)
+    | EEq (x, y) -> liftS EEq (x, y) (=)
+    | EGtEU (x, y) -> liftU EGtEU (x, y) (>=)
+    | EGtES (x, y) -> liftS EGtES (x, y) (>=)
+    | EGtU (x, y) -> liftU EGtU (x, y) (>)
+    | EGtS (x, y) -> liftS EGtS (x, y) (>)
+
+and private liftU ctor (x, y) rel =
+    match optimize x, optimize y with
+    | ENum m, ENum n -> ENum (if rel (uint64 m) (uint64 n) then -1L else 0L)
+    | xx, yy -> ctor (xx, yy)
+
+and private liftS ctor (x, y) rel =
+    match optimize x, optimize y with
+    | ENum m, ENum n -> ENum (if rel m n then -1L else 0L)
+    | xx, yy -> ctor (xx, yy)
+
+and private minus x =
+    match x with
+    | ENum n -> ENum -n
+    | EMinus n -> n
+    | ENeg n -> sum [n; ENum 1L]
+    | _ -> EMinus x
+
+and private neg x =
+    match x with
+    | ENum n -> ENum (n ^^^ -1L)
+    | ENeg n -> n
+    | EMinus n -> sum [n; ENum -1L]
+    | _ -> ENeg x
+
+and private pow2 x =
+    match x with
+    | ENum m -> if m > 63L || m < 0L then 0UL else 1UL <<< int m
+                |> int64 |> ENum
+    | _ -> EPow2 x
+
+and private sum lst =
+    match lst with
+    | [] -> ENum 0L
+    | e::es ->
+        match e, sum es with
+        | ENum x, ENum y -> ENum <| x + y
+        | x, ENum 0L -> x
+        | ENum 0L, y -> y
+        | ESum xs, ESum ys -> ESum <| xs @ ys
+        | ESum xs, y -> ESum <| xs @ [y]
+        | x, ESum ys -> ESum <| x :: ys
+        | x, y -> ESum [x; y]
+
+and private prod lst =
+    match lst with
+    | [] -> ENum 1L
+    | e::es ->
+        match e, prod es with
+        | ENum x, ENum y -> ENum <| x * y
+        | x, ENum 0L -> ENum 0L
+        | ENum 0L, y -> ENum 0L
+        | x, ENum 1L -> x
+        | ENum 1L, y -> y
+        | x, ENum -1L -> minus x
+        | ENum -1L, y -> minus y
+        | EPow2 x, EPow2 y -> EPow2 <| sum [x; y]
+        | EProd xs, EProd ys -> EProd <| xs @ ys
+        | EProd xs, y -> EProd <| xs @ [y]
+        | x, EProd ys -> EProd <| x :: ys
+        | x, y -> EProd [x; y]
+
+and private conj lst =
+    match lst with
+    | [] -> ENum -1L
+    | e::es ->
+        match optimize e, conj es with
+        | ENum x, ENum y -> ENum (x &&& y)
+        | x, ENum 0L -> ENum 0L
+        | ENum 0L, y -> ENum 0L
+        | x, ENum -1L -> x
+        | ENum -1L, y -> y
+        | EConj xs, EConj ys -> EConj <| xs @ ys
+        | EConj xs, y -> EConj <| xs @ [y]
+        | x, EConj ys -> EConj <| x :: ys
+        | x, y -> EConj [x; y]
+
+and private disj lst =
+    match lst with
+    | [] -> ENum 0L
+    | e::es ->
+        match e, disj es with
+        | ENum x, ENum y -> ENum (x ||| y)
+        | x, ENum -1L -> ENum -1L
+        | ENum -1L, y -> ENum -1L
+        | x, ENum 0L -> x
+        | ENum 0L, y -> y
+        | EDisj xs, EDisj ys -> EDisj <| xs @ ys
+        | EDisj xs, y -> EDisj <| xs @ [y]
+        | x, EDisj ys -> EDisj <| x :: ys
+        | x, y -> EDisj [x; y]
+
+and private xor lst =
+    match lst with
+    | [] -> ENum 0L
+    | e::es ->
+        match e, xor es with
+        | ENum x, ENum y -> ENum (x ^^^ y)
+        | x, ENum -1L -> neg x
+        | ENum -1L, y -> neg y
+        | x, ENum 0L -> x
+        | ENum 0L, y -> y
+        | EXor xs, EXor ys -> EXor <| xs @ ys
+        | EXor xs, y -> EXor <| xs @ [y]
+        | x, EXor ys -> EXor <| x :: ys
+        | x, y -> EXor [x; y]
+
+and private divU x y =
+    match x, y with
+    | ENum m, ENum n -> (uint64 m) / (uint64 n) |> int64 |> ENum
+    | _, ENum 1L -> x
+    | _, _ -> EDivU (x, y)
+
+and private divS x y =
+    match x, y with
+    | ENum m, ENum n -> m / n |> ENum
+    | _, ENum 1L -> x
+    | _, ENum -1L -> neg x
+    | _, _ -> EDivU (x, y)
+
+and private remU x y =
+    match x, y with
+    | ENum m, ENum n -> (uint64 m) % (uint64 n) |> int64 |> ENum
+    | _, ENum 1L -> ENum 0L
+    | _, ENum -1L -> ENum 0L
+    | _, _ -> ERemU (x, y)
+
+and private remS x y =
+    match x, y with
+    | ENum m, ENum n -> m % n |> ENum
+    | _, ENum 1L -> ENum 0L
+    | _, _ -> ERemS (x, y)
+
+and private sign n x =
+    match x with
+    | ENum m -> signExtend n m |> ENum
+    | _ -> match n with
+           | 1 -> ESign1 x
+           | 2 -> ESign2 x
+           | 4 -> ESign4 x
+           | _ -> failwithf "No such byte-width: %d" n
+
+
+// One of many passes
+let pushReduction (prog: Statement seq): Statement seq =
+    let p = prog.GetEnumerator ()
+    let mutable pending : Expression list = []
+    let flush n = let result = pending
+                               |> Seq.skip n |> Seq.rev
+                               |> Seq.map (optimize >> SPush)
+                               |> Seq.toList
+                  pending <- []
+                  result
+    let flushJump op =
+        match pending with
+        | x::_ -> flush 1 @ match optimize x with
+                            | ELabel i -> [op <| Some i]
+                            | xx -> [SPush xx; op None]
+        | _ -> flush 0 @ [op None]
+
+    seq {
+
+        while p.MoveNext() do
+            let s = p.Current
+            match s, pending with
+            | SPush e, p -> pending <- e :: p
+            | SJump None, ELabel i::_ -> yield! flushJump SJump
+            | SJumpZero None, ELabel i::r -> yield! flushJump SJumpZero
+            | SJumpNotZero None, ELabel i::r -> yield! flushJump SJumpNotZero
+
+            | SLoad1, x::r -> pending <- ELoad1 x :: r
+            | SLoad2, x::r -> pending <- ELoad2 x :: r
+            | SLoad4, x::r -> pending <- ELoad4 x :: r
+            | SLoad8, x::r -> pending <- ELoad8 x :: r
+            | SSign1, x::r -> pending <- ESign1 x :: r
+            | SSign2, x::r -> pending <- ESign2 x :: r
+            | SSign4, x::r -> pending <- ESign4 x :: r
+
+            | SAdd, y::x::r -> pending <- ESum [x;y] :: r
+            | SMult, y::x::r -> pending <- EProd [x;y] :: r
+            | SMinus, x::r -> pending <- EMinus x :: r
+            | SAnd, y::x::r -> pending <- EConj [x;y] :: r
+            | SOr, y::x::r -> pending <- EDisj [x;y] :: r
+            | SXor, y::x::r -> pending <- EXor [x;y] :: r
+            | SNeg, x::r -> pending <- ENeg x :: r
+            | SPow2, x::r -> pending <- EPow2 x :: r
+            | SDivU, y::x::r -> pending <- EDivU (x, y) :: r
+            | SDivS, y::x::r -> pending <- EDivS (x, y) :: r
+            | SRemU, y::x::r -> pending <- ERemU (x, y) :: r
+            | SRemS, y::x::r -> pending <- ERemS (x, y) :: r
+
+            | SLtU , y::x::r -> pending <- ELtU (x, y) :: r
+            | SLtS , y::x::r -> pending <- ELtS (x, y) :: r
+            | SLtEU , y::x::r -> pending <- ELtEU (x, y) :: r
+            | SLtES , y::x::r -> pending <- ELtES (x, y) :: r
+            | SEq , y::x::r -> pending <- EEq (x, y) :: r
+            | SGtEU , y::x::r -> pending <- EGtEU (x, y) :: r
+            | SGtES , y::x::r -> pending <- EGtES (x, y) :: r
+            | SGtU , y::x::r -> pending <- EGtU (x, y) :: r
+            | SGtS, y::x::r -> pending <- EGtS (x, y) :: r
+
+            | _ -> yield! flush 0; yield s
         // It would be strange to end the program with a push, though.
-        yield! flush None
+        yield! flush 0
     }
