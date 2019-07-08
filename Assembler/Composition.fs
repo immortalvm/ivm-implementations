@@ -9,11 +9,11 @@ type Intermediate =
 
 let compose (prog: Intermediate list): seq<byte> * int[] =
     let maxLabel = List.max [
-        for x in prog do
-            match x with
-            | Label i -> yield i
-            | _ -> ()
-    ]
+                       for x in prog do
+                       match x with
+                       | Label i -> yield i
+                       | _ -> ()
+                   ]
     // positions[0] will not be used
     let positions = Array.create (maxLabel + 1) 0
 
