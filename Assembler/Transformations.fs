@@ -10,6 +10,13 @@ let signExtend n x =
     | 4 -> x |> uint32 |> int32 |> int64
     | _ -> failwithf "No such byte-width: %d" n
 
+let combineLists f x y =
+    match x, y with
+    | ENum m::xs, ENum n::ys -> f m n <| xs @ ys
+    // Move constants to the front
+    | xs, ENum n::ys -> ENum n :: (xs @ ys)
+    | xs, ys -> xs @ ys
+
 
 // More optimizations are certainly possible.
 let rec optimize (e: Expression): Expression =
@@ -61,15 +68,15 @@ and private liftS ctor (x, y) rel =
 and private minus x =
     match x with
     | ENum n -> ENum -n
-    | EMinus n -> n
-    | ENeg n -> sum [n; ENum 1L]
+    | EMinus e -> e
+    | ENeg e -> sum [e; ENum 1L]
     | _ -> EMinus x
 
 and private neg x =
     match x with
     | ENum n -> ENum (n ^^^ -1L)
-    | ENeg n -> n
-    | EMinus n -> sum [n; ENum -1L]
+    | ENeg e -> e
+    | EMinus e -> sum [e; ENum -1L]
     | _ -> ENeg x
 
 and private pow2 x =
@@ -79,80 +86,63 @@ and private pow2 x =
     | _ -> EPow2 x
 
 and private sum lst =
-    match lst with
-    | [] -> ENum 0L
-    | e::es ->
-        match e, sum es with
-        | ENum x, ENum y -> ENum <| x + y
-        | x, ENum 0L -> x
-        | ENum 0L, y -> y
-        | ESum xs, ESum ys -> ESum <| xs @ ys
-        | ESum xs, y -> ESum <| xs @ [y]
-        | x, ESum ys -> ESum <| x :: ys
-        | x, y -> ESum [x; y]
+    let toList x = match x with ESum xs -> xs | ENum 0L -> [] | _ -> [x]
+    let fromList xs = match xs with [] -> ENum 0L | [x] -> x | _ -> ESum xs
+    let combine = combineLists <| fun m n r -> match m + n with 0L -> r | s -> ENum s::r
+    lst |> List.map toList |> List.fold combine [] |> fromList
 
 and private prod lst =
-    match lst with
-    | [] -> ENum 1L
-    | e::es ->
-        match e, prod es with
-        | ENum x, ENum y -> ENum <| x * y
-        | x, ENum 0L -> ENum 0L
-        | ENum 0L, y -> ENum 0L
-        | x, ENum 1L -> x
-        | ENum 1L, y -> y
-        | x, ENum -1L -> minus x
-        | ENum -1L, y -> minus y
-        | EPow2 x, EPow2 y -> EPow2 <| sum [x; y]
-        | EProd xs, EProd ys -> EProd <| xs @ ys
-        | EProd xs, y -> EProd <| xs @ [y]
-        | x, EProd ys -> EProd <| x :: ys
-        | x, y -> EProd [x; y]
+    let toList x =
+        let f y = match y with EProd ys -> ys | ENum 1L -> [] | _ -> [y]
+        match x with
+        | EMinus y -> [ENum -1L] @ f y
+        | _ -> f x
+    let fromList xs = match xs with
+                      | [] -> ENum 1L
+                      | [x] -> x
+                      | [ENum -1L; x] -> minus x
+                      | ENum -1L :: xx -> EMinus <| EProd xx
+                      | _ -> EProd xs
+    let combine = combineLists <| fun m n r -> match m * n with
+                                               | 0L -> []
+                                               | 1L -> r
+                                               | p -> ENum p :: r
+    lst |> List.map toList |> List.fold combine [] |> fromList
 
 and private conj lst =
-    match lst with
-    | [] -> ENum -1L
-    | e::es ->
-        match optimize e, conj es with
-        | ENum x, ENum y -> ENum (x &&& y)
-        | x, ENum 0L -> ENum 0L
-        | ENum 0L, y -> ENum 0L
-        | x, ENum -1L -> x
-        | ENum -1L, y -> y
-        | EConj xs, EConj ys -> EConj <| xs @ ys
-        | EConj xs, y -> EConj <| xs @ [y]
-        | x, EConj ys -> EConj <| x :: ys
-        | x, y -> EConj [x; y]
+    let toList x = match x with EConj xs -> xs | ENum 1L -> [] | _ -> [x]
+    let fromList xs = match xs with [] -> ENum -1L | [x] -> x | _ -> EConj xs
+    let combine = combineLists <| fun m n r -> match m &&& n with
+                                               | 0L -> [ENum 0L]
+                                               | -1L -> r
+                                               | c -> ENum c :: r
+    lst |> List.map toList |> List.fold combine [] |> fromList
 
 and private disj lst =
-    match lst with
-    | [] -> ENum 0L
-    | e::es ->
-        match e, disj es with
-        | ENum x, ENum y -> ENum (x ||| y)
-        | x, ENum -1L -> ENum -1L
-        | ENum -1L, y -> ENum -1L
-        | x, ENum 0L -> x
-        | ENum 0L, y -> y
-        | EDisj xs, EDisj ys -> EDisj <| xs @ ys
-        | EDisj xs, y -> EDisj <| xs @ [y]
-        | x, EDisj ys -> EDisj <| x :: ys
-        | x, y -> EDisj [x; y]
+    let toList x = match x with EDisj xs -> xs | ENum 0L -> [] | _ -> [x]
+    let fromList xs = match xs with [] -> ENum 0L | [x] -> x | _ -> EDisj xs
+    let combine = combineLists <| fun m n r -> match m ||| n with
+                                               | 0L -> r
+                                               | -1L -> [ENum -1L]
+                                               | c -> ENum c :: r
+    lst |> List.map toList |> List.fold combine [] |> fromList
 
 and private xor lst =
-    match lst with
-    | [] -> ENum 0L
-    | e::es ->
-        match e, xor es with
-        | ENum x, ENum y -> ENum (x ^^^ y)
-        | x, ENum -1L -> neg x
-        | ENum -1L, y -> neg y
-        | x, ENum 0L -> x
-        | ENum 0L, y -> y
-        | EXor xs, EXor ys -> EXor <| xs @ ys
-        | EXor xs, y -> EXor <| xs @ [y]
-        | x, EXor ys -> EXor <| x :: ys
-        | x, y -> EXor [x; y]
+    let toList x =
+        let f y = match y with EXor ys -> ys | ENum 0L -> [] | _ -> [y]
+        match x with
+        | ENeg y -> [ENum -1L] @ f y
+        | _ -> f x
+    let fromList xs = match xs with
+                      | [] -> ENum 0L
+                      | [x] -> x
+                      | [ENum -1L; x] -> neg x
+                      | ENum -1L :: xx -> ENeg <| EXor xx
+                      | _ -> EXor xs
+    let combine = combineLists <| fun m n r -> match m ^^^ n with
+                                               | 0L -> r
+                                               | p -> ENum p :: r
+    lst |> List.map toList |> List.fold combine [] |> fromList
 
 and private divU x y =
     match x, y with
