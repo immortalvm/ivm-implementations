@@ -48,10 +48,7 @@ type Statement =
 
     | SPush of Expression
     | SExit | SSetSp
-    // [SPush label; SJump None] -> [SJump (Some label)]
-    | SJump of int option
-    | SJumpZero of int option
-    | SJumpNotZero of int option
+    | SJump | SJumpZero | SJumpNotZero
 
     | SLoad1 | SLoad2 | SLoad4 | SLoad8
     | SSign1 | SSign2 | SSign4

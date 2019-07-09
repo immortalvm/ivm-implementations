@@ -184,28 +184,18 @@ and private sign n x =
 let pushReduction (prog: Statement seq): Statement seq =
     let p = prog.GetEnumerator ()
     let mutable pending : Expression list = []
-    let flush n = let result = pending
-                               |> Seq.skip n |> Seq.rev
-                               |> Seq.map (optimize >> SPush)
-                               |> Seq.toList
-                  pending <- []
-                  result
-    let flushJump op =
-        match pending with
-        | x::_ -> flush 1 @ match optimize x with
-                            | ELabel i -> [op <| Some i]
-                            | xx -> [SPush xx; op None]
-        | _ -> flush 0 @ [op None]
-
+    let flush () = let result = pending
+                                |> Seq.rev
+                                |> Seq.map (optimize >> SPush)
+                                |> Seq.toList
+                   pending <- []
+                   result
     seq {
 
         while p.MoveNext() do
             let s = p.Current
             match s, pending with
             | SPush e, p -> pending <- e :: p
-            | SJump None, ELabel i::_ -> yield! flushJump SJump
-            | SJumpZero None, ELabel i::r -> yield! flushJump SJumpZero
-            | SJumpNotZero None, ELabel i::r -> yield! flushJump SJumpNotZero
 
             | SLoad1, x::r -> pending <- ELoad1 x :: r
             | SLoad2, x::r -> pending <- ELoad2 x :: r
@@ -238,7 +228,7 @@ let pushReduction (prog: Statement seq): Statement seq =
             | SGtU , y::x::r -> pending <- EGtU (x, y) :: r
             | SGtS, y::x::r -> pending <- EGtS (x, y) :: r
 
-            | _ -> yield! flush 0; yield s
+            | _ -> yield! flush (); yield s
         // It would be strange to end the program with a push, though.
-        yield! flush 0
+        yield! flush ()
     }

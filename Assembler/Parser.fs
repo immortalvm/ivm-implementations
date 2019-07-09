@@ -200,9 +200,9 @@ let statement: Parser<Statement list, State> =
              | "exit" -> nArgs 0 [SExit]
              | "push" -> pArgs
              | "set_sp" -> nArgs 1 [SSetSp]
-             | "jump" -> nArgs 1 [SJump None]
-             | "jump_zero" -> nArgs 2 [SJumpZero None]
-             | "jump_not_zero" -> nArgs 2 [SJumpNotZero None]
+             | "jump" -> nArgs 1 [SJump]
+             | "jump_zero" -> nArgs 2 [SJumpZero]
+             | "jump_not_zero" -> nArgs 2 [SJumpNotZero]
 
              | "load1" -> nArgs 1 [SLoad1]
              | "load2" -> nArgs 1 [SLoad2]
