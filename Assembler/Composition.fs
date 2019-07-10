@@ -5,15 +5,15 @@
 let private ATTEMPTS_BEFORE_MONOTINICITY = 3;
 
 // Code given label -> relative position (from statement _start_)
-type FlexCode = (int -> int) -> sbyte list
+type FlexCode = (int -> int) -> int8 list
 
 type Intermediate =
     | Label of int
     | Fragment of FlexCode
 
 
-// 'nops n' must return a nop sequence of at least n sbytes.
-let compose (nops: int -> sbyte list) (prog: Intermediate list) : seq<sbyte> * int[] =
+// 'nops n' must return a nop sequence of at least n signed bytes.
+let compose (nops: int -> int8 list) (prog: Intermediate list) : seq<int8> * int[] =
     let maxLabel = List.max <| 0 :: [
                        for x in prog do
                        match x with
@@ -88,7 +88,7 @@ let NOP = 1y
 let JUMP = 2y
 
 [<Literal>]
-let JUMP_IF_ZERO = 3y // Relative to next signed sbyte (immediate arg)
+let JUMP_IF_ZERO = 3y // Relative to next signed byte (immediate arg)
 
 [<Literal>]
 let SET_STACK = 4y
@@ -103,7 +103,7 @@ let GET_STACK = 6y
 [<Literal>]
 let PUSH0 = 7y
 
-// Push the next sbyte(s) as a zero-padded 64-bit integer.
+// Push the next byte(s) as a zero-padded 64-bit integer.
 [<Literal>]
 let PUSH1 = 8y
 
@@ -210,7 +210,7 @@ let nopsFor i = List.replicate i NOP
 
 let powers = [|for i in 0 .. 63 -> 1L <<< i|]
 
-let pushNum (x: int64): sbyte list =
+let pushNum (x: int64): int8 list =
     let n = uint64 x
     let nn = x ^^^ -1L |> uint64
 
@@ -221,16 +221,16 @@ let pushNum (x: int64): sbyte list =
     if x &&& (x - 1L) = 0L && n >= b16 && nn >= b8
     then
         let k = System.Array.BinarySearch (powers, x)
-        [PUSH0; sbyte k; POW2]                          // 3
+        [PUSH0; int8 k; POW2]                          // 3
     else
-        let bytes (n: int) (y: uint64) : sbyte list =
+        let bytes (n: int) (y: uint64) : int8 list =
             [|0..n-1|]
-            |> Seq.map (fun i -> y >>> i*8 |> byte |> sbyte)
+            |> Seq.map (fun i -> y >>> i*8 |> byte |> int8)
             |> Seq.toList
         if n = 0UL then [PUSH0]                         // 1
         elif nn = 0UL then [PUSH0; NOT]                 // 2
-        elif n < b8 then [PUSH1; sbyte n]               // 2
-        elif nn < b8 then [PUSH1; sbyte nn; NOT]        // 3
+        elif n < b8 then [PUSH1; int8 n]               // 2
+        elif nn < b8 then [PUSH1; int8 nn; NOT]        // 3
         elif n < b16 then [PUSH2] @ bytes 2 n           // 3
         elif nn < b16 then [PUSH2] @ bytes 2 nn @ [NOT] // 4
         elif n < b32 then [PUSH4] @ bytes 4 n           // 5
@@ -260,17 +260,17 @@ let byteDist x = -128 <= x && x <= 127
 // NB. The delta is w.r.t. before the code.
 let deltaJump delta =
     if delta = 0 then []
-    elif byteDist <| delta - 3 then [PUSH0; JUMP_IF_ZERO; sbyte (delta - 3)]
+    elif byteDist <| delta - 3 then [PUSH0; JUMP_IF_ZERO; int8 (delta - 3)]
     elif delta < 0 then [GET_PC] @ pushInt (delta - 1) @ [ADD; JUMP]
     else 
         let f pushLength = delta - pushLength - 1
         pushFix f @ [GET_PC; ADD; JUMP]
 
 let deltaJumpZero delta =
-    if byteDist <| delta - 2 then [JUMP_IF_ZERO; sbyte (delta - 2)]
+    if byteDist <| delta - 2 then [JUMP_IF_ZERO; int8 (delta - 2)]
     else
         let jump = deltaJump (delta - 5)
-        [JUMP_IF_ZERO; 3y; PUSH0; JUMP_IF_ZERO; sbyte (List.length jump)] @ jump 
+        [JUMP_IF_ZERO; 3y; PUSH0; JUMP_IF_ZERO; int8 (List.length jump)] @ jump 
 
 let deltaJumpNotZero delta = [PUSH1; 1y; LESS_THAN] @ deltaJumpZero (delta - 3)
 
@@ -280,9 +280,9 @@ let mapGet<'a, 'b when 'a: comparison> (m: Map<'a,'b>) (x: 'a) (def: 'b) =
     m.TryFind x |> valueOr def
 
 // TODO: Improve type name. Maybe a record would be better?
-type Spes = sbyte list * int64
+type Spes = int8 list * int64
 
-let collapseSpes ((code, acc): Spes) : sbyte list =
+let collapseSpes ((code, acc): Spes) : int8 list =
     match code, acc with
     | _, 0L -> code
     | [PUSH0], _ -> pushNum acc
