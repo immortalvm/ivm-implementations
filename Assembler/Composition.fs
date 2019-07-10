@@ -13,8 +13,8 @@ type Intermediate =
 
 
 // 'nops n' must return a nop sequence of at least n sbytes.
-let compose (prog: Intermediate list) (nops: int -> sbyte list): seq<sbyte> * int[] =
-    let maxLabel = List.max [
+let compose (nops: int -> sbyte list) (prog: Intermediate list) : seq<sbyte> * int[] =
+    let maxLabel = List.max <| 0 :: [
                        for x in prog do
                        match x with
                        | Label i -> yield i
@@ -314,38 +314,36 @@ let multSpes (s1: Spes) (s2: Spes) : Spes =
     | ([PUSH0], m), (c, n) -> c @ pushNum m @ [MULTIPLY], m * n
     | _, _ -> collapseSpes s1 @ collapseSpes s2 @ [MULTIPLY], 0L
 
-
-let timesNSpes (n: int64) ((code, acc): Spes) : Spes =
-    let c = match n, code with
-            | 0L, _ -> [PUSH0]
-            | 1L, _ -> code
-            | _, [PUSH0] -> [PUSH0]
-            | _ -> code @ pushNum n @ [MULTIPLY]
-    (c, acc * n)
+let timesNSpes (n: int64) (s: Spes) : Spes = multSpes s ([PUSH0], n)
 
 let rec exprPushCore
         (expression: Expression)
         (lookup: int -> int)
         (position: int)
         (depth: int) : Spes =
+    let mutable spes = zeroSpes
+    let inner e =
+        let (p, d) = match spes with
+                     | [PUSH0], _ -> position, depth
+                     | code, _ -> position + List.length code, depth + 1
+        exprPushCore e lookup p d
+
     match expression with
-    | ENum n -> [PUSH0], n
-    | ELabel i -> [GET_PC], int64 (lookup i - position - 1)
+    | ENum n -> spes <- [PUSH0], n
+    | ELabel i -> spes <- [GET_PC], int64 (lookup i - position - 1)
 
     | EStack e ->
-        let spes = exprPushCore e lookup (position + 1) (depth + 1)
-        addSpes ([GET_STACK], 0L) (timesNSpes 8L spes)
+        spes <- [GET_STACK], 0L
+        let s = inner e |> timesNSpes 8L
+        spes <- addSpes spes s
 
     | ESum lst ->
-        let mutable spes = zeroSpes
-
         let f e =
             match e with
             | ELabel _ -> 1 | EMinus (ELabel _) -> -1
             | EStack _ -> 2 | EMinus (EStack _) -> -2
             | _ -> 0
         let cnt = new Map<int,int>(List.countBy f lst)
-
         let nPc = mapGet cnt 1 0 - mapGet cnt -1 0
         let nSp = mapGet cnt 2 0 - mapGet cnt -2 0
 
@@ -353,11 +351,6 @@ let rec exprPushCore
         spes <- addSpes spes <| timesNSpes (int64 nSp) ([GET_STACK], 0L)
 
         for ex in lst do
-            let inner e =
-                let (p, d) = match spes with
-                             | [PUSH0], _ -> position, depth
-                             | code, _ -> position + List.length code, depth + 1
-                exprPushCore e lookup p d
             let s = match ex with
                     | ELabel i -> [PUSH0], int64 (lookup i - position)
                     | EMinus (ELabel i) -> [PUSH0], int64 (position - lookup i)
@@ -365,43 +358,22 @@ let rec exprPushCore
                     | EMinus (EStack e) -> inner e |> timesNSpes -8L
                     | e -> inner e
             spes <- addSpes spes s
-        spes
 
     | EProd lst ->
-        let mutable spes = oneSpes
-        for e in lst do
-            let inner =
-                let (p, d) = match spes with
-                             | [PUSH0], 1L -> position, depth
-                             | code, _ -> position + List.length code, depth + 1
-                exprPushCore e lookup p d
-            spes <- multSpes spes inner
-        spes
+        spes <- oneSpes
+        for e in lst do spes <- multSpes spes (inner e)
 
     // TODO
-    | _ -> [PUSH0], 0L
-
-//and exprPushC // TODO: Still useful?
-//    (e: Expression)
-//    (ifConst: int64 -> sbyte list)
-//    (appendIfNotConst: sbyte list)
-//    (lookup: int -> int)
-//    (pos: int)
-//    (depth: int) : sbyte list =
-//        let code, acc = exprPushCore e lookup pos depth
-//        match code with
-//        | [PUSH0] -> ifConst acc
-//        | _ -> code @ appendIfNotConst
-
-//and exprPush e lookup pos depth = // TODO: Still useful?
-    //exprPushCore e lookup pos depth |> collapseSpes
-
+    | _ -> ()
+    spes
 
 
 let expressionPush e lookup = exprPushCore e lookup 0 0 |> collapseSpes
 
 
-let intermediates (prog: list<Statement>) : seq<Intermediate> =
+let intermediates (prog: Statement list) : seq<Intermediate> =
+    let frag code = Fragment <| fun _ -> code
+
     let mutable rest = prog
     let withDelta i r f = rest <- r; Fragment <| fun lookup -> f (lookup i)
     let withLookup r f = rest <- r; Fragment <| fun lookup -> f lookup
@@ -410,10 +382,28 @@ let intermediates (prog: list<Statement>) : seq<Intermediate> =
     seq {
         while not rest.IsEmpty do
             match rest with
+
+            // Avoid optimizing away tight infinite loop.
+            | SLabel i :: SPush (ELabel j) :: SJump :: r when i = j ->
+                rest <- r
+                yield Label i
+                yield frag [PUSH0; JUMP_IF_ZERO; -3y]
+
+            | SLabel i :: r -> rest <- r; yield Label i
             | SPush (ELabel i) :: SJump :: r -> yield withDelta i r deltaJump
             | SPush (ELabel i) :: SJumpZero :: r -> yield withDelta i r deltaJumpZero
             | SPush (ELabel i) :: SJumpNotZero :: r -> yield withDelta i r deltaJumpNotZero
             //| SPush e :: SAdd :: r -> () // TODO
             //| SPush e :: r -> yield withLookup r (exprPush e)
+
+            | SNeg :: r -> rest <- r; yield frag [NOT]
+
+            // Minor optimization.
+            | SPush (ELabel i) :: SLabel j :: r when i = j ->
+                rest <- SLabel j :: r
+                yield frag [GET_PC]
+
+            | SPush e :: r -> rest <- r; yield Fragment (expressionPush e)
+
             | _ -> failwithf "Unhandled statement: %O" rest.[0]
     }
