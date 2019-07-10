@@ -369,9 +369,10 @@ let collapseSpes ((code, acc): Spes) : int8 list =
     | [PUSH0], _ -> pushNum acc
     | _, _ -> code @ pushNum acc @ [ADD]
 
+// NB: This only works for commutative operations.
 let collapseSpes2 (s1: Spes) (s2: Spes) : int8 list =
     match s1 with
-    // NB: In this case s2 expects to go first, see 'inner' in exprPushCore!
+    // In this case, s2 expects to go first, see 'inner' in exprPushCore.
     | [PUSH0], _ -> collapseSpes s2 @ collapseSpes s1
     | _ -> collapseSpes s1 @ collapseSpes s2
 
@@ -409,7 +410,7 @@ let pow2Spes (spes: Spes) : Spes =
     | [PUSH0], n -> [PUSH0], if n < 0L || n > 63L then 0L else 1L <<< int n
     | _ -> collapseSpes spes @ [POW2], 0L
 
-let andSpes (s1: Spes ) (s2: Spes) : Spes =
+let andSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], m &&& n
     | _, ([PUSH0], 0L) -> ([PUSH0], 0L)
@@ -418,12 +419,12 @@ let andSpes (s1: Spes ) (s2: Spes) : Spes =
     | ([PUSH0], -1L), _ -> s2
     | _ -> collapseSpes2 s1 s2 @ [AND], 0L
 
-let orSpes (s1: Spes ) (s2: Spes) : Spes =
+let orSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], m ||| n
     | _ -> collapseSpes2 s1 s2 @ [OR], 0L
 
-let xorSpes (s1: Spes ) (s2: Spes) : Spes =
+let xorSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], m ^^^ n
     | _ -> collapseSpes2 s1 s2 @ [XOR], 0L
@@ -449,16 +450,19 @@ let sign4Spes (spes: Spes) : Spes =
     | _ -> collapseSpes spes @ [SIGN4], 0L
 
 
-let divUSpes (s1: Spes ) (s2: Spes) : Spes =
+// Below, we always use s1 code if we use s2 code!
+// This is important since these operations are not commutative.
+
+let divUSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
     // Do not eliminate division by zero:
     | _, ([PUSH0], 0L) -> [PUSH0; PUSH0; DIVIDE], 0L
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], (uint64 m / uint64 n |> int64)
     | _, ([PUSH0], 1L) -> s1
     | ([PUSH0], 0L), _ -> zeroSpes
-    | _, _ -> collapseSpes2 s1 s2 @ [DIVIDE], 0L
+    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ [DIVIDE], 0L
 
-let divSSpes (s1: Spes ) (s2: Spes) : Spes =
+let divSSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
     // Do not eliminate division by zero:
     | _, ([PUSH0], 0L) -> [PUSH0; PUSH0; DIVIDE], 0L
@@ -466,18 +470,18 @@ let divSSpes (s1: Spes ) (s2: Spes) : Spes =
     | _, ([PUSH0], 1L) -> s1
     | ([PUSH0], 0L), _ -> zeroSpes
     | (c, m), ([PUSH0], -1L) -> c @ changeSign, -m
-    | _, _ -> collapseSpes2 s1 s2 @ Helpers.divS, 0L
+    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ Helpers.divS, 0L
 
-let remUSpes (s1: Spes ) (s2: Spes) : Spes =
+let remUSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
     // Do not eliminate division by zero:
     | _, ([PUSH0], 0L) -> [PUSH0; PUSH0; REMAINDER], 0L
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], (uint64 m % uint64 n |> int64)
     | _, ([PUSH0], 1L) -> zeroSpes
     | ([PUSH0], 0L), _ -> zeroSpes
-    | _, _ -> collapseSpes2 s1 s2 @ [REMAINDER], 0L
+    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ [REMAINDER], 0L
 
-let remSSpes (s1: Spes ) (s2: Spes) : Spes =
+let remSSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
     // Do not eliminate division by zero:
     | _, ([PUSH0], 0L) -> [PUSH0; PUSH0; REMAINDER], 0L
@@ -485,52 +489,52 @@ let remSSpes (s1: Spes ) (s2: Spes) : Spes =
     | _, ([PUSH0], 1L) -> zeroSpes
     | ([PUSH0], 0L), _ -> zeroSpes
     | _, ([PUSH0], -1L) -> zeroSpes
-    | _, _ -> collapseSpes2 s1 s2 @ Helpers.remS, 0L
+    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ Helpers.remS, 0L
 
-let eqSpes (s1: Spes ) (s2: Spes) : Spes =
+let eqSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], if m = n then -1L else 0L
-    | _, _ -> collapseSpes2 s1 s2 @ Helpers.eq, 0L
+    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ Helpers.eq, 0L
 
-let ltUSpes (s1: Spes ) (s2: Spes) : Spes =
+let ltUSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], if uint64 m < uint64 n then -1L else 0L
-    | _, _ -> collapseSpes2 s1 s2 @ Helpers.ltU, 0L
+    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ Helpers.ltU, 0L
 
-let ltSSpes (s1: Spes ) (s2: Spes) : Spes =
+let ltSSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], if m < n then -1L else 0L
-    | _, _ -> collapseSpes2 s1 s2 @ Helpers.ltS, 0L
+    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ Helpers.ltS, 0L
 
-let lteUSpes (s1: Spes ) (s2: Spes) : Spes =
+let lteUSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], if uint64 m <= uint64 n then -1L else 0L
-    | _, _ -> collapseSpes2 s1 s2 @ Helpers.lteU, 0L
+    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ Helpers.lteU, 0L
 
-let lteSSpes (s1: Spes ) (s2: Spes) : Spes =
+let lteSSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], if m <= n then -1L else 0L
-    | _, _ -> collapseSpes2 s1 s2 @ Helpers.lteS, 0L
+    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ Helpers.lteS, 0L
 
-let gtUSpes (s1: Spes ) (s2: Spes) : Spes =
+let gtUSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], if uint64 m > uint64 n then -1L else 0L
-    | _, _ -> collapseSpes2 s1 s2 @ Helpers.gtU, 0L
+    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ Helpers.gtU, 0L
 
-let gtSSpes (s1: Spes ) (s2: Spes) : Spes =
+let gtSSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], if m > n then -1L else 0L
-    | _, _ -> collapseSpes2 s1 s2 @ Helpers.gtS, 0L
+    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ Helpers.gtS, 0L
 
-let gteUSpes (s1: Spes ) (s2: Spes) : Spes =
+let gteUSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], if uint64 m >= uint64 n then -1L else 0L
-    | _, _ -> collapseSpes2 s1 s2 @ Helpers.gteU, 0L
+    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ Helpers.gteU, 0L
 
-let gteSSpes (s1: Spes ) (s2: Spes) : Spes =
+let gteSSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], if m >= n then -1L else 0L
-    | _, _ -> collapseSpes2 s1 s2 @ Helpers.gteS, 0L
+    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ Helpers.gteS, 0L
 
 
 let rec exprPushCore
@@ -540,14 +544,18 @@ let rec exprPushCore
         (depth: int) : Spes =
     let mutable spes = zeroSpes
 
+    let process1 f e = spes <- f <| exprPushCore e lookup position depth
+    let process2 f e1 e2 =
+        spes <- exprPushCore e1 lookup position depth
+        let p, d = position + opLen (fst spes), depth + 1
+        spes <- f spes <| exprPushCore e1 lookup p d
+
+    // Only use with commutative operations.
     let inner e =
         let (p, d) = match spes with
                      | [PUSH0], _ -> position, depth
                      | code, _ -> position + opLen code, depth + 1
         exprPushCore e lookup p d
-
-    let process1 f e = spes <- f (inner e)
-    let process2 f e1 e2 = spes <- inner e1; spes <- f spes (inner e2)
     let processList f s lst =
         spes <- s
         for e in lst do spes <- f spes (inner e)
