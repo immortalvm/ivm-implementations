@@ -370,40 +370,57 @@ let rec exprPushCore
 
 let expressionPush e lookup = exprPushCore e lookup 0 0 |> collapseSpes
 
+let expressionAdd e lookup =
+    match exprPushCore e lookup 0 0 with
+    | [PUSH0], 0L -> []
+    | spes -> collapseSpes spes @ [ADD]
+
+let expressionMult e lookup =
+    match exprPushCore e lookup 0 0 with
+    | [PUSH0], 1L -> []
+    | [PUSH0], 0L -> [JUMP_IF_ZERO; 0y; PUSH0] // Pop value, push 0.
+    | spes -> collapseSpes spes @ [MULTIPLY]
 
 let intermediates (prog: Statement list) : seq<Intermediate> =
-    let frag code = Fragment <| fun _ -> code
-
     let mutable rest = prog
-    let withDelta i r f = rest <- r; Fragment <| fun lookup -> f (lookup i)
-    let withLookup r f = rest <- r; Fragment <| fun lookup -> f lookup
+
+    let fragment r f = rest <- r; [Fragment f]
+    let frag r code = fragment r <| fun _ -> code
+    let withDelta i r f = rest <- r; [Fragment <| fun lookup -> f (lookup i)]
 
     // We avoid recursion, just in case.
     seq {
         while not rest.IsEmpty do
+        yield!
             match rest with
+
+            | SExit :: r -> frag r [EXIT]
+            | SNeg :: r -> frag r [NOT]
+            | SMinus :: r -> frag r [NOT; PUSH1; 1y; ADD]
+            | SSetSp :: r -> frag r [SET_STACK]
+            | SData lst :: r -> frag r <| []
 
             // Avoid optimizing away tight infinite loop.
             | SLabel i :: SPush (ELabel j) :: SJump :: r when i = j ->
-                rest <- r
-                yield Label i
-                yield frag [PUSH0; JUMP_IF_ZERO; -3y]
+                [Label i] @ frag r [PUSH0; JUMP_IF_ZERO; -3y]
 
-            | SLabel i :: r -> rest <- r; yield Label i
-            | SPush (ELabel i) :: SJump :: r -> yield withDelta i r deltaJump
-            | SPush (ELabel i) :: SJumpZero :: r -> yield withDelta i r deltaJumpZero
-            | SPush (ELabel i) :: SJumpNotZero :: r -> yield withDelta i r deltaJumpNotZero
-            //| SPush e :: SAdd :: r -> () // TODO
-            //| SPush e :: r -> yield withLookup r (exprPush e)
+            | SLabel i :: r -> rest <- r; [Label i]
 
-            | SNeg :: r -> rest <- r; yield frag [NOT]
+            | SPush (ELabel i) :: SJump :: r -> withDelta i r deltaJump
+            | SPush (ELabel i) :: SJumpZero :: r -> withDelta i r deltaJumpZero
+            | SPush (ELabel i) :: SJumpNotZero :: r -> withDelta i r deltaJumpNotZero
+
+            | SPush e :: SAdd :: r -> fragment r (expressionAdd e)
+            | SAdd :: r -> frag r [ADD]
+            | SPush e :: SMult :: r -> fragment r (expressionMult e)
+            | SMult :: r -> frag r [MULTIPLY]
+
 
             // Minor optimization.
             | SPush (ELabel i) :: SLabel j :: r when i = j ->
-                rest <- SLabel j :: r
-                yield frag [GET_PC]
+                frag (SLabel j :: r) [GET_PC]
 
-            | SPush e :: r -> rest <- r; yield Fragment (expressionPush e)
+            | SPush e :: r -> fragment r (expressionPush e)
 
             | _ -> failwithf "Unhandled statement: %O" rest.[0]
     }
