@@ -11,6 +11,7 @@ type Intermediate =
     | Label of int
     | Fragment of FlexCode
 
+let opLen : int8 list -> int = List.length
 
 // 'nops n' must return a nop sequence of at least n signed bytes.
 let compose (nops: int -> int8 list) (prog: Intermediate list) : seq<int8> * int[] =
@@ -26,7 +27,7 @@ let compose (nops: int -> int8 list) (prog: Intermediate list) : seq<int8> * int
 
     let pLength = List.length prog
     let starts = Array.create pLength 0
-    let codes = Array.create pLength []
+    let codes : (int8 list)[] = Array.create pLength []
 
     let stable = Array.create pLength false
     let mutable allStable = false
@@ -54,11 +55,11 @@ let compose (nops: int -> int8 list) (prog: Intermediate list) : seq<int8> * int
                      // Avoid infinite loop by enforcing monotonicity.
                      codes.[num] <- if attempts < ATTEMPTS_BEFORE_MONOTINICITY
                                     then c
-                                    else let l0 = List.length codes.[num]
-                                         let l1 = List.length c
+                                    else let l0 = opLen codes.[num]
+                                         let l1 = opLen c
                                          if l1 >= l0 then c
                                          else c @ nops (l0 - l1)
-                position <- position + List.length codes.[num]
+                position <- position + opLen codes.[num]
 
         List.iteri updateIfNecessary prog
 
@@ -225,7 +226,7 @@ let pushNum (x: int64): int8 list =
     else
         let bytes (n: int) (y: uint64) : int8 list =
             [|0..n-1|]
-            |> Seq.map (fun i -> y >>> i*8 |> byte |> int8)
+            |> Seq.map (fun i -> y >>> i*8 |> uint8 |> int8)
             |> Seq.toList
         if n = 0UL then [PUSH0]                         // 1
         elif nn = 0UL then [PUSH0; NOT]                 // 2
@@ -246,7 +247,7 @@ let pushFix (f: int -> int) =
     while result.IsNone do
         let currVal = f currLen
         let currRes = pushInt currVal
-        let nextLen = List.length currRes
+        let nextLen = opLen currRes
         if nextLen <= currLen
         then result <- Some <| currRes @ nopsFor (currLen - nextLen)
         else currLen <- nextLen
@@ -262,6 +263,7 @@ let pop n =
     | n -> [GET_STACK] @ pushNum (int64 n * 8L) @ [ADD; SET_STACK]
 
 let changeSign = [NOT; PUSH1; 1y; ADD]
+let isZero = [PUSH1; 1y; LESS_THAN]
 
 open Assembler.Ast
 
@@ -280,9 +282,9 @@ let deltaJumpZero delta =
     if byteDist <| delta - 2 then [JUMP_ZERO; int8 (delta - 2)]
     else
         let jump = deltaJump (delta - 5)
-        [JUMP_ZERO; 3y; PUSH0; JUMP_ZERO; int8 (List.length jump)] @ jump 
+        [JUMP_ZERO; 3y; PUSH0; JUMP_ZERO; int8 (opLen jump)] @ jump
 
-let deltaJumpNotZero delta = [PUSH1; 1y; LESS_THAN] @ deltaJumpZero (delta - 3)
+let deltaJumpNotZero delta = isZero @ deltaJumpZero (delta - opLen isZero)
 
 let genericConditional interjection =
     [
@@ -295,7 +297,7 @@ let genericConditional interjection =
     ] @ pop 2 // If zero
 
 let genericJumpNotZero = genericConditional []
-let genericJumpZero = genericConditional [PUSH1; 1y; LESS_THAN]
+let genericJumpZero = genericConditional isZero
 
 // TODO: There should be a built-in function like this.
 let valueOr<'a> (def: 'a) (x: 'a option) = match x with Some z -> z | _ -> def
@@ -347,7 +349,7 @@ let rec exprPushCore
     let inner e =
         let (p, d) = match spes with
                      | [PUSH0], _ -> position, depth
-                     | code, _ -> position + List.length code, depth + 1
+                     | code, _ -> position + opLen code, depth + 1
         exprPushCore e lookup p d
 
     match expression with
@@ -432,14 +434,13 @@ let expressionRemU e lookup =
     | [PUSH0], 1L -> pop 1 @ [PUSH0] // Pop value, push 0.
     | spes -> collapseSpes spes @ [REMAINDER]
 
-
-let genericDivRemS =
+module Helpers =
     let addr n = [GET_STACK; PUSH1; int8 (n * 8); ADD]
     let get n = addr n @ [LOAD8]
     let set n = addr n @ [STORE8]
     let isNegative = [PUSH1; 63y; DIVIDE]
     let abs = get 0 @ isNegative @ [JUMP_ZERO; 1y; NOT]
-    let div =
+    let divS =
         List.concat
             [
                 // x :: y :: rest
@@ -452,18 +453,18 @@ let genericDivRemS =
                 [MULTIPLY]
                 isNegative
                 // s :: d :: x :: y :: rest, where s = 0 if x and y have the same sign.
-                [JUMP_ZERO; int8 (List.length changeSign)]
+                [JUMP_ZERO; int8 (opLen changeSign)]
                 changeSign
                 // d' :: x :: y :: rest, where d' = d or d' = -d.
                 set 2
                 // x :: 'd :: rest
                 pop 1
             ]
-    let rem =
+    let remS =
         List.concat
             [
                 // x :: y :: rest
-                get 1 @ get 1 @ div
+                get 1 @ get 1 @ divS
                 // y/x :: x :: y :: rest
                 [MULTIPLY]
                 // (y/x)*x :: y :: rest
@@ -471,22 +472,36 @@ let genericDivRemS =
                 [ADD]
                 // y - (y/x)*x :: rest
             ]
-    div, rem
 
-let genericDivS = fst genericDivRemS
-let genericRemS = snd genericDivRemS
+    // let pushTrue = [PUSH0; NOT]
+    let offsetSign = pushNum (1L <<< 63) @ [ADD]
+    let offsetSign2 =
+        let bit63 = 1L <<< 63
+        offsetSign @ get 1 @ offsetSign @ set 1
+
+    let eq = [XOR] @ isZero
+
+    let ltU = [LESS_THAN]
+    let gtU = get 1 @ ltU @ set 1
+    let lteU = gtU @ isZero
+    let gteU = ltU @ isZero
+
+    let ltS = offsetSign @ ltU
+    let lteS = offsetSign @ lteU
+    let gtS = offsetSign2 @ gtU
+    let gteS = offsetSign2 @ gteU
 
 let expressionDivS e lookup =
     match exprPushCore e lookup 0 0 with
     | [PUSH0], 1L -> []
     | [PUSH0], -1L -> changeSign
-    | spes -> collapseSpes spes @ genericDivS
+    | spes -> collapseSpes spes @ Helpers.divS
 
 let expressionRemS e lookup =
     match exprPushCore e lookup 0 0 with
     | [PUSH0], 1L -> pop 1 @ [PUSH0] // Pop value, push 0.
     | [PUSH0], -1L -> pop 1 @ [PUSH0] // Pop value, push 0.
-    | spes -> collapseSpes spes @ genericRemS
+    | spes -> collapseSpes spes @ Helpers.remS
 
 
 let intermediates (prog: Statement list) : seq<Intermediate> =
@@ -551,8 +566,18 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
             | SXor :: r -> frag r [XOR]
             | SDivU :: r -> frag r [DIVIDE]
             | SRemU :: r -> frag r [REMAINDER]
-            | SDivS :: r -> frag r genericDivS
-            | SRemS :: r -> frag r genericRemS
+            | SDivS :: r -> frag r Helpers.divS
+            | SRemS :: r -> frag r Helpers.remS
+
+            | SLtU :: r -> frag r Helpers.ltU
+            | SLtS :: r -> frag r Helpers.ltS
+            | SLtEU :: r -> frag r Helpers.lteU
+            | SLtES :: r -> frag r Helpers.lteS
+            | SEq :: r -> frag r Helpers.eq
+            | SGtEU :: r -> frag r Helpers.gteU
+            | SGtES :: r -> frag r Helpers.gteS
+            | SGtU :: r -> frag r Helpers.gtU
+            | SGtS :: r -> frag r Helpers.gtS
 
             // Minor optimization.
             | SPush (ELabel i) :: SLabel j :: r when i = j ->
