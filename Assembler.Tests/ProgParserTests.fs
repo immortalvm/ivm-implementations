@@ -203,10 +203,10 @@ let interTests =
                        [0]
         testCase "Tight inf loop" <| fun () ->
             compilesTo [SLabel 1; SPush <| ELabel 1; SJump]
-                       [PUSH0; JUMP_IF_ZERO; -3y]
+                       [PUSH0; JUMP_ZERO; -3y]
                        [0; 0]
         testCase "Small inf loop" <| fun () ->
             compilesTo [SLabel 1; SNeg; SPush <| ELabel 1; SJump]
-                       [NOT; PUSH0; JUMP_IF_ZERO; -4y]
+                       [NOT; PUSH0; JUMP_ZERO; -4y]
                        [0; 0]
     ]

@@ -88,7 +88,7 @@ let NOP = 1y
 let JUMP = 2y
 
 [<Literal>]
-let JUMP_IF_ZERO = 3y // Relative to next signed byte (immediate arg)
+let JUMP_ZERO = 3y // Relative to next signed byte (immediate arg)
 
 [<Literal>]
 let SET_STACK = 4y
@@ -119,13 +119,13 @@ let PUSH8 = 11y
 
 // Sign extension
 [<Literal>]
-let SIGN1 = 12uy // From 8 to 64 bits
+let SIGN1 = 12y // From 8 to 64 bits
 
 [<Literal>]
-let SIGN2 = 13uy // From 16 to 64 bits
+let SIGN2 = 13y // From 16 to 64 bits
 
 [<Literal>]
-let SIGN4 = 14uy // From 32 to 64 bits
+let SIGN4 = 14y // From 32 to 64 bits
 
 
 // 15: Unused
@@ -260,19 +260,34 @@ let byteDist x = -128 <= x && x <= 127
 // NB. The delta is w.r.t. before the code.
 let deltaJump delta =
     if delta = 0 then []
-    elif byteDist <| delta - 3 then [PUSH0; JUMP_IF_ZERO; int8 (delta - 3)]
+    elif byteDist <| delta - 3 then [PUSH0; JUMP_ZERO; int8 (delta - 3)]
     elif delta < 0 then [GET_PC] @ pushInt (delta - 1) @ [ADD; JUMP]
     else 
         let f pushLength = delta - pushLength - 1
         pushFix f @ [GET_PC; ADD; JUMP]
 
 let deltaJumpZero delta =
-    if byteDist <| delta - 2 then [JUMP_IF_ZERO; int8 (delta - 2)]
+    if byteDist <| delta - 2 then [JUMP_ZERO; int8 (delta - 2)]
     else
         let jump = deltaJump (delta - 5)
-        [JUMP_IF_ZERO; 3y; PUSH0; JUMP_IF_ZERO; int8 (List.length jump)] @ jump 
+        [JUMP_ZERO; 3y; PUSH0; JUMP_ZERO; int8 (List.length jump)] @ jump 
 
 let deltaJumpNotZero delta = [PUSH1; 1y; LESS_THAN] @ deltaJumpZero (delta - 3)
+
+let genericConditional interjection =
+    [
+        GET_STACK; PUSH1; 8y; ADD; LOAD8 // a::x::r -> x::a::x::r
+    ] @ interjection @ [
+        JUMP_ZERO; 6y
+        // If not zero:
+        GET_STACK; PUSH1; 8y; ADD; STORE8 // a::x::r -> a::r
+        JUMP
+        // If zero:
+        JUMP_ZERO; 0y; JUMP_ZERO; 0y // a::x::r -> r
+    ]
+
+let genericJumpNotZero = genericConditional []
+let genericJumpZero = genericConditional [PUSH1; 1y; LESS_THAN]
 
 // TODO: There should be a built-in function like this.
 let valueOr<'a> (def: 'a) (x: 'a option) = match x with Some z -> z | _ -> def
@@ -378,7 +393,7 @@ let expressionAdd e lookup =
 let expressionMult e lookup =
     match exprPushCore e lookup 0 0 with
     | [PUSH0], 1L -> []
-    | [PUSH0], 0L -> [JUMP_IF_ZERO; 0y; PUSH0] // Pop value, push 0.
+    | [PUSH0], 0L -> [JUMP_ZERO; 0y; PUSH0] // Pop value, push 0.
     | spes -> collapseSpes spes @ [MULTIPLY]
 
 let intermediates (prog: Statement list) : seq<Intermediate> =
@@ -393,28 +408,44 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
         while not rest.IsEmpty do
         yield!
             match rest with
-
+            | SData lst :: r -> frag r lst
             | SExit :: r -> frag r [EXIT]
             | SNeg :: r -> frag r [NOT]
             | SMinus :: r -> frag r [NOT; PUSH1; 1y; ADD]
+            | SPow2 :: r -> frag r [POW2]
+
             | SSetSp :: r -> frag r [SET_STACK]
-            | SData lst :: r -> frag r <| []
+            | SAlloc :: r -> frag r [ALLOCATE]
+            | SDealloc :: r -> frag r [DEALLOCATE]
+            | SLoad1 :: r -> frag r [LOAD1]
+            | SLoad2 :: r -> frag r [LOAD2]
+            | SLoad4 :: r -> frag r [LOAD4]
+            | SLoad8 :: r -> frag r [LOAD8]
+            | SSign1 :: r -> frag r [SIGN1]
+            | SSign2 :: r -> frag r [SIGN2]
+            | SSign4 :: r -> frag r [SIGN4]
+            | SStore1 :: r -> frag r [STORE1]
+            | SStore2 :: r -> frag r [STORE2]
+            | SStore4 :: r -> frag r [STORE4]
+            | SStore8 :: r -> frag r [STORE8]
 
             // Avoid optimizing away tight infinite loop.
             | SLabel i :: SPush (ELabel j) :: SJump :: r when i = j ->
-                [Label i] @ frag r [PUSH0; JUMP_IF_ZERO; -3y]
+                [Label i] @ frag r [PUSH0; JUMP_ZERO; -3y]
 
             | SLabel i :: r -> rest <- r; [Label i]
 
             | SPush (ELabel i) :: SJump :: r -> withDelta i r deltaJump
             | SPush (ELabel i) :: SJumpZero :: r -> withDelta i r deltaJumpZero
             | SPush (ELabel i) :: SJumpNotZero :: r -> withDelta i r deltaJumpNotZero
+            | SJump :: r -> frag r [JUMP]
+            | SJumpZero :: r -> frag r genericJumpZero
+            | SJumpNotZero :: r -> frag r genericJumpNotZero
 
             | SPush e :: SAdd :: r -> fragment r (expressionAdd e)
             | SAdd :: r -> frag r [ADD]
             | SPush e :: SMult :: r -> fragment r (expressionMult e)
             | SMult :: r -> frag r [MULTIPLY]
-
 
             // Minor optimization.
             | SPush (ELabel i) :: SLabel j :: r when i = j ->
