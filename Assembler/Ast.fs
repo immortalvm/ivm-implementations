@@ -44,7 +44,7 @@ type MaxTwoArguments = (Expression * Expression option) option
 
 type Statement =
     | SLabel of int
-    | SData of uint8 list
+    | SData of int8 list
 
     | SPush of Expression
     | SExit | SSetSp

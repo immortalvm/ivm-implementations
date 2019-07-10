@@ -53,7 +53,7 @@ let example1 =
             ELoad8 (EStack n)
         ]
         SLabel 3
-        SData [0uy; 1uy; 0xffuy; 1uy]
+        SData [0y; 1y; -1y; 1y]
     ]
 
 let assemblyLanguageIntro =
@@ -64,7 +64,7 @@ let assemblyLanguageIntro =
     let xx2 = ENum 9L
     [
         SLabel 1
-        SData [0uy; 1uy; 254uy; 128uy; 1uy]
+        SData [0y; 1y; -2y; -128y; 1y]
 
         SPush <| ENum 13L
         SPush <| ENum -1L

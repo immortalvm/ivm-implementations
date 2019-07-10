@@ -159,9 +159,9 @@ let expression: Parser<Expression, State> =
     ]
     expr
 
-let data: Parser<uint8 list, State> =
-    let neg = skipChar '-' >>. puint8 |>> (int8 >> (~-) >> uint8)
-    let either = (puint8 <|> neg) .>> whitespace
+let data: Parser<int8 list, State> =
+    let neg = skipChar '-' >>. puint8 |>> (int8 >> (~-))
+    let either = ((puint8 |>> int8) <|> neg) .>> whitespace
     between (strWs "[") (strWs "]") <| many either
 
 let statement: Parser<Statement list, State> =
