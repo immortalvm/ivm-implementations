@@ -228,6 +228,7 @@ let pushNum (x: int64): sbyte list =
             |> Seq.map (fun i -> y >>> i*8 |> byte |> sbyte)
             |> Seq.toList
         if n = 0UL then [PUSH0]                         // 1
+        elif nn = 0UL then [PUSH0; NOT]                 // 2
         elif n < b8 then [PUSH1; sbyte n]               // 2
         elif nn < b8 then [PUSH1; sbyte nn; NOT]        // 3
         elif n < b16 then [PUSH2] @ bytes 2 n           // 3
