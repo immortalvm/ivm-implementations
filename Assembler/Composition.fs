@@ -252,6 +252,16 @@ let pushFix (f: int -> int) =
         else currLen <- nextLen
     result.Value
 
+// Using this with negative n is probably not a good idea.
+let pop n =
+    let pop1 = [JUMP_ZERO; 0y]
+    match n with
+    | 0 -> []
+    | 1 -> pop1
+    | 2 -> pop1 @ pop1
+    | n -> [GET_STACK] @ pushNum (int64 n * 8L) @ [ADD; SET_STACK]
+
+let changeSign = [NOT; PUSH1; 1y; ADD]
 
 open Assembler.Ast
 
@@ -282,9 +292,7 @@ let genericConditional interjection =
         // If not zero:
         GET_STACK; PUSH1; 8y; ADD; STORE8 // a::x::r -> a::r
         JUMP
-        // If zero:
-        JUMP_ZERO; 0y; JUMP_ZERO; 0y // a::x::r -> r
-    ]
+    ] @ pop 2 // If zero
 
 let genericJumpNotZero = genericConditional []
 let genericJumpZero = genericConditional [PUSH1; 1y; LESS_THAN]
@@ -294,7 +302,6 @@ let valueOr<'a> (def: 'a) (x: 'a option) = match x with Some z -> z | _ -> def
 let mapGet<'a, 'b when 'a: comparison> (m: Map<'a,'b>) (x: 'a) (def: 'b) =
     m.TryFind x |> valueOr def
 
-// TODO: Improve type name. Maybe a record would be better?
 type Spes = int8 list * int64
 
 let collapseSpes ((code, acc): Spes) : int8 list =
@@ -316,7 +323,7 @@ let addSpes ((c1, a1): Spes) ((c2, a2): Spes) =
 let minusSpes ((code, acc): Spes) : Spes =
     match code with
     | [PUSH0] -> code, -acc
-    | _ -> code @ [NOT; PUSH1; 1y; ADD], -acc
+    | _ -> code @ changeSign, -acc
 
 let multSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
@@ -393,8 +400,94 @@ let expressionAdd e lookup =
 let expressionMult e lookup =
     match exprPushCore e lookup 0 0 with
     | [PUSH0], 1L -> []
-    | [PUSH0], 0L -> [JUMP_ZERO; 0y; PUSH0] // Pop value, push 0.
+    | [PUSH0], 0L -> pop 1 @ [PUSH0] // Pop value, push 0.
     | spes -> collapseSpes spes @ [MULTIPLY]
+
+let expressionAnd e lookup =
+    match exprPushCore e lookup 0 0 with
+    | [PUSH0], -1L -> []
+    | [PUSH0], 0L -> pop 1 @ [PUSH0] // Pop value, push 0.
+    | spes -> collapseSpes spes @ [AND]
+
+let expressionOr e lookup =
+    match exprPushCore e lookup 0 0 with
+    | [PUSH0], 0L -> []
+    | [PUSH0], -1L -> pop 1 @ [PUSH0; NOT] // Pop value, push -1.
+    | spes -> collapseSpes spes @ [OR]
+
+let expressionXor e lookup =
+    match exprPushCore e lookup 0 0 with
+    | [PUSH0], 0L -> []
+    | [PUSH0], -1L -> [NOT]
+    | spes -> collapseSpes spes @ [XOR]
+
+
+let expressionDivU e lookup =
+    match exprPushCore e lookup 0 0 with
+    | [PUSH0], 1L -> []
+    | spes -> collapseSpes spes @ [DIVIDE]
+
+let expressionRemU e lookup =
+    match exprPushCore e lookup 0 0 with
+    | [PUSH0], 1L -> pop 1 @ [PUSH0] // Pop value, push 0.
+    | spes -> collapseSpes spes @ [REMAINDER]
+
+
+let genericDivRemS =
+    let addr n = [GET_STACK; PUSH1; int8 (n * 8); ADD]
+    let get n = addr n @ [LOAD8]
+    let set n = addr n @ [STORE8]
+    let isNegative = [PUSH1; 63y; DIVIDE]
+    let abs = get 0 @ isNegative @ [JUMP_ZERO; 1y; NOT]
+    let div =
+        List.concat
+            [
+                // x :: y :: rest
+                get 1 @ abs
+                get 1 @ abs
+                [DIVIDE]
+                // d :: x :: y :: rest, where d = abs y / abs x.
+                get 2
+                get 2
+                [MULTIPLY]
+                isNegative
+                // s :: d :: x :: y :: rest, where s = 0 if x and y have the same sign.
+                [JUMP_ZERO; int8 (List.length changeSign)]
+                changeSign
+                // d' :: x :: y :: rest, where d' = d or d' = -d.
+                set 2
+                // x :: 'd :: rest
+                pop 1
+            ]
+    let rem =
+        List.concat
+            [
+                // x :: y :: rest
+                get 1 @ get 1 @ div
+                // y/x :: x :: y :: rest
+                [MULTIPLY]
+                // (y/x)*x :: y :: rest
+                changeSign
+                [ADD]
+                // y - (y/x)*x :: rest
+            ]
+    div, rem
+
+let genericDivS = fst genericDivRemS
+let genericRemS = snd genericDivRemS
+
+let expressionDivS e lookup =
+    match exprPushCore e lookup 0 0 with
+    | [PUSH0], 1L -> []
+    | [PUSH0], -1L -> changeSign
+    | spes -> collapseSpes spes @ genericDivS
+
+let expressionRemS e lookup =
+    match exprPushCore e lookup 0 0 with
+    | [PUSH0], 1L -> pop 1 @ [PUSH0] // Pop value, push 0.
+    | [PUSH0], -1L -> pop 1 @ [PUSH0] // Pop value, push 0.
+    | spes -> collapseSpes spes @ genericRemS
+
 
 let intermediates (prog: Statement list) : seq<Intermediate> =
     let mutable rest = prog
@@ -411,7 +504,7 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
             | SData lst :: r -> frag r lst
             | SExit :: r -> frag r [EXIT]
             | SNeg :: r -> frag r [NOT]
-            | SMinus :: r -> frag r [NOT; PUSH1; 1y; ADD]
+            | SMinus :: r -> frag r changeSign
             | SPow2 :: r -> frag r [POW2]
 
             | SSetSp :: r -> frag r [SET_STACK]
@@ -429,7 +522,7 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
             | SStore4 :: r -> frag r [STORE4]
             | SStore8 :: r -> frag r [STORE8]
 
-            // Avoid optimizing away tight infinite loop.
+            // Avoid optimizing away tight infinite loops.
             | SLabel i :: SPush (ELabel j) :: SJump :: r when i = j ->
                 [Label i] @ frag r [PUSH0; JUMP_ZERO; -3y]
 
@@ -438,14 +531,28 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
             | SPush (ELabel i) :: SJump :: r -> withDelta i r deltaJump
             | SPush (ELabel i) :: SJumpZero :: r -> withDelta i r deltaJumpZero
             | SPush (ELabel i) :: SJumpNotZero :: r -> withDelta i r deltaJumpNotZero
+            | SPush e :: SAdd :: r -> fragment r (expressionAdd e)
+            | SPush e :: SMult :: r -> fragment r (expressionMult e)
+            | SPush e :: SAnd :: r -> fragment r (expressionAnd e)
+            | SPush e :: SOr :: r -> fragment r (expressionOr e)
+            | SPush e :: SXor :: r -> fragment r (expressionXor e)
+            | SPush e :: SDivU :: r -> fragment r (expressionDivU e)
+            | SPush e :: SRemU :: r -> fragment r (expressionRemU e)
+            | SPush e :: SDivS :: r -> fragment r (expressionDivS e)
+            | SPush e :: SRemS :: r -> fragment r (expressionRemS e)
+
             | SJump :: r -> frag r [JUMP]
             | SJumpZero :: r -> frag r genericJumpZero
             | SJumpNotZero :: r -> frag r genericJumpNotZero
-
-            | SPush e :: SAdd :: r -> fragment r (expressionAdd e)
             | SAdd :: r -> frag r [ADD]
-            | SPush e :: SMult :: r -> fragment r (expressionMult e)
             | SMult :: r -> frag r [MULTIPLY]
+            | SAnd :: r -> frag r [AND]
+            | SOr :: r -> frag r [OR]
+            | SXor :: r -> frag r [XOR]
+            | SDivU :: r -> frag r [DIVIDE]
+            | SRemU :: r -> frag r [REMAINDER]
+            | SDivS :: r -> frag r genericDivS
+            | SRemS :: r -> frag r genericRemS
 
             // Minor optimization.
             | SPush (ELabel i) :: SLabel j :: r when i = j ->
