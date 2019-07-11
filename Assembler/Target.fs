@@ -2,6 +2,7 @@
 
 open Machine.Instructions
 open Assembler.Ast
+open Machine.Utils
 
 
 let opLen (ops: int8 list) = List.length ops
@@ -161,11 +162,6 @@ let genericConditional interjection =
 let genericJumpNotZero = genericConditional []
 let genericJumpZero = genericConditional isZero
 
-// TODO: There should be a built-in function like this.
-let valueOr<'a> (def: 'a) (x: 'a option) = match x with Some z -> z | _ -> def
-let mapGet<'a, 'b when 'a: comparison> (m: Map<'a,'b>) (x: 'a) (def: 'b) =
-    m.TryFind x |> valueOr def
-
 // Pair consisting of (i) a piece of code with the net effect of pushing a
 // single number onto the stack and (ii) a number which should (at some point)
 // be added to this number. I could not think of a good name for this type.
@@ -244,17 +240,17 @@ let negSpes ((code, acc): Spes) : Spes =
 
 let sign1Spes (spes: Spes) : Spes =
     match spes with
-    | [PUSH0], n -> [PUSH0], n |> uint8 |> int8 |> int64
+    | [PUSH0], n -> [PUSH0], uint64 n |> signExtend1 |> int64
     | _ -> collapseSpes spes @ [SIGN1], 0L
 
 let sign2Spes (spes: Spes) : Spes =
     match spes with
-    | [PUSH0], n -> [PUSH0], n |> uint16 |> int16 |> int64
+    | [PUSH0], n -> [PUSH0], uint64 n |> signExtend2 |> int64
     | _ -> collapseSpes spes @ [SIGN2], 0L
 
 let sign4Spes (spes: Spes) : Spes =
     match spes with
-    | [PUSH0], n -> [PUSH0], n |> uint32 |> int32 |> int64
+    | [PUSH0], n -> [PUSH0], uint64 n |> signExtend4 |> int64
     | _ -> collapseSpes spes @ [SIGN4], 0L
 
 

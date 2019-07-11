@@ -1,13 +1,14 @@
 ﻿module Assembler.Transformations
 
 open Assembler.Ast
+open Machine.Utils
 
 
 let signExtend n x =
     match n with
-    | 1 -> x |> uint8 |> int8 |> int64
-    | 2 -> x |> uint16 |> int16 |> int64
-    | 4 -> x |> uint32 |> int32 |> int64
+    | 1 -> uint64 x |> signExtend1 |> int64
+    | 2 -> uint64 x |> signExtend2 |> int64
+    | 4 -> uint64 x |> signExtend4 |> int64
     | _ -> failwithf "No such byte-width: %d" n
 
 let combineLists f x y =
