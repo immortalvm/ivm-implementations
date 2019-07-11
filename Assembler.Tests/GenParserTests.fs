@@ -50,6 +50,7 @@ let ExpressionTests =
             testCase "Numeral" <| success (ENum 17L) expression "17"
             testCase "Label" <| success (ELabel 1) expression "u17_X_"
             testCase "PC" <| success pc expression "$pc"
+            testCase "Stack0" <| success (EStack (ENum 0L)) expression "&0"
         ]
         testList "Unary" [
             testCase "Minus" <| success (EMinus <| ELabel 1) expression "-x"

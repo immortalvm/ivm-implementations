@@ -15,7 +15,9 @@ let random = System.Random ()
 let endStack prog expected () =
     let stackSpace = Array.create 1000 0uy
     random.NextBytes (Span(stackSpace))
-    let actual = Seq.map int8 stackSpace |> Seq.append prog |> execute
+    let actual = Seq.append (Seq.map uint8 prog) stackSpace
+                 |> execute
+                 |> Seq.map int64
     Expect.sequenceEqual actual expected "Unexpected end stack"
 
 [<Tests>]

@@ -7,7 +7,7 @@ open Assembler.Target
 let private ATTEMPTS_BEFORE_MONOTINICITY = 3;
 
 // 'nops n' must return a nop sequence of at least n signed bytes.
-let compose (nops: int -> int8 list) (prog: Intermediate list) : seq<int8> * int[] =
+let compose (nops: int -> int8 list) (prog: Intermediate list) : uint8 list * int[] =
     let maxLabel = List.max <| 0 :: [
                        for x in prog do
                        match x with
@@ -67,4 +67,11 @@ let compose (nops: int -> int8 list) (prog: Intermediate list) : seq<int8> * int
 
         attempts <- attempts + 1
 
-    (Seq.concat codes, positions)
+    (Seq.concat codes |> Seq.map uint8 |> Seq.toList, positions)
+
+let assemble program =
+    program
+    |> Seq.toList
+    |> intermediates
+    |> Seq.toList
+    |> compose nopsFor

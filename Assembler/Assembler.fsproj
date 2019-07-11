@@ -8,7 +8,10 @@
     <Compile Include="Parser.fs" />
     <Compile Include="Target.fsi" />
     <Compile Include="Target.fs" />
+    <Compile Include="Composition.fsi" />
     <Compile Include="Composition.fs" />
+    <Compile Include="Checker.fsi" />
+    <Compile Include="Checker.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FSharp.Core" Version="4.6.2" />

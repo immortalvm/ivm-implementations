@@ -3,11 +3,8 @@
 open Machine.Instructions
 open Machine.Utils
 
-exception AccessException
-exception UndefinedException
-
-[<Literal>]
-let DEBUG = false
+exception AccessException of string
+exception UndefinedException of string
 
 // Little-endian encoding
 let fromBytes : seq<uint8> -> uint64 =
@@ -17,7 +14,7 @@ let fromBytes : seq<uint8> -> uint64 =
 let toBytes n (x: uint64) : seq<uint8> =
     [| 0 .. n-1 |] |> Seq.map (fun i -> x >>> i*8 |> uint8)
 
-type Machine(initialMemory: seq<uint8>, ?location: uint64) =
+type Machine(initialMemory: seq<uint8>, ?location: uint64, ?trace: unit) =
 
     // Reverse ordering
     let mutable arrays = [ (valueOr 0UL location, Seq.toArray initialMemory) ]
@@ -32,11 +29,11 @@ type Machine(initialMemory: seq<uint8>, ?location: uint64) =
         match List.skipWhile
             (fun (start, _) -> start > location)
             arrays with
-        | [] -> raise AccessException
+        | [] -> raise (AccessException(""))
         | (start, arr) :: _ ->
             if location < start + uint64 (Array.length arr)
             then arr, int (location - start)
-            else raise AccessException
+            else raise (AccessException(""))
 
     let load location =
         let (a, i) = getArray location in a.[i]
@@ -55,11 +52,11 @@ type Machine(initialMemory: seq<uint8>, ?location: uint64) =
     member m.Deallocate start =
         let rec de arrs =
             match arrs with
-            | [] -> raise AccessException
+            | [] -> raise (AccessException(""))
             | (st, a) :: rest ->
                 if st > start then (st, a) :: de rest
                 elif st.Equals(start) then rest
-                else raise AccessException
+                else raise (AccessException(""))
         arrays <- de arrays
 
     member val Terminated = false with get, set
@@ -99,17 +96,20 @@ type Machine(initialMemory: seq<uint8>, ?location: uint64) =
         m.StoreN 8 m.StackPointer value
 
     member m.Run () =
-        if DEBUG
+        if trace.IsSome
         then printfn "Initial memory"
              Seq.iteri (fun i x -> printfn "%2d: %2X %3d" i x x) initialMemory
 
         while not m.Terminated do
 
-            if DEBUG
-            then printfn "Stack (%2d:%2d): %s"
-                 <| m.ProgramCounter
-                 <| m.LoadN 1 m.ProgramCounter
-                 <| System.String.Join(", ", m.Stack 20)
+            if trace.IsSome
+            then
+                let pc = m.ProgramCounter
+                let op = m.LoadN 1 m.ProgramCounter
+                let name = Machine.Disassembler.instructionNames.[int op]
+                printfn
+                    "%d : %2d  %-12s Stack: %s" pc op name
+                    <| System.String.Join(", ", Seq.map int64 <| m.Stack 20)
 
             m.Step ()
 
@@ -119,7 +119,7 @@ type Machine(initialMemory: seq<uint8>, ?location: uint64) =
             try
                 m.StackPointer + uint64 (i*8) |> m.LoadN 8 |> Some
             with
-                | AccessException -> None
+                | AccessException msg -> None
         let limit = valueOr 1000 max
         let mutable i = 0
         seq {
@@ -191,14 +191,19 @@ type Machine(initialMemory: seq<uint8>, ?location: uint64) =
             if n >= 0UL && n <= 63UL then 1UL <<< int n else 0UL
             |> m.Push
 
-        | _ -> raise UndefinedException
+        | _ -> raise (UndefinedException(""))
 
 
 let random = System.Random ()
 
-let execute (prog: seq<int8>) =
+let exec (prog: seq<uint8>) (trace: unit option) =
     // Start at 0, 1000, ... or 7000.
     let start = random.Next () % 8 |> (*) 1000 |> uint64
-    let machine = Machine(prog |> Seq.map uint8, start)
+    let machine = Machine(prog, start, ?trace=trace)
     machine.Run ()
-    machine.Stack () |> Seq.map int64
+    machine.Stack ()
+
+
+let execute (prog: seq<uint8>) = exec prog None
+
+let trace (prog: seq<uint8>) = exec prog <| Some ()

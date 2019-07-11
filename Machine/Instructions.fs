@@ -21,7 +21,6 @@ let GET_PC = 5y
 [<Literal>]
 let GET_STACK = 6y
 
-// Is this worth including?
 [<Literal>]
 let PUSH0 = 7y
 
@@ -125,3 +124,6 @@ let XOR = 43y
 [<Literal>]
 let POW2 = 44y
 
+// Used by Machine.Disassembler to find the module.
+// type internal ReflectionMarker = interface end
+type ReflectionMarker = interface end

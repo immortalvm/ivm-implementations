@@ -12,8 +12,8 @@ open Assembler.Target
 open Assembler.Composition
 
 let compilesTo (program: Statement list) (binary: sbyte list) (positions: int list) =
-    let b, p = program |> intermediates |> Seq.toList |> compose nopsFor
-    Expect.sequenceEqual b binary "Unexpected binary"
+    let b, p = assemble program
+    Expect.sequenceEqual b (Seq.map uint8 binary) "Unexpected binary"
     Expect.sequenceEqual p positions "Unexpected positions"
 
 [<Tests>]

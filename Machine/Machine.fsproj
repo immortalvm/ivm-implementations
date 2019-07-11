@@ -4,6 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Instructions.fs" />
+    <Compile Include="Disassembler.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="Executor.fsi" />
     <Compile Include="Executor.fs" />
