@@ -133,6 +133,7 @@ let expression: Parser<Expression, State> =
 
                     | "/u" -> expr2 |>> EDivU
                     | "/s" -> expr2 |>> EDivS
+                    | "/su" -> expr2 |>> EDivSU
                     | "%u" -> expr2 |>> ERemU
                     | "%s" -> expr2 |>> ERemS
 
@@ -227,7 +228,8 @@ let statement: Parser<Statement list, State> =
              | "pow2" -> nArgs 1 [SPow2]
              | "shift_l" -> nArgs 2 [SPow2; SMult]
              | "shift_ru" -> nArgs 2 [SPow2; SDivU]
-             | "shift_rs" -> nArgs 2 [SPow2; SDivS]
+             // Use SDivUS to make sure that (-1L <<< 63) >>> 63 = -1 (not 1).
+             | "shift_rs" -> nArgs 2 [SPow2; SDivSU]
 
              | "div_u" -> nArgs 2 [SDivU]
              | "div_s" -> nArgs 2 [SDivS]

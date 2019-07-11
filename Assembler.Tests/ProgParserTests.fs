@@ -108,7 +108,7 @@ let assemblyLanguageIntro =
         SPow2
         SPow2; SMult
         SPow2; SDivU
-        SPow2; SDivS
+        SPow2; SDivSU
 
         SEq
         SPush <| ENum 7L; SEq

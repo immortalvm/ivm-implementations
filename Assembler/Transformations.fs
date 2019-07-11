@@ -39,6 +39,7 @@ let rec optimize (e: Expression): Expression =
     | EXor lst -> xor [for x in lst -> optimize x]
     | EDivU (x, y) -> divU (optimize x) (optimize y)
     | EDivS (x, y) -> divS (optimize x) (optimize y)
+    | EDivSU (x, y) -> divSU (optimize x) (optimize y)
     | ERemU (x, y) -> remU (optimize x) (optimize y)
     | ERemS (x, y) -> remS (optimize x) (optimize y)
     | ESign1 x -> sign 1 <| optimize x
@@ -146,19 +147,31 @@ and private xor lst =
 
 and private divU x y =
     match x, y with
+    | _, ENum 0L -> ENum 0L // x / 0 = 0 !
     | ENum m, ENum n -> (uint64 m) / (uint64 n) |> int64 |> ENum
     | _, ENum 1L -> x
     | _, _ -> EDivU (x, y)
 
 and private divS x y =
     match x, y with
+    | _, ENum 0L -> ENum 0L // x / 0 = 0 !
     | ENum m, ENum n -> m / n |> ENum
     | _, ENum 1L -> x
-    | _, ENum -1L -> neg x
-    | _, _ -> EDivU (x, y)
+    | _, ENum -1L -> minus x
+    | _, _ -> EDivS (x, y)
+
+and private divSU x y =
+    match x, y with
+    | _, ENum 0L -> ENum 0L // x / 0 = 0 !
+    | ENum m, ENum n ->
+        let sign = if m < 0L then -1L else 1L
+        (m * sign |> uint64) / (uint64 n) |> int64 |> (*) sign |> ENum
+    | _, ENum 1L -> x
+    | _, _ -> EDivSU (x, y)
 
 and private remU x y =
     match x, y with
+    | _, ENum 0L -> ENum 0L // x % 0 = 0 !
     | ENum m, ENum n -> (uint64 m) % (uint64 n) |> int64 |> ENum
     | _, ENum 1L -> ENum 0L
     | _, ENum -1L -> ENum 0L
@@ -166,6 +179,7 @@ and private remU x y =
 
 and private remS x y =
     match x, y with
+    | _, ENum 0L -> ENum 0L // x % 0 = 0 !
     | ENum m, ENum n -> m % n |> ENum
     | _, ENum 1L -> ENum 0L
     | _, _ -> ERemS (x, y)
@@ -215,6 +229,7 @@ let pushReduction (prog: Statement seq): Statement seq =
             | SPow2, x::r -> pending <- EPow2 x :: r
             | SDivU, y::x::r -> pending <- EDivU (x, y) :: r
             | SDivS, y::x::r -> pending <- EDivS (x, y) :: r
+            | SDivSU, y::x::r -> pending <- EDivSU (x, y) :: r
             | SRemU, y::x::r -> pending <- ERemU (x, y) :: r
             | SRemS, y::x::r -> pending <- ERemS (x, y) :: r
 

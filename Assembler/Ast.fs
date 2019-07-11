@@ -17,6 +17,7 @@ type Expression =
 
     | EDivU of Expression * Expression
     | EDivS of Expression * Expression
+    | EDivSU of Expression * Expression // Divide signed with unsigned (e.g. 2^63)
     | ERemU of Expression * Expression
     | ERemS of Expression * Expression
 
@@ -58,7 +59,7 @@ type Statement =
     | SMinus
     | SAnd | SOr | SXor | SNeg
     | SPow2
-    | SDivU | SDivS
+    | SDivU | SDivS | SDivSU
     | SRemU | SRemS
 
     // Return -1 for true and 0 for false:
