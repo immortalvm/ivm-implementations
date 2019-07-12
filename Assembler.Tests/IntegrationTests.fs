@@ -21,4 +21,5 @@ let integrationTests =
     testList "Integration" [
         testCase "Push zero" <| check "check_push_0.s"
         testCase "Count down" <| check "check_count_down.s"
+        testCase "Complex" <| check "check_complex.s"
     ]
