@@ -103,7 +103,7 @@ let expression: Parser<Expression, State> =
     let expr1 = whitespace >>. expr
     let expr2 = whitespace >>. expr .>>. expr
     let exprList = whitespace >>. many expr
-    let first c = isLetter c || "+*&|^=<>".Contains c
+    let first c = isLetter c || "+*&|^=<>/%".Contains c
     let rest c = first c || isDigit c
 
     let exprHead = many1Satisfy2 first rest .>> whitespace
@@ -130,7 +130,7 @@ let expression: Parser<Expression, State> =
 
                     | "<<" -> expr2 |>> fun (x, y) -> EProd [x; EPow2 y]
                     | ">>u" -> expr2 |>> fun (x, y) -> EDivU (x, EPow2 y)
-                    | ">>s" -> expr2 |>> fun (x, y) -> EDivS (x, EPow2 y)
+                    | ">>s" -> expr2 |>> fun (x, y) -> EDivSU (x, EPow2 y)
 
                     | "/u" -> expr2 |>> EDivU
                     | "/s" -> expr2 |>> EDivS
