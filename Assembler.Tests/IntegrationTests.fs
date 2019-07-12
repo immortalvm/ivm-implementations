@@ -11,7 +11,8 @@ open Assembler.Checker
 
 let check fileName () =
     try
-        "test_code/" + fileName |> doCheck |> ignore
+        let message = doCheck <| "test_code/" + fileName
+        Expect.isNotMatch message "^Not executed" "Expectations not found"
     with
         | Failure(msg) -> failtest msg
 

@@ -191,7 +191,7 @@ type Machine(initialMemory: seq<uint8>, ?location: uint64, ?trace: unit) =
             if n >= 0UL && n <= 63UL then 1UL <<< int n else 0UL
             |> m.Push
 
-        | _ -> raise (UndefinedException(""))
+        | undefined -> raise (UndefinedException(sprintf "%d" undefined))
 
 
 let random = System.Random ()

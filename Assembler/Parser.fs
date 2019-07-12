@@ -103,9 +103,10 @@ let expression: Parser<Expression, State> =
     let expr1 = whitespace >>. expr
     let expr2 = whitespace >>. expr .>>. expr
     let exprList = whitespace >>. many expr
-    let exprHead =
-        let pred c = isLetter c || "+*&|^=<>".Contains c
-        many1Satisfy pred
+    let first c = isLetter c || "+*&|^=<>".Contains c
+    let rest c = first c || isDigit c
+
+    let exprHead = many1Satisfy2 first rest .>> whitespace
     let innerExpr stream =
         let reply = exprHead stream
         if reply.Status <> Ok then Reply(reply.Status, reply.Error)
@@ -145,7 +146,7 @@ let expression: Parser<Expression, State> =
                     | "sign1" -> expr1 |>> ESign1
                     | "sign2" -> expr1 |>> ESign2
                     | "sign4" -> expr1 |>> ESign4
-                    | _ -> fail "Not an expression keyword."
+                    | unknown -> fail <| sprintf "Not an expression keyword: %s" unknown
             p stream
 
     // Why do we need 'do' here?

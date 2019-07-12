@@ -7,19 +7,22 @@ open FParsec
 open System.Text.RegularExpressions
 
 let expectationHeading : Parser<unit, unit> =
-    spaces >>. skipString "# EXPECTED END STACK:"
+    spaces >>. many1 (skipChar '#')
+           >>. spaces
+           >>. skipString "EXPECTED STACK:"
            >>. spaces
            >>. (eof <|> skipChar '#')
 
-let isNotExpectationHeading line : bool =
+let isExpectationHeading line : bool =
     match runParserOnString expectationHeading () "" line with
-    | Success (_) -> false
-    | Failure (_) -> true
+    | Success (_) -> true
+    | Failure (_) -> false
 
 let numberParser : Parser<int64, unit> =
     let neg = (skipChar '-') >>. puint64 |>> (int64 >> (~-))
     let pos = puint64 |>> int64
-    spaces >>. skipChar '#' >>. spaces
+    spaces >>. many1 (skipChar '#')
+           >>. spaces
            >>. (neg <|> pos)
            .>> spaces
            .>> (eof <|> skipChar '#')
@@ -62,30 +65,41 @@ let doRun binary shouldTrace =
         | UndefinedException msg -> failwith "Undefined instruction!"
 
 let doCheck fileName =
+    let mutable revOutput = []
+    let output msg = revOutput <- msg :: revOutput
     let binary = doAssemble fileName |> fst
-    let actual = doRun binary false
+    output <| sprintf "Binary size: %d\n" (List.length binary)
 
-    let expected =
-        System.IO.File.ReadLines fileName
-        |> Seq.skipWhile isNotExpectationHeading
-        |> Seq.append [""]
-        |> Seq.skip 1 // Skip the heading
-        |> Seq.map parseNumber
-        |> Seq.map Option.toList
-        |> Seq.concat
+    let expectationsFound = System.IO.File.ReadLines fileName
+                            |> Seq.exists isExpectationHeading
 
-    match firstDiff actual expected with
-    | i, None, None ->
-        sprintf "End stack as expected (size: %d)." i
-    | i, Some a, Some e ->
-        failwithf
-            "Unexpected stack entry at position %i. Expected: %s, but got %s."
-            i (showValue e) (showValue a)
-    | i, None, Some e ->
-        failwithf
-            "Stack shorter than expected, at pos %i for expected %s."
-            i (showValue e)
-    | i, Some a, None ->
-        failwithf
-            "Stack longer than expected, at pos %i found %s."
-            i (showValue a)
+    if not expectationsFound
+    then output "Not executed since no expectations were found."
+    else
+        let actual = doRun binary false
+
+        let expected =
+            System.IO.File.ReadLines fileName
+            |> Seq.skipWhile (isExpectationHeading >> not)
+            |> Seq.append [""]
+            |> Seq.skip 1 // Skip the heading
+            |> Seq.map parseNumber
+            |> Seq.map Option.toList
+            |> Seq.concat
+
+        match firstDiff actual expected with
+        | i, None, None ->
+            output <| sprintf "End stack as expected (size: %d)." i
+        | i, Some a, Some e ->
+            failwithf
+                "Unexpected stack entry at position %i. Expected: %s, but got %s."
+                i (showValue e) (showValue a)
+        | i, None, Some e ->
+            failwithf
+                "Stack shorter than expected, at pos %i for expected %s."
+                i (showValue e)
+        | i, Some a, None ->
+            failwithf
+                "Stack longer than expected, at pos %i found %s."
+                i (showValue a)
+    System.String.Join("\n", List.rev revOutput)

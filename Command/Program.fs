@@ -52,6 +52,6 @@ let main argv =
             | "as-run" when n = 2 -> asRun argv.[1] false; 0
             | "as-trace" when n = 2 -> asRun argv.[1] true; 0
             | "check" when n = 2 -> check argv.[1]; 0
-            | _ -> usage (); -1
+            | _ -> usage (); 1
     with
-        Failure msg -> printfn "%s" msg; -1
+        Failure msg -> printfn "%s" msg; 1
