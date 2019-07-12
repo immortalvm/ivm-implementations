@@ -27,7 +27,7 @@ let rec optimize (e: Expression): Expression =
     | EMinus x -> minus <| optimize x
     | ENeg x -> neg <| optimize x
     | EPow2 x -> pow2 <| optimize x
-    | EStack x -> EStack <| optimize x // TODO
+    | EStack x -> EStack <| optimize x
     | ELoad1 x -> ELoad1 <| optimize x
     | ELoad2 x -> ELoad2 <| optimize x
     | ELoad4 x -> ELoad4 <| optimize x
