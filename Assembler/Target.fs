@@ -173,13 +173,6 @@ let collapseSpes ((code, acc): Spes) : int8 list =
     | [PUSH0], _ -> pushNum acc
     | _, _ -> code @ pushNum acc @ [ADD]
 
-// NB: This only works for commutative operations.
-let collapseSpes2 (s1: Spes) (s2: Spes) : int8 list =
-    match s1 with
-    // In this case, s2 expects to go first, see 'inner' in exprPushCore.
-    | [PUSH0], _ -> collapseSpes s2 @ collapseSpes s1
-    | _ -> collapseSpes s1 @ collapseSpes s2
-
 let zeroSpes: Spes = [PUSH0], 0L
 let oneSpes: Spes = [PUSH0], 1L
 let trueSpes: Spes = [PUSH0], -1L
@@ -201,13 +194,9 @@ let multSpes (s1: Spes) (s2: Spes) : Spes =
     | ([PUSH0], m), ([PUSH0], n) -> ([PUSH0], m * n)
     | _, ([PUSH0], 0L) -> zeroSpes
     | ([PUSH0], 0L), _ -> zeroSpes
-    | _, ([PUSH0], 1L) -> s1
-    | ([PUSH0], 1L), _ -> s2
     | (c, m), ([PUSH0], n) -> c @ pushNum n @ [MULTIPLY], m * n
     | ([PUSH0], m), (c, n) -> c @ pushNum m @ [MULTIPLY], m * n
-    | _, _ -> collapseSpes2 s1 s2 @ [MULTIPLY], 0L
-
-let timesNSpes (n: int64) (s: Spes) : Spes = multSpes s ([PUSH0], n)
+    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ [MULTIPLY], 0L
 
 let pow2Spes (spes: Spes) : Spes =
     match spes with
@@ -219,19 +208,19 @@ let andSpes (s1: Spes) (s2: Spes) : Spes =
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], m &&& n
     | _, ([PUSH0], 0L) -> ([PUSH0], 0L)
     | ([PUSH0], 0L), _ -> ([PUSH0], 0L)
-    | _, ([PUSH0], -1L) -> s1
-    | ([PUSH0], -1L), _ -> s2
-    | _ -> collapseSpes2 s1 s2 @ [AND], 0L
+    | _ -> collapseSpes s1 @ collapseSpes s2 @ [AND], 0L
 
 let orSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], m ||| n
-    | _ -> collapseSpes2 s1 s2 @ [OR], 0L
+    | _, ([PUSH0], -1L)
+    | ([PUSH0], -1L), _ -> ([PUSH0], -1L)
+    | _ -> collapseSpes s1 @ collapseSpes s2 @ [OR], 0L
 
 let xorSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], m ^^^ n
-    | _ -> collapseSpes2 s1 s2 @ [XOR], 0L
+    | _ -> collapseSpes s1 @ collapseSpes s2 @ [XOR], 0L
 
 let negSpes ((code, acc): Spes) : Spes =
     match code with
@@ -253,9 +242,6 @@ let sign4Spes (spes: Spes) : Spes =
     | [PUSH0], n -> [PUSH0], uint64 n |> signExtend4 |> int64
     | _ -> collapseSpes spes @ [SIGN4], 0L
 
-
-// Below, we always use s1 code if we use s2 code!
-// This is important since these operations are not commutative.
 
 let divUSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
@@ -348,145 +334,144 @@ let gteSSpes (s1: Spes) (s2: Spes) : Spes =
     | _, _ -> collapseSpes s1 @ collapseSpes s2 @ gteS, 0L
 
 
-let rec exprPushCore
-        (expression: Expression)
-        (lookup: int -> int)
-        (position: int)
-        (depth: int) : Spes =
-    let mutable spes = zeroSpes
+let exprPushCore (lookup: int -> int) =
+    let rec epc (position: int) (depth: int) (expression: Expression) =
 
-    let process1 f e = spes <- f <| exprPushCore e lookup position depth
-    let process2 f e1 e2 =
-        spes <- exprPushCore e1 lookup position depth
-        let p, d = position + opLen (fst spes), depth + 1
-        spes <- f spes <| exprPushCore e1 lookup p d
+        let rec1 e = epc position depth e
 
-    // Only use the next three functions with unary and commutative operations!
-    let innerPosDepth () =
-        match spes with
-        | [PUSH0], _ -> position, depth
-        | code, _ -> position + opLen code, depth + 1
-    let inner e =
-        let (p, d) = innerPosDepth ()
-        exprPushCore e lookup p d
-    let processList f s lst =
-        spes <- s
-        for e in lst do spes <- f spes (inner e)
+        let rec1coll e = rec1 e |> collapseSpes
 
-    match expression with
-    | ENum n -> spes <- [PUSH0], n
-    | ELabel i -> spes <- [GET_PC], int64 (lookup i - position - 1)
+        let relRec s e =
+            let c = collapseSpes s
+            epc (position + List.length c) (depth + 1) e
 
-    | EStack e ->
-        spes <- [GET_STACK], 0L
-        let s = inner e |> timesNSpes 8L
-        spes <- addSpes spes s
+        let rec2 f e1 e2 = let s = rec1 e1 in f s <| relRec s e2
 
-    | ESum lst ->
-        let f e =
-            match e with
-            | ELabel _ -> 1 | EMinus (ELabel _) -> -1
-            | EStack _ -> 2 | EMinus (EStack _) -> -2
-            | _ -> 0
-        let cnt = new Map<int,int>(List.countBy f lst)
-        let nPc = mapGet cnt 1 0 - mapGet cnt -1 0
-        let nSp = mapGet cnt 2 0 - mapGet cnt -2 0
+        let optM f u x y = match x, y with
+                           | ([PUSH0], m), _ when m = u -> y
+                           | _, ([PUSH0], n) when n = u -> x
+                           | _, _ -> f x y
 
-        spes <- addSpes spes <| timesNSpes (int64 nPc) ([GET_PC], 0L)
-        spes <- addSpes spes <| timesNSpes (int64 nSp) ([GET_STACK], 0L)
+        let foldM (f: Spes -> Spes -> Spes) (u: int64) (lst: Expression list) =
+            let fu = optM f u
+            let fe s e = match s with
+                         | [PUSH0], _ -> fu (rec1 e) s
+                         | _ -> fu s (relRec s e)
+            List.fold fe ([PUSH0], u) lst
 
-        for ex in lst do
-            let p, _ = innerPosDepth ()
-            let s = match ex with
-                    | ELabel i -> [PUSH0], int64 (lookup i - p)
-                    | EMinus (ELabel i) -> [PUSH0], int64 (p - lookup i)
-                    | EStack e -> inner e |> timesNSpes 8L
-                    | EMinus (EStack e) -> inner e |> timesNSpes -8L
-                    | e -> inner e
-            spes <- addSpes spes s
+        match expression with
+        | ENum n -> [PUSH0], n
+        | ELabel _| EStack _ -> ESum [expression] |> rec1
+        | ESum lst ->
+            let tag e =
+                match e with
+                | ELabel _ -> 1 | EMinus (ELabel _) -> -1
+                | EStack _ -> 2 | EMinus (EStack _) -> -2
+                | _ -> 0
+            let cnt = new Map<int,int>(List.countBy tag lst)
+            let nPc = mapGet cnt 1 0 - mapGet cnt -1 0
+            let nSp = mapGet cnt 2 0 - mapGet cnt -2 0
 
-    | EProd lst -> processList multSpes oneSpes lst
-    | EMinus e -> process1 minusSpes e
-    | EPow2 e -> spes <- pow2Spes <| inner e
-    | EConj lst -> processList andSpes trueSpes lst
-    | EDisj lst -> processList orSpes zeroSpes lst
-    | EXor lst -> processList xorSpes zeroSpes lst
-    | ENeg e -> process1 negSpes e
-    | ESign1 e -> process1 sign1Spes e
-    | ESign2 e -> process1 sign2Spes e
-    | ESign4 e -> process1 sign4Spes e
+            let mutable spes = zeroSpes
+            let multN n s = optM multSpes 1L s ([PUSH0], int64 n)
+            spes <- addSpes spes <| multN nPc ([GET_PC], 0L)
+            spes <- addSpes spes <| multN nSp ([GET_STACK], 0L)
 
-    | EDivU (e1, e2) -> process2 divUSpes e1 e2
-    | EDivS (e1, e2) -> process2 divSSpes e1 e2
-    | EDivSU (e1, e2) -> process2 divSUSpes e1 e2
-    | ERemU (e1, e2) -> process2 remUSpes e1 e2
-    | ERemS (e1, e2) -> process2 remSSpes e1 e2
+            for ex in lst do
+                let p, d = match spes with
+                           | [PUSH0], _ -> position, depth
+                           | code, _ -> position + opLen code, depth + 1
+                let inner = epc p d
+                let s = match ex with
+                        | ELabel i -> [PUSH0], int64 (lookup i - p)
+                        | EMinus (ELabel i) -> [PUSH0], int64 (p - lookup i)
+                        | EStack e -> inner e |> multN 8
+                        | EMinus (EStack e) -> inner e |> multN -8
+                        | e -> inner e
+                spes <- addSpes spes s
+            // Finally return the result
+            spes
 
-    | EEq (e1, e2) -> process2 eqSpes e1 e2
-    | ELtU (e1, e2) -> process2 ltUSpes e1 e2
-    | ELtS (e1, e2) -> process2 ltSSpes e1 e2
-    | ELtEU (e1, e2) -> process2 lteUSpes e1 e2
-    | ELtES (e1, e2) -> process2 lteSSpes e1 e2
-    | EGtU (e1, e2) -> process2 gtUSpes e1 e2
-    | EGtS (e1, e2) -> process2 gtSSpes e1 e2
-    | EGtEU (e1, e2) -> process2 gteUSpes e1 e2
-    | EGtES (e1, e2) -> process2 gteSSpes e1 e2
+        | EMinus e -> e |> rec1 |> minusSpes
+        | EPow2 e -> e |> rec1 |> pow2Spes
+        | ENeg e -> e |> rec1 |> negSpes
+        | ESign1 e -> e |> rec1 |> sign1Spes
+        | ESign2 e -> e |> rec1 |> sign2Spes
+        | ESign4 e -> e |> rec1 |> sign4Spes
+        | ELoad1 e -> rec1coll e @ [LOAD1], 0L
+        | ELoad2 e -> rec1coll e @ [LOAD2], 0L
+        | ELoad4 e -> rec1coll e @ [LOAD4], 0L
+        | ELoad8 e -> rec1coll e @ [LOAD8], 0L
 
-    | ELoad1 e -> spes <- collapseSpes (inner e) @ [LOAD1], 0L
-    | ELoad2 e -> spes <- collapseSpes (inner e) @ [LOAD2], 0L
-    | ELoad4 e -> spes <- collapseSpes (inner e) @ [LOAD4], 0L
-    | ELoad8 e -> spes <- collapseSpes (inner e) @ [LOAD8], 0L
+        | EProd lst -> foldM multSpes 1L lst
+        | EConj lst -> foldM andSpes -1L lst
+        | EDisj lst -> foldM orSpes 0L lst
+        | EXor lst -> foldM xorSpes 0L lst
 
-    // Finally we are able to return the result:
-    spes
+        | EDivU (e1, e2) -> rec2 divUSpes e1 e2
+        | EDivS (e1, e2) -> rec2 divSSpes e1 e2
+        | EDivSU (e1, e2) -> rec2 divSUSpes e1 e2
+        | ERemU (e1, e2) -> rec2 remUSpes e1 e2
+        | ERemS (e1, e2) -> rec2 remSSpes e1 e2
 
+        | EEq (e1, e2) -> rec2 eqSpes e1 e2
+        | ELtU (e1, e2) -> rec2 ltUSpes e1 e2
+        | ELtS (e1, e2) -> rec2 ltSSpes e1 e2
+        | ELtEU (e1, e2) -> rec2 lteUSpes e1 e2
+        | ELtES (e1, e2) -> rec2 lteSSpes e1 e2
+        | EGtU (e1, e2) -> rec2 gtUSpes e1 e2
+        | EGtS (e1, e2) -> rec2 gtSSpes e1 e2
+        | EGtEU (e1, e2) -> rec2 gteUSpes e1 e2
+        | EGtES (e1, e2) -> rec2 gteSSpes e1 e2
 
-let expressionPush e lookup = exprPushCore e lookup 0 0 |> collapseSpes
+    epc // Return the recursive function
+
+let expressionPush e lookup = exprPushCore lookup 0 0 e |> collapseSpes
 
 let expressionAdd e lookup =
-    match exprPushCore e lookup 0 0 with
+    match exprPushCore lookup 0 0 e with
     | [PUSH0], 0L -> []
     | spes -> collapseSpes spes @ [ADD]
 
 let expressionMult e lookup =
-    match exprPushCore e lookup 0 0 with
+    match exprPushCore lookup 0 0 e with
     | [PUSH0], 1L -> []
     | [PUSH0], 0L -> pop 1 @ [PUSH0] // Pop value, push 0.
     | spes -> collapseSpes spes @ [MULTIPLY]
 
 let expressionAnd e lookup =
-    match exprPushCore e lookup 0 0 with
+    match exprPushCore lookup 0 0 e with
     | [PUSH0], -1L -> []
     | [PUSH0], 0L -> pop 1 @ [PUSH0] // Pop value, push 0.
     | spes -> collapseSpes spes @ [AND]
 
 let expressionOr e lookup =
-    match exprPushCore e lookup 0 0 with
+    match exprPushCore lookup 0 0 e with
     | [PUSH0], 0L -> []
     | [PUSH0], -1L -> pop 1 @ pushTrue // Pop value, push -1.
     | spes -> collapseSpes spes @ [OR]
 
 let expressionXor e lookup =
-    match exprPushCore e lookup 0 0 with
+    match exprPushCore lookup 0 0 e with
     | [PUSH0], 0L -> []
     | [PUSH0], -1L -> [NOT]
     | spes -> collapseSpes spes @ [XOR]
 
 
 let expressionDivU e lookup =
-    match exprPushCore e lookup 0 0 with
+    match exprPushCore lookup 0 0 e with
     | [PUSH0], 0L -> pop 1 @ [PUSH0] // NB: x / 0 = 0
     | [PUSH0], 1L -> []
     | spes -> collapseSpes spes @ [DIVIDE]
 
 let expressionRemU e lookup =
-    match exprPushCore e lookup 0 0 with
+    match exprPushCore lookup 0 0 e with
     | [PUSH0], 0L -> pop 1 @ [PUSH0] // NB: x % 0 = 0
     | [PUSH0], 1L -> pop 1 @ [PUSH0] // Pop value, push 0.
     | spes -> collapseSpes spes @ [REMAINDER]
 
 let expressionDivS e lookup =
-    match exprPushCore e lookup 0 0 with
+    match exprPushCore lookup 0 0 e with
     | [PUSH0], 0L -> pop 1 @ [PUSH0] // NB: x / 0 = 0
     | [PUSH0], 1L -> []
     | [PUSH0], -1L -> changeSign
@@ -494,14 +479,14 @@ let expressionDivS e lookup =
     | spes -> collapseSpes spes @ divS
 
 let expressionRemS e lookup =
-    match exprPushCore e lookup 0 0 with
+    match exprPushCore lookup 0 0 e with
     | [PUSH0], 0L -> pop 1 @ [PUSH0] // NB: x % 0 = 0
     | [PUSH0], 1L -> pop 1 @ [PUSH0] // Pop value, push 0.
     | [PUSH0], -1L -> pop 1 @ [PUSH0] // Pop value, push 0.
     | spes -> collapseSpes spes @ remS
 
 let expressionDivSU e lookup =
-    match exprPushCore e lookup 0 0 with
+    match exprPushCore lookup 0 0 e with
     | [PUSH0], 0L -> pop 1 @ [PUSH0] // NB: x / 0 = 0
     | [PUSH0], 1L -> []
     | spes -> collapseSpes spes @ divSU
