@@ -10,7 +10,7 @@ let opLen (ops: int8 list) = List.length ops
 // Ensure monotinicity by adding NOPs if necessary.
 let nopsFor i = List.replicate i NOP
 
-let powers = [|for i in 0 .. 63 -> 1L <<< i|]
+let powers = [|for i in 0 .. 63 -> 1UL <<< i|]
 
 let pushNum (x: int64): int8 list =
     let n = uint64 x
@@ -20,10 +20,14 @@ let pushNum (x: int64): int8 list =
     let b16 = 1UL <<< 16
     let b32 = 1UL <<< 32
 
-    if x &&& (x - 1L) = 0L && n >= b16 && nn >= b8
+    if n &&& (n - 1UL) = 0UL && n >= b16
     then
-        let k = System.Array.BinarySearch (powers, x)
-        [PUSH0; int8 k; POW2]                          // 3
+        let k = System.Array.BinarySearch (powers, n)
+        [PUSH1; int8 k; POW2]                          // 3
+    elif nn &&& (nn - 1UL) = 0UL && nn >= b16
+    then
+        let k = System.Array.BinarySearch (powers, nn)
+        [PUSH1; int8 k; POW2; NOT]                     // 4
     else
         let bytes (n: int) (y: uint64) : int8 list =
             [|0..n-1|]
@@ -115,7 +119,7 @@ let divSU =
 let offsetSign = pushNum (1L <<< 63) @ [ADD]
 let offsetSign2 =
     let bit63 = 1L <<< 63
-    offsetSign @ get 1 @ offsetSign @ set 1
+    offsetSign @ get 1 @ offsetSign @ set 2
 
 let eq = [XOR] @ isZero
 
@@ -124,8 +128,8 @@ let gtU = get 1 @ ltU @ set 1
 let lteU = gtU @ isZero
 let gteU = ltU @ isZero
 
-let ltS = offsetSign @ ltU
-let lteS = offsetSign @ lteU
+let ltS = offsetSign2 @ ltU
+let lteS = offsetSign2 @ lteU
 let gtS = offsetSign2 @ gtU
 let gteS = offsetSign2 @ gteU
 
@@ -225,7 +229,7 @@ let xorSpes (s1: Spes) (s2: Spes) : Spes =
 let negSpes ((code, acc): Spes) : Spes =
     match code with
     | [PUSH0] -> [PUSH0], acc ^^^ -1L
-    | _ -> code @ [NOT], acc ^^^ -1L
+    | _ -> code @ [NOT], (acc ^^^ -1L) + 1L
 
 let sign1Spes (spes: Spes) : Spes =
     match spes with
