@@ -14,7 +14,7 @@ open Assembler.Parser
 let parse (progString: string) =
     let bytes = System.Text.Encoding.UTF8.GetBytes(progString)
     use stream = new System.IO.MemoryStream(bytes)
-    parseProgram stream
+    parseProgram stream |> fst
 
 // Opposite order of Expect.* (for convenience).
 let success expected progString () =

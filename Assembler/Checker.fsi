@@ -2,7 +2,7 @@
 
 val showValue : int64 -> string
 
-val doAssemble : string -> uint8 list
+val doAssemble : string -> uint8 list * (string * int) list
 
 val doRun : seq<uint8> -> bool -> seq<int64>
 

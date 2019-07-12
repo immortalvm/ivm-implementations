@@ -45,8 +45,11 @@ let showValue (x: int64) =
 let doAssemble fileName =
     use stream = System.IO.File.OpenRead fileName
     try 
-        let program = parseProgram stream
-        assemble program |> fst // Ignore symbol table for now
+        let program, labels = parseProgram stream
+        let names = List.sort [for pair in labels -> pair.Key]
+        let bytes, symbols = assemble program
+        let symbolList = [for name in names -> (name, symbols.[labels.[name]])]
+        bytes, symbolList
     with
         ParseException(msg) -> failwith msg
 
@@ -58,8 +61,8 @@ let doRun binary shouldTrace =
         | AccessException msg -> failwith "Access exception!"
         | UndefinedException msg -> failwith "Undefined instruction!"
 
-let doCheck fileName : string =
-    let binary = doAssemble fileName
+let doCheck fileName =
+    let binary = doAssemble fileName |> fst
     let actual = doRun binary false
 
     let expected =
