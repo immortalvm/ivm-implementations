@@ -361,11 +361,13 @@ let rec exprPushCore
         let p, d = position + opLen (fst spes), depth + 1
         spes <- f spes <| exprPushCore e1 lookup p d
 
-    // Only use with commutative operations.
+    // Only use the next three functions with unary and commutative operations!
+    let innerPosDepth () =
+        match spes with
+        | [PUSH0], _ -> position, depth
+        | code, _ -> position + opLen code, depth + 1
     let inner e =
-        let (p, d) = match spes with
-                     | [PUSH0], _ -> position, depth
-                     | code, _ -> position + opLen code, depth + 1
+        let (p, d) = innerPosDepth ()
         exprPushCore e lookup p d
     let processList f s lst =
         spes <- s
@@ -394,9 +396,10 @@ let rec exprPushCore
         spes <- addSpes spes <| timesNSpes (int64 nSp) ([GET_STACK], 0L)
 
         for ex in lst do
+            let p, _ = innerPosDepth ()
             let s = match ex with
-                    | ELabel i -> [PUSH0], int64 (lookup i - position)
-                    | EMinus (ELabel i) -> [PUSH0], int64 (position - lookup i)
+                    | ELabel i -> [PUSH0], int64 (lookup i - p)
+                    | EMinus (ELabel i) -> [PUSH0], int64 (p - lookup i)
                     | EStack e -> inner e |> timesNSpes 8L
                     | EMinus (EStack e) -> inner e |> timesNSpes -8L
                     | e -> inner e
