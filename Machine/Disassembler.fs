@@ -9,7 +9,7 @@ let instructionNames : string[] =
     let pairs = t.GetFields(BindingFlags.Public ||| BindingFlags.Static)
                 |> Seq.map toPair
     let n = pairs |> Seq.map snd |> Seq.max |> int |> (+) 1
-    let result = Array.create n ""
+    let result = Array.create 256 "-"
     for (key, value) in pairs do
         result.[int value] <- key
     result

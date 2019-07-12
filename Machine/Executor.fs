@@ -116,7 +116,7 @@ type Machine(initialMemory: seq<uint8>, ?location: uint64, ?trace: unit) =
                 let op = m.LoadN 1 m.ProgramCounter
                 let name = Machine.Disassembler.instructionNames.[int op]
                 printfn
-                    "%4d : %2d  %-12s Stack: %s" pc op name
+                    "%4d :%3d  %-12s Stack: %s" pc op name
                     <| System.String.Join(", ", Seq.map int64 <| m.Stack 20)
 
             m.Step ()
