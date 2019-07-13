@@ -32,6 +32,7 @@ let failure pattern progString () =
 let example1 =
     let n = ENum -13L
     [
+        SExit
         SLabel 1
         SPush <| ENum 1L
         SPush <| ENum 2L; SPush <| ENum 3L
@@ -128,8 +129,8 @@ let assemblyLanguageIntro =
 [<Tests>]
 let ExampleFileTests =
     testList "Example files" [
-        testCase "Example 1" <| successFile example1 "test_code/example1.s"
-        testCase "Intro" <| successFile assemblyLanguageIntro "test_code/assembly_language_intro.s"
+        testCase "Example 1" <| successFile example1 "test_code/ex1_old.s"
+        testCase "Intro" <| successFile assemblyLanguageIntro "test_code/intro1_statements.s"
     ]
 
 [<Tests>]

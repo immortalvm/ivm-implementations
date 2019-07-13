@@ -1,17 +1,15 @@
+### iVM assembly language introduction.
 ###
+### Part 2 - Basics
 ###
-###
-###
-###
-###
-###
-###
-###
+### This is part 2 of the iVM assembly language introduction. Unlike in part 1,
+### the statements below should actually make some sense.
 
 ### 1. THE STACK
 
     ## Fresh stack size in bytes, normally a multiple of 8
     stack_size = 16384
+
     ## Important: Also add an empty data segment  of 16 bytes or more at the end
     ## of  this  file for  the  initial  stack.  Otherwise,  your data  will  be
     ## overwritten when we set up the fresh stack:
@@ -19,21 +17,19 @@
     add! stack_size
     set_sp
 
-
     ## It is often necessary push a copy of an element in the stack onto the
     ## stack. This can be done as follows:
-    push!!!! 13 12 11 10        # Push 4 numbers onto the stack, so that it is
-                                # not empty.
-    push!! $0 $3                # Push the stack elements 0 and 3 (counting from 0).
+    push!!!! 13 12 11 10    # Push 4 numbers onto the stack (from left to right).
+    push!! $0 $3   # Push copies of the stack elements 0 and 3 (counting from 0).
 
     ## Be careful to use the right number of exclamation marks.
     ## Otherwise, the parser gets very confused.
-    ## Now the stack is (13, 10, 10, 11, 12, 13) from the top,
+    ## Now the stack is (13, 10, 10, 11, 12, 13) from the top
     ## since the second statement is sugar for:
     push! $0
     push! $4                    # Notice the offset.
 
-    ## Now the stack is (11, 13, 13, 10, 10, 11, 12, 13)
+    ## Stack: (11, 13, 13, 10, 10, 11, 12, 13)
 
     ## The previous statement is sugar for:
     push! (load8 &4)
@@ -43,7 +39,7 @@
     load8
 
     ## In other words, &n is the address of the element n on the stack.
-    ## This is useful when we want to pop elements from the stack:
+    ## This is e.g. useful when we want to pop elements from the stack:
     set_sp! &10
 
     ## Now the stack is empty again.

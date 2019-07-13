@@ -1,5 +1,6 @@
-﻿
-### NB: Still work in progress
+﻿### iVM assembly language introduction.
+###
+### Part 1 - Statements
 ###
 ### This file explains the iVM assembly  language. It is itself a valid assembly
 ### file, but the code does not make  much sense. Notice that '#' indicates that
@@ -254,3 +255,6 @@ my_label:
     set_sp! xx  # Sugar for 'push! xx set_sp'.
 
     exit        # Terminate the machine.
+
+### EXPECTED STACK:
+###
