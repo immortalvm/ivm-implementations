@@ -4,6 +4,16 @@
 For code examples and language introduction see the source files in Assembler.Tests/test_code.
 
 
+## Usage
+
+    ivm as <source> <binary> <symbols>  -  Assemble
+    ivm run <binary>                    -  Run binary and print final stack
+    ivm trace <binary>                  -  Trace binary
+    ivm as-run <source>                 -  Assemble and run (no output files)
+    ivm as-trace <source>               -  Assemble and trace (no output files)
+    ivm check <source>                  -  Assemble, run, and check final stack
+
+
 ## Semi-formal EBNF, mostly ignoring whitespace and comments
 
 ```ebnf
