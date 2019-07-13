@@ -15,7 +15,7 @@
     ## Important: Also add an empty data segment  of 16 bytes or more at the end
     ## of  this  file for  the  initial  stack.  Otherwise,  your data  will  be
     ## overwritten when we set up the fresh stack:
-    alloc! stack_size
+    allocate! stack_size
     add! stack_size
     set_sp
 

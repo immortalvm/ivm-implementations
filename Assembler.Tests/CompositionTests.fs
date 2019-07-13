@@ -34,21 +34,21 @@ let interTests =
         testCase "Push label difference" <| fun () ->
             compilesTo [
                             SLabel 1
-                            SPush <| ESum [ELabel 2; EMinus <| ELabel 1]
+                            SPush <| ESum [ELabel 2; ENeg <| ELabel 1]
                             SLabel 2
                        ]
                        [PUSH1; 2y]
                        [0; 0; 2]
         testCase "Push SP" <| fun () ->
             compilesTo [ENum 0L |> EStack |> SPush]
-                       [GET_STACK]
+                       [GET_SP]
                        [0]
         testCase "Push SP 3" <| fun () ->
             compilesTo [ENum 3L |> EStack |> SPush]
-                       [GET_STACK; PUSH1; 3 * 8 |> sbyte; ADD]
+                       [GET_SP; PUSH1; 3 * 8 |> sbyte; ADD]
                        [0]
         testCase "Push SP diff" <| fun () ->
-            compilesTo [ESum [ENum 12L |> EStack; ENum 2L |> EStack |> EMinus] |> SPush]
+            compilesTo [ESum [ENum 12L |> EStack; ENum 2L |> EStack |> ENeg] |> SPush]
                        [PUSH1; 80y]
                        [0]
         testCase "Tight inf loop" <| fun () ->
@@ -56,7 +56,7 @@ let interTests =
                        [PUSH0; JUMP_ZERO; -3y]
                        [0; 0]
         testCase "Small inf loop" <| fun () ->
-            compilesTo [SLabel 1; SNeg; SPush <| ELabel 1; SJump]
+            compilesTo [SLabel 1; SNot; SPush <| ELabel 1; SJump]
                        [NOT; PUSH0; JUMP_ZERO; -4y]
                        [0; 0]
     ]

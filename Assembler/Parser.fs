@@ -143,9 +143,9 @@ let expression: Parser<Expression, State> =
                     | "load4" -> expr1 |>> ELoad4
                     | "load8" -> expr1 |>> ELoad8
 
-                    | "sign1" -> expr1 |>> ESign1
-                    | "sign2" -> expr1 |>> ESign2
-                    | "sign4" -> expr1 |>> ESign4
+                    | "sigx1" -> expr1 |>> ESigx1
+                    | "sigx2" -> expr1 |>> ESigx2
+                    | "sigx4" -> expr1 |>> ESigx4
                     | unknown -> fail <| sprintf "Not an expression keyword: %s" unknown
             p stream
 
@@ -153,8 +153,8 @@ let expression: Parser<Expression, State> =
     do exprRef := choice [
         identifier >>= State.TryExpand
         positiveNumeral |>> ENum
-        skipChar '-' >>. expr |>> EMinus
-        skipChar '~' >>. expr |>> ENeg
+        skipChar '-' >>. expr |>> ENeg
+        skipChar '~' >>. expr |>> ENot
         skipChar '$' >>. expr >>= offset |>> (EStack >> ELoad8)
         skipChar '&' >>. expr >>= offset |>> EStack
         between (strWs "(") (strWs ")") innerExpr
@@ -210,22 +210,22 @@ let statement: Parser<Statement list, State> =
              | "load2" -> nArgs 1 [SLoad2]
              | "load4" -> nArgs 1 [SLoad4]
              | "load8" -> nArgs 1 [SLoad8]
-             | "sign1" -> nArgs 1 [SSign1]
-             | "sign2" -> nArgs 1 [SSign2]
-             | "sign4" -> nArgs 1 [SSign4]
+             | "sigx1" -> nArgs 1 [SSigx1]
+             | "sigx2" -> nArgs 1 [SSigx2]
+             | "sigx4" -> nArgs 1 [SSigx4]
              | "store1" -> nArgs 2 [SStore1]
              | "store2" -> nArgs 2 [SStore2]
              | "store4" -> nArgs 2 [SStore4]
              | "store8" -> nArgs 2 [SStore8]
 
              | "add" -> nArgs 2 [SAdd]
-             | "sub" -> nArgs 2 [SMinus; SAdd]
+             | "sub" -> nArgs 2 [SNeg; SAdd]
              | "mult" -> nArgs 2 [SMult]
-             | "minus" -> nArgs 1 [SMinus]
+             | "neg" -> nArgs 1 [SNeg]
              | "and" -> nArgs 2 [SAnd]
              | "or" -> nArgs 2 [SOr]
              | "xor" -> nArgs 2 [SXor]
-             | "neg" -> nArgs 1 [SNeg]
+             | "not" -> nArgs 1 [SNot]
              | "pow2" -> nArgs 1 [SPow2]
              | "shift_l" -> nArgs 2 [SPow2; SMult]
              | "shift_ru" -> nArgs 2 [SPow2; SDivU]
@@ -247,8 +247,8 @@ let statement: Parser<Statement list, State> =
              | "gt_u" -> nArgs 2 [SGtU]
              | "gt_s" -> nArgs 2 [SGtS]
 
-             | "alloc" -> nArgs 1 [SAlloc]
-             | "dealloc" -> nArgs 1 [SDealloc]
+             | "allocate" -> nArgs 1 [SAlloc]
+             | "deallocate" -> nArgs 1 [SDealloc]
 
              // Better error message than simply 'fail'.
              | _ -> fun _ -> Reply (Error, unexpectedString id)

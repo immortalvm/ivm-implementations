@@ -7,13 +7,13 @@ type Expression =
 
     | ESum of Expression list
     | EProd of Expression list
-    | EMinus of Expression
+    | ENeg of Expression
     | EPow2 of Expression
 
     | EConj of Expression list
     | EDisj of Expression list
     | EXor of Expression list
-    | ENeg of Expression
+    | ENot of Expression
 
     | EDivU of Expression * Expression
     | EDivS of Expression * Expression
@@ -36,9 +36,9 @@ type Expression =
     | ELoad2 of Expression
     | ELoad4 of Expression
     | ELoad8 of Expression
-    | ESign1 of Expression
-    | ESign2 of Expression
-    | ESign4 of Expression
+    | ESigx1 of Expression
+    | ESigx2 of Expression
+    | ESigx4 of Expression
 
 type MaxOneArgument = Expression option
 type MaxTwoArguments = (Expression * Expression option) option
@@ -52,12 +52,12 @@ type Statement =
     | SJump | SJumpZero | SJumpNotZero
 
     | SLoad1 | SLoad2 | SLoad4 | SLoad8
-    | SSign1 | SSign2 | SSign4
+    | SSigx1 | SSigx2 | SSigx4
     | SStore1 | SStore2 | SStore4 | SStore8
 
     | SAdd | SMult
-    | SMinus
-    | SAnd | SOr | SXor | SNeg
+    | SNeg
+    | SAnd | SOr | SXor | SNot
     | SPow2
     | SDivU | SDivS | SDivSU
     | SRemU | SRemS

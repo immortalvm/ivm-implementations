@@ -149,9 +149,9 @@ type Machine(initialMemory: seq<uint8>, ?location: uint64, ?trace: unit) =
             let offset = m.NextOp 1 |> signExtend1
             if m.Pop () = 0UL
             then m.ProgramCounter <- m.ProgramCounter + offset
-        | SET_STACK -> m.StackPointer <- m.Pop ()
+        | SET_SP -> m.StackPointer <- m.Pop ()
         | GET_PC -> m.ProgramCounter |> m.Push
-        | GET_STACK -> m.StackPointer |> m.Push
+        | GET_SP -> m.StackPointer |> m.Push
 
         | PUSH0 -> 0UL |> m.Push
         | PUSH1 -> m.NextOp 1 |> m.Push
@@ -159,9 +159,9 @@ type Machine(initialMemory: seq<uint8>, ?location: uint64, ?trace: unit) =
         | PUSH4 -> m.NextOp 4 |> m.Push
         | PUSH8 -> m.NextOp 8 |> m.Push
 
-        | SIGN1 -> m.Pop () |> signExtend1 |> m.Push
-        | SIGN2 -> m.Pop () |> signExtend2 |> m.Push
-        | SIGN4 -> m.Pop () |> signExtend4 |> m.Push
+        | SIGX1 -> m.Pop () |> signExtend1 |> m.Push
+        | SIGX2 -> m.Pop () |> signExtend2 |> m.Push
+        | SIGX4 -> m.Pop () |> signExtend4 |> m.Push
 
         | LOAD1 -> m.Pop () |> m.LoadN 1 |> m.Push
         | LOAD2 -> m.Pop () |> m.LoadN 2 |> m.Push
@@ -178,16 +178,16 @@ type Machine(initialMemory: seq<uint8>, ?location: uint64, ?trace: unit) =
         | DEALLOCATE -> m.Pop () |> m.Deallocate
 
         | ADD -> m.Pop () + m.Pop () |> m.Push
-        | MULTIPLY -> m.Pop () * m.Pop () |> m.Push
-        | DIVIDE ->
+        | MULT -> m.Pop () * m.Pop () |> m.Push
+        | DIV ->
             let x, y = m.Pop (), m.Pop ()
             if x = 0UL then 0UL else y / x
             |> m.Push
-        | REMAINDER ->
+        | REM ->
             let x, y = m.Pop (), m.Pop ()
             if x = 0UL then 0UL else y % x
             |> m.Push
-        | LESS_THAN -> (if m.Pop () > m.Pop () then -1 else 0) |> uint64 |> m.Push
+        | LT -> (if m.Pop () > m.Pop () then -1 else 0) |> uint64 |> m.Push
 
         | AND -> (m.Pop ()) &&& (m.Pop ()) |> m.Push
         | OR -> (m.Pop ()) ||| (m.Pop ()) |> m.Push

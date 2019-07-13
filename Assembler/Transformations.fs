@@ -24,8 +24,8 @@ let rec optimize (e: Expression): Expression =
     match e with
     | ENum _ -> e
     | ELabel _ -> e
-    | EMinus x -> minus <| optimize x
     | ENeg x -> neg <| optimize x
+    | ENot x -> binNot <| optimize x
     | EPow2 x -> pow2 <| optimize x
     | EStack x -> EStack <| optimize x
     | ELoad1 x -> ELoad1 <| optimize x
@@ -43,9 +43,9 @@ let rec optimize (e: Expression): Expression =
     | EDivSU (x, y) -> divSU (optimize x) (optimize y)
     | ERemU (x, y) -> remU (optimize x) (optimize y)
     | ERemS (x, y) -> remS (optimize x) (optimize y)
-    | ESign1 x -> sign 1 <| optimize x
-    | ESign2 x -> sign 2 <| optimize x
-    | ESign4 x -> sign 4 <| optimize x
+    | ESigx1 x -> sign 1 <| optimize x
+    | ESigx2 x -> sign 2 <| optimize x
+    | ESigx4 x -> sign 4 <| optimize x
 
     | ELtU (x, y) -> liftU ELtU (x, y) (<)
     | ELtS (x, y) -> liftS ELtS (x, y) (<)
@@ -67,19 +67,19 @@ and private liftS ctor (x, y) rel =
     | ENum m, ENum n -> ENum (if rel m n then -1L else 0L)
     | xx, yy -> ctor (xx, yy)
 
-and private minus x =
-    match x with
-    | ENum n -> ENum -n
-    | EMinus e -> e
-    | ENeg e -> sum [e; ENum 1L]
-    | _ -> EMinus x
-
 and private neg x =
     match x with
-    | ENum n -> ENum (n ^^^ -1L)
+    | ENum n -> ENum -n
     | ENeg e -> e
-    | EMinus e -> sum [e; ENum -1L]
+    | ENot e -> sum [e; ENum 1L]
     | _ -> ENeg x
+
+and private binNot x =
+    match x with
+    | ENum n -> ENum (n ^^^ -1L)
+    | ENot e -> e
+    | ENeg e -> sum [e; ENum -1L]
+    | _ -> ENot x
 
 and private pow2 x =
     match x with
@@ -97,13 +97,13 @@ and private prod lst =
     let toList x =
         let f y = match y with EProd ys -> ys | ENum 1L -> [] | _ -> [y]
         match x with
-        | EMinus y -> [ENum -1L] @ f y
+        | ENeg y -> [ENum -1L] @ f y
         | _ -> f x
     let fromList xs = match xs with
                       | [] -> ENum 1L
                       | [x] -> x
-                      | [ENum -1L; x] -> minus x
-                      | ENum -1L :: xx -> EMinus <| EProd xx
+                      | [ENum -1L; x] -> neg x
+                      | ENum -1L :: xx -> ENeg <| EProd xx
                       | _ -> EProd xs
     let combine = combineLists <| fun m n r -> match m * n with
                                                | 0L -> []
@@ -133,13 +133,13 @@ and private xor lst =
     let toList x =
         let f y = match y with EXor ys -> ys | ENum 0L -> [] | _ -> [y]
         match x with
-        | ENeg y -> [ENum -1L] @ f y
+        | ENot y -> [ENum -1L] @ f y
         | _ -> f x
     let fromList xs = match xs with
                       | [] -> ENum 0L
                       | [x] -> x
-                      | [ENum -1L; x] -> neg x
-                      | ENum -1L :: xx -> ENeg <| EXor xx
+                      | [ENum -1L; x] -> binNot x
+                      | ENum -1L :: xx -> ENot <| EXor xx
                       | _ -> EXor xs
     let combine = combineLists <| fun m n r -> match m ^^^ n with
                                                | 0L -> r
@@ -158,7 +158,7 @@ and private divS x y =
     | _, ENum 0L -> ENum 0L // x / 0 = 0 !
     | ENum m, ENum n -> m / n |> ENum
     | _, ENum 1L -> x
-    | _, ENum -1L -> minus x
+    | _, ENum -1L -> neg x
     | _, _ -> EDivS (x, y)
 
 and private divSU x y =
@@ -189,9 +189,9 @@ and private sign n x =
     match x with
     | ENum m -> signExtend n m |> ENum
     | _ -> match n with
-           | 1 -> ESign1 x
-           | 2 -> ESign2 x
-           | 4 -> ESign4 x
+           | 1 -> ESigx1 x
+           | 2 -> ESigx2 x
+           | 4 -> ESigx4 x
            | _ -> failwithf "No such byte-width: %d" n
 
 
@@ -216,17 +216,17 @@ let pushReduction (prog: Statement seq): Statement seq =
             | SLoad2, x::r -> pending <- ELoad2 x :: r
             | SLoad4, x::r -> pending <- ELoad4 x :: r
             | SLoad8, x::r -> pending <- ELoad8 x :: r
-            | SSign1, x::r -> pending <- ESign1 x :: r
-            | SSign2, x::r -> pending <- ESign2 x :: r
-            | SSign4, x::r -> pending <- ESign4 x :: r
+            | SSigx1, x::r -> pending <- ESigx1 x :: r
+            | SSigx2, x::r -> pending <- ESigx2 x :: r
+            | SSigx4, x::r -> pending <- ESigx4 x :: r
 
             | SAdd, y::x::r -> pending <- ESum [x;y] :: r
             | SMult, y::x::r -> pending <- EProd [x;y] :: r
-            | SMinus, x::r -> pending <- EMinus x :: r
+            | SNeg, x::r -> pending <- ENeg x :: r
             | SAnd, y::x::r -> pending <- EConj [x;y] :: r
             | SOr, y::x::r -> pending <- EDisj [x;y] :: r
             | SXor, y::x::r -> pending <- EXor [x;y] :: r
-            | SNeg, x::r -> pending <- ENeg x :: r
+            | SNot, x::r -> pending <- ENot x :: r
             | SPow2, x::r -> pending <- EPow2 x :: r
             | SDivU, y::x::r -> pending <- EDivU (x, y) :: r
             | SDivS, y::x::r -> pending <- EDivS (x, y) :: r

@@ -1,7 +1,7 @@
 ### Expression checks
 
     stack_size = 16384
-    alloc! stack_size
+    allocate! stack_size
     add! stack_size
     set_sp
 
@@ -20,19 +20,19 @@
     x110 = (load1 (+ stuff 11))
     x120 = (load1 (+ stuff 12))
 
-    y0 = (sign1 (load1 stuff))
-    y10 = (sign1 (load1 (+ more_stuff 1)))
-    y20 = (sign1 (load1 (+ more_stuff 2)))
-    y30 = (sign1 (load1 (+ more_stuff 3)))
-    y40 = (sign1 (load1 (+ more_stuff 4)))
-    y50 = (sign1 (load1 (+ more_stuff 5)))
-    y60 = (sign1 (load1 (+ more_stuff 6)))
-    y70 = (sign1 (load1 (+ more_stuff 7)))
-    y80 = (sign1 (load1 (+ more_stuff 8)))
-    y90 = (sign1 (load1 (+ more_stuff 9)))
-    y100 = (sign1 (load1 (+ more_stuff 10)))
-    y110 = (sign1 (load1 (+ more_stuff 11)))
-    y120 = (sign1 (load1 (+ more_stuff 12)))
+    y0 = (sigx1 (load1 stuff))
+    y10 = (sigx1 (load1 (+ more_stuff 1)))
+    y20 = (sigx1 (load1 (+ more_stuff 2)))
+    y30 = (sigx1 (load1 (+ more_stuff 3)))
+    y40 = (sigx1 (load1 (+ more_stuff 4)))
+    y50 = (sigx1 (load1 (+ more_stuff 5)))
+    y60 = (sigx1 (load1 (+ more_stuff 6)))
+    y70 = (sigx1 (load1 (+ more_stuff 7)))
+    y80 = (sigx1 (load1 (+ more_stuff 8)))
+    y90 = (sigx1 (load1 (+ more_stuff 9)))
+    y100 = (sigx1 (load1 (+ more_stuff 10)))
+    y110 = (sigx1 (load1 (+ more_stuff 11)))
+    y120 = (sigx1 (load1 (+ more_stuff 12)))
 
     push! (+ more_stuff -stuff) # 13
 

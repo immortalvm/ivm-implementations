@@ -60,7 +60,7 @@ let assemblyLanguageIntro =
     let prime = ENum 982451653L
     let n = ENum 7L
     let xx = ENum 99L
-    let yy = EMinus (ENum 13L)
+    let yy = ENeg (ENum 13L)
     let xx2 = ENum 9L
     [
         SLabel 1
@@ -73,19 +73,19 @@ let assemblyLanguageIntro =
         SPush prime
         SPush <| EStack n
         SPush <| ELoad8 (EStack n)
-        SPush <| ESum [ELabel 1; EMinus (ELoad8 (EStack (ENum 0L)))]
+        SPush <| ESum [ELabel 1; ENeg (ELoad8 (EStack (ENum 0L)))]
 
         SJump
         SPush <| ELabel 1; SJump
         SJumpZero
         SPush <| ELabel 1; SJumpZero
 
-        SPush <| ESum [prime; EMinus (ELoad8 (EStack (ENum 4L)))]
+        SPush <| ESum [prime; ENeg (ELoad8 (EStack (ENum 4L)))]
         SPush <| ELabel 1; SJumpZero
         SJumpNotZero
 
         SLoad1; SLoad2; SLoad4; SLoad8
-        ELabel 1 |> ELoad4 |> ESign4 |> SPush
+        ELabel 1 |> ELoad4 |> ESigx4 |> SPush
         SPush <| ENum -1L
 
         SStore1; SStore2; SStore4; SStore8
@@ -98,13 +98,13 @@ let assemblyLanguageIntro =
         SPush <| ENum -(99L - 13L); SAdd
         SPush <| ENum -99L; SAdd
         SPush <| ENum (99L + 13L)
-        SMult; SMinus
+        SMult; SNeg
         SDivU; SDivS; SRemU; SRemS
 
         SAnd
         SPush <| ENum 127L; SAnd
         SPush <| ENum (982451653L &&& 4095L)
-        SOr; SXor; SNeg;
+        SOr; SXor; SNot;
         SPow2
         SPow2; SMult
         SPow2; SDivU

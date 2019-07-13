@@ -1,7 +1,7 @@
 ﻿### Push the numbers 10 .. 0 onto the stack.
 
     stack_size = 200
-    alloc! stack_size
+    allocate! stack_size
     add! stack_size
     set_sp
 

@@ -65,22 +65,22 @@ let pop n =
     | 0 -> []
     | 1 -> pop1
     | 2 -> pop1 @ pop1
-    | n -> [GET_STACK] @ pushNum (int64 n * 8L) @ [ADD; SET_STACK]
+    | n -> [GET_SP] @ pushNum (int64 n * 8L) @ [ADD; SET_SP]
 
 let pushTrue = [PUSH0; NOT] // Push -1
-let changeSign = pushTrue @ [MULTIPLY]
-let isZero = [PUSH1; 1y; LESS_THAN]
+let changeSign = pushTrue @ [MULT]
+let isZero = [PUSH1; 1y; LT]
 
-let addr n = [GET_STACK; PUSH1; int8 (n * 8); ADD]
+let addr n = [GET_SP; PUSH1; int8 (n * 8); ADD]
 let get n = addr n @ [LOAD8]
 let set n = addr n @ [STORE8]
 let toSign =
     [
-        PUSH1; 63y; POW2; LESS_THAN // -1 if positive, 0 if negative
-        PUSH1; 2y; MULTIPLY         // -2  or  0
+        PUSH1; 63y; POW2; LT // -1 if positive, 0 if negative
+        PUSH1; 2y; MULT         // -2  or  0
         NOT                         //  1  or -1
     ]
-let abs = get 0 @ toSign @ [MULTIPLY] // Keeps 2^63 unchanged
+let abs = get 0 @ toSign @ [MULT] // Keeps 2^63 unchanged
 let divRemBasis unsignedOp =
     List.concat
         [
@@ -91,26 +91,26 @@ let divRemBasis unsignedOp =
             // d :: x :: y :: rest, where d = abs y <unsignedOp> abs x.
             get 2 @ toSign
             get 2 @ toSign
-            [MULTIPLY]
+            [MULT]
             // s :: d :: ..., where s = 1 if x and y have the same sign, otherwise -1.
-            [MULTIPLY]
+            [MULT]
             // d' :: x :: y :: rest, where d' = d or d' = -d.
             set 2
             // x :: 'd :: rest
             pop 1
         ]
-let divS = divRemBasis [DIVIDE]
-let remS = divRemBasis [REMAINDER]
+let divS = divRemBasis [DIV]
+let remS = divRemBasis [REM]
 let divSU =
     List.concat
         [
             // x :: y :: rest
             get 1 @ abs
             get 1
-            [DIVIDE]
+            [DIV]
             get 2 @ toSign
             // sign(y) :: |y| / x :: x :: y :: rest
-            [MULTIPLY]
+            [MULT]
             set 2
             pop 1
         ]
@@ -123,7 +123,7 @@ let offsetSign2 =
 
 let eq = [XOR] @ isZero
 
-let ltU = [LESS_THAN]
+let ltU = [LT]
 let gtU = get 1 @ ltU @ set 1
 let lteU = gtU @ isZero
 let gteU = ltU @ isZero
@@ -155,11 +155,11 @@ let deltaJumpNotZero delta = isZero @ deltaJumpZero (delta - opLen isZero)
 
 let genericConditional interjection =
     [
-        GET_STACK; PUSH1; 8y; ADD; LOAD8 // a::x::r -> x::a::x::r
+        GET_SP; PUSH1; 8y; ADD; LOAD8 // a::x::r -> x::a::x::r
     ] @ interjection @ [
         JUMP_ZERO; 6y
         // If not zero:
-        GET_STACK; PUSH1; 8y; ADD; STORE8 // a::x::r -> a::r
+        GET_SP; PUSH1; 8y; ADD; STORE8 // a::x::r -> a::r
         JUMP
     ] @ pop 2 // If zero
 
@@ -188,7 +188,7 @@ let addSpes ((c1, a1): Spes) ((c2, a2): Spes) =
             | _, _ -> c1 @ c2 @ [ADD]
     (c, a1 + a2)
 
-let minusSpes ((code, acc): Spes) : Spes =
+let negSpes ((code, acc): Spes) : Spes =
     match code with
     | [PUSH0] -> [PUSH0], -acc
     | _ -> code @ changeSign, -acc
@@ -198,9 +198,9 @@ let multSpes (s1: Spes) (s2: Spes) : Spes =
     | ([PUSH0], m), ([PUSH0], n) -> ([PUSH0], m * n)
     | _, ([PUSH0], 0L) -> zeroSpes
     | ([PUSH0], 0L), _ -> zeroSpes
-    | (c, m), ([PUSH0], n) -> c @ pushNum n @ [MULTIPLY], m * n
-    | ([PUSH0], m), (c, n) -> c @ pushNum m @ [MULTIPLY], m * n
-    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ [MULTIPLY], 0L
+    | (c, m), ([PUSH0], n) -> c @ pushNum n @ [MULT], m * n
+    | ([PUSH0], m), (c, n) -> c @ pushNum m @ [MULT], m * n
+    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ [MULT], 0L
 
 let pow2Spes (spes: Spes) : Spes =
     match spes with
@@ -226,25 +226,25 @@ let xorSpes (s1: Spes) (s2: Spes) : Spes =
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], m ^^^ n
     | _ -> collapseSpes s1 @ collapseSpes s2 @ [XOR], 0L
 
-let negSpes ((code, acc): Spes) : Spes =
+let notSpes ((code, acc): Spes) : Spes =
     match code with
     | [PUSH0] -> [PUSH0], acc ^^^ -1L
     | _ -> code @ [NOT], (acc ^^^ -1L) + 1L
 
-let sign1Spes (spes: Spes) : Spes =
+let sigx1Spes (spes: Spes) : Spes =
     match spes with
     | [PUSH0], n -> [PUSH0], uint64 n |> signExtend1 |> int64
-    | _ -> collapseSpes spes @ [SIGN1], 0L
+    | _ -> collapseSpes spes @ [SIGX1], 0L
 
-let sign2Spes (spes: Spes) : Spes =
+let sigx2Spes (spes: Spes) : Spes =
     match spes with
     | [PUSH0], n -> [PUSH0], uint64 n |> signExtend2 |> int64
-    | _ -> collapseSpes spes @ [SIGN2], 0L
+    | _ -> collapseSpes spes @ [SIGX2], 0L
 
-let sign4Spes (spes: Spes) : Spes =
+let sigx4Spes (spes: Spes) : Spes =
     match spes with
     | [PUSH0], n -> [PUSH0], uint64 n |> signExtend4 |> int64
-    | _ -> collapseSpes spes @ [SIGN4], 0L
+    | _ -> collapseSpes spes @ [SIGX4], 0L
 
 
 let divUSpes (s1: Spes) (s2: Spes) : Spes =
@@ -253,7 +253,7 @@ let divUSpes (s1: Spes) (s2: Spes) : Spes =
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], (uint64 m / uint64 n |> int64)
     | _, ([PUSH0], 1L) -> s1
     | ([PUSH0], 0L), _ -> zeroSpes
-    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ [DIVIDE], 0L
+    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ [DIV], 0L
 
 let divSSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
@@ -281,7 +281,7 @@ let remUSpes (s1: Spes) (s2: Spes) : Spes =
     | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], (uint64 m % uint64 n |> int64)
     | _, ([PUSH0], 1L) -> zeroSpes
     | ([PUSH0], 0L), _ -> zeroSpes
-    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ [REMAINDER], 0L
+    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ [REM], 0L
 
 let remSSpes (s1: Spes) (s2: Spes) : Spes =
     match s1, s2 with
@@ -369,8 +369,8 @@ let exprPushCore (lookup: int -> int) =
         | ESum lst ->
             let tag e =
                 match e with
-                | ELabel _ -> 1 | EMinus (ELabel _) -> -1
-                | EStack _ -> 2 | EMinus (EStack _) -> -2
+                | ELabel _ -> 1 | ENeg (ELabel _) -> -1
+                | EStack _ -> 2 | ENeg (EStack _) -> -2
                 | _ -> 0
             let cnt = new Map<int,int>(List.countBy tag lst)
             let nPc = mapGet cnt 1 0 - mapGet cnt -1 0
@@ -379,7 +379,7 @@ let exprPushCore (lookup: int -> int) =
             let mutable spes = zeroSpes
             let multN n s = optM multSpes 1L s ([PUSH0], int64 n)
             spes <- addSpes spes <| multN nPc ([GET_PC], 0L)
-            spes <- addSpes spes <| multN nSp ([GET_STACK], 0L)
+            spes <- addSpes spes <| multN nSp ([GET_SP], 0L)
 
             for ex in lst do
                 let p, d = match spes with
@@ -388,20 +388,20 @@ let exprPushCore (lookup: int -> int) =
                 let inner = epc p d
                 let s = match ex with
                         | ELabel i -> [PUSH0], int64 (lookup i - p)
-                        | EMinus (ELabel i) -> [PUSH0], int64 (p - lookup i)
+                        | ENeg (ELabel i) -> [PUSH0], int64 (p - lookup i)
                         | EStack e -> inner e |> multN 8
-                        | EMinus (EStack e) -> inner e |> multN -8
+                        | ENeg (EStack e) -> inner e |> multN -8
                         | e -> inner e
                 spes <- addSpes spes s
             // Finally return the result
             spes
 
-        | EMinus e -> e |> rec1 |> minusSpes
-        | EPow2 e -> e |> rec1 |> pow2Spes
         | ENeg e -> e |> rec1 |> negSpes
-        | ESign1 e -> e |> rec1 |> sign1Spes
-        | ESign2 e -> e |> rec1 |> sign2Spes
-        | ESign4 e -> e |> rec1 |> sign4Spes
+        | EPow2 e -> e |> rec1 |> pow2Spes
+        | ENot e -> e |> rec1 |> notSpes
+        | ESigx1 e -> e |> rec1 |> sigx1Spes
+        | ESigx2 e -> e |> rec1 |> sigx2Spes
+        | ESigx4 e -> e |> rec1 |> sigx4Spes
         | ELoad1 e -> rec1coll e @ [LOAD1], 0L
         | ELoad2 e -> rec1coll e @ [LOAD2], 0L
         | ELoad4 e -> rec1coll e @ [LOAD4], 0L
@@ -441,7 +441,7 @@ let expressionMult e lookup =
     match exprPushCore lookup 0 0 e with
     | [PUSH0], 1L -> []
     | [PUSH0], 0L -> pop 1 @ [PUSH0] // Pop value, push 0.
-    | spes -> collapseSpes spes @ [MULTIPLY]
+    | spes -> collapseSpes spes @ [MULT]
 
 let expressionAnd e lookup =
     match exprPushCore lookup 0 0 e with
@@ -466,13 +466,13 @@ let expressionDivU e lookup =
     match exprPushCore lookup 0 0 e with
     | [PUSH0], 0L -> pop 1 @ [PUSH0] // NB: x / 0 = 0
     | [PUSH0], 1L -> []
-    | spes -> collapseSpes spes @ [DIVIDE]
+    | spes -> collapseSpes spes @ [DIV]
 
 let expressionRemU e lookup =
     match exprPushCore lookup 0 0 e with
     | [PUSH0], 0L -> pop 1 @ [PUSH0] // NB: x % 0 = 0
     | [PUSH0], 1L -> pop 1 @ [PUSH0] // Pop value, push 0.
-    | spes -> collapseSpes spes @ [REMAINDER]
+    | spes -> collapseSpes spes @ [REM]
 
 let expressionDivS e lookup =
     match exprPushCore lookup 0 0 e with
@@ -514,20 +514,20 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
             match rest with
             | SData lst :: r -> frag r lst
             | SExit :: r -> frag r [EXIT]
-            | SNeg :: r -> frag r [NOT]
-            | SMinus :: r -> frag r changeSign
+            | SNot :: r -> frag r [NOT]
+            | SNeg :: r -> frag r changeSign
             | SPow2 :: r -> frag r [POW2]
 
-            | SSetSp :: r -> frag r [SET_STACK]
+            | SSetSp :: r -> frag r [SET_SP]
             | SAlloc :: r -> frag r [ALLOCATE]
             | SDealloc :: r -> frag r [DEALLOCATE]
             | SLoad1 :: r -> frag r [LOAD1]
             | SLoad2 :: r -> frag r [LOAD2]
             | SLoad4 :: r -> frag r [LOAD4]
             | SLoad8 :: r -> frag r [LOAD8]
-            | SSign1 :: r -> frag r [SIGN1]
-            | SSign2 :: r -> frag r [SIGN2]
-            | SSign4 :: r -> frag r [SIGN4]
+            | SSigx1 :: r -> frag r [SIGX1]
+            | SSigx2 :: r -> frag r [SIGX2]
+            | SSigx4 :: r -> frag r [SIGX4]
             | SStore1 :: r -> frag r [STORE1]
             | SStore2 :: r -> frag r [STORE2]
             | SStore4 :: r -> frag r [STORE4]
@@ -557,12 +557,12 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
             | SJumpZero :: r -> frag r genericJumpZero
             | SJumpNotZero :: r -> frag r genericJumpNotZero
             | SAdd :: r -> frag r [ADD]
-            | SMult :: r -> frag r [MULTIPLY]
+            | SMult :: r -> frag r [MULT]
             | SAnd :: r -> frag r [AND]
             | SOr :: r -> frag r [OR]
             | SXor :: r -> frag r [XOR]
-            | SDivU :: r -> frag r [DIVIDE]
-            | SRemU :: r -> frag r [REMAINDER]
+            | SDivU :: r -> frag r [DIV]
+            | SRemU :: r -> frag r [REM]
             | SDivS :: r -> frag r divS
             | SRemS :: r -> frag r remS
             | SDivSU :: r -> frag r divSU

@@ -1,45 +1,50 @@
 ﻿
 ### NB: Still work in progress
 ###
-### This file explains the iVM assembly language. It is itself a valid assembly
-### file, but the code does not make much sense. Notice that '#' indicates that
+### This file explains the iVM assembly  language. It is itself a valid assembly
+### file, but the code does not make  much sense. Notice that '#' indicates that
 ### the rest of the line is a comment.
 ###
-### Other than comments, an iVM assembly file consist of a list of statements.
+### Other than comments,  an iVM assembly file consist of  a list of statements.
 ### Whitespace is not significant, but it recommended to put each statement on a
 ### separate line.
 ###
-### The assembly language is case-sensitive, with all the instructions written
-### in lower case (even though we have used upper case in the headings for them
+### The assembly language  is case-sensitive, with all  the instructions written
+### in lower case (even though we have  used upper case in the headings for them
 ### to stand out).
 
 
-### 1. SPECIAL STATEMENTS yada yada yada yada yada yada yada yada yada yada yada yada yada
+### 1. SPECIAL STATEMENTS
 
     ## There are three special statements: labels, definitions and data
 
-    ## A label statement indicates a place in the code (memory address) at
+    ## A  label statement  indicates a  place in  the code  (memory address)  at
     ## runtime. By convention, all other statements should be indented.
 my_label:
 
     ## Definitions define abbreviations, usually constants.
     prime_number = 982451653
 
-    ## Labels and definitions use the same namespace, which is independent from
-	## the names of instructions. Thus, you are free to define a label called
-    ## 'add' or 'exit'. Names of labels and definitions consist of letters,
-    ## digits and underscore (_), and they cannot start with a digit.
+    ## Labels and definitions use the  same namespace, which is independent from
+	## the names  of instructions. Thus, you  are free to define  a label called
+	## 'add'  or 'exit'.  Names of  labels and  definitions consist  of letters,
+	## digits and underscore (_), and they cannot start with a digit.
 
     ## A data statement specifies a list of bytes that should be included in the
-    ## binary as is. It is a whitespace-separated list of numbers between -255
-    ## and 255 with "wrapping". For example, -1 and 255 denote the same byte.
+    ## binary as is.  It is a whitespace-separated list of  numbers between -255
+    ## and 255  with "wrapping". For example,  -1 and 255 denote  the same byte.
     ## All numbers can be specified in decimal, octal or hexadecimal notation.
     data [ 0 1 -2 0o200 -0xff ]
 
-    ## The remaining statements correspond to actual machine instructions.
-    ## However, there is not a one-to-one correspondence. The assembly language
-    ## also contain several "pseudo-instructions" that translate into multiple
-    ## native instructions. Moreover, the assembler will handle some technical
+    ## Starting a program with a data block is currently a bad idea, as
+    ## currently our VM does always execute programs from the top.
+    ## (Incidentally, 0 means that the VM should terminate immediately. Thus,
+    ## the meaningless statements below do not cause the machine to crash.)
+
+    ## The  remaining  statements  correspond to  actual  machine  instructions.
+    ## However, there is not a  one-to-one correspondence. The assembly language
+    ## also contain  several "pseudo-instructions" that translate  into multiple
+    ## native instructions.  Moreover, the assembler will  handle some technical
     ## issues such as choosing between long and short conditional jumps.
 
 
@@ -102,12 +107,12 @@ my_label:
     jump_not_zero
 
 
-    ### 4. LOAD, SIGN
+    ### 4. LOAD, SIGX
 
-    ## The four load instructions all pop and address A from the stack and push
-    ## a 64 bit value, the contents of the memory at that address (and onwards).
-    ## When less than 8 bytes are fetched, the value is considered unsigned and
-    ## is 0-padded before pushing. We use little-endian encoding of multi-byte
+    ## The four load statements all pop one address from the stack and push a 64
+    ## bit value,  the contents of  the memory  at that location  (and onwards).
+    ## When less than 8 bytes are  fetched, the value is considered unsigned and
+    ## is 0-padded before  pushing. We use little-endian  encoding of multi-byte
     ## values.
     load1  # Pop address and push the unsigned byte at that memory location.
     load2  # ... unsigned 16-bit word ...
@@ -118,29 +123,29 @@ my_label:
     load4! my_label  # Load the unsigned 32-bit word at my_label.
 
     ## If you want the signed value at a memory location instead, follow the load
-    ## statement with a corresponding sign statment (sign1, sign2 or sign4).
+    ## statement with a corresponding sigx statement (sigx1, sigx2 or sigx4).
     #
-    ## sign1 performs sign extension from 8 to 64 bits. More precisely, it
+    ## sigx1 performs "sign extension" from 8 to 64 bits. More precisely, it
     ## (1) pops a 64-bit value from the stack,
-    ## (2) sets bits 8-63 (inclusive, couting from 0) to the same state as bit 7,
+    ## (2) sets bits 8..63 (counting from 0) to the same state as bit 7,
     ## (3) pushes the result back onto the stack.
     #
-    ## sign2 and sign4 are similar.
-    sign4  # Sign extension from 32 to 64 bits.
+    ## sigx2 and sigx4 are similar.
+    sigx4  # Sign extension from 32 to 64 bits.
 
-    ## For completeness, we also let 'signN! x' be sugar for 'push! x signN'.
+    ## For completeness, we also let 'sigxN! x' be sugar for 'push! x sigxN'.
     ## However, it is perhaps not very useful.
-    sign1! 0xff  # Push -1.
+    sigx1! 0xff  # Push -1.
 
 
     #### 5. STORE
 
     ## The four store operations pop an address A, then a value V from the stack
     ## and writes the least significant bytes of V to A.
-    store1  # Write the least significant byte of V to A.
-    store2  # Write 16 bits of V to A.
-    store4  # Write 32 bits of V to A.
-    store8  # Write all ov V to A.
+    store1                      # Write the least significant byte of V to A.
+    store2                      # Write 16 bits of V to A.
+    store4                      # Write 32 bits of V to A.
+    store8                      # Write all ov V to A.
 
     ## 'storeN! x' is sugar for 'push! x storeN'
     store4! my_label  # Pop value and write lower 32 bits to memory at my_label.
@@ -165,7 +170,7 @@ my_label:
     sub!! xx yy   # Push xx - yy.
 
     mult          # Pop two values and push their product.
-    minus         # Pop one value and push its additive inverse
+    neg           # Pop value and push its additive inverse (two's complement).
 
     div_u         # Pop x, then y, and push y / x using unsigned division.
     div_s         # Similar, but using signed division.
@@ -182,18 +187,20 @@ my_label:
     and! 0x7f                 # Sugar for 'push! 0x7f and'.
     and!! 0xfff prime_number  # Sugar for 'push!! 0xfff prime_number'.
 
-    or            # Pop two values and push their binary "or".
-    xor           # Pop two values and push their binary "xor".
-    neg           # Pop one value and push its binary "not" (flipping all bits).
+    or          # Pop two values and push their binary "or".
+    xor         # Pop two values and push their binary "xor".
+    not         # Pop one value and push its binary negation (one's complement).
 
-    ## The reason for choosing the term "neg" instead of "not" is avoid confusion
-    ## with boolean negation (where every positive number is considered true).
+    ## Notice the distinction between 'not' (flipping all bits) and 'neg' (which
+    ## leaves 0 unchanged). These names are standard in assembly language.
 
     ## The pow2 statement pops x (unsigned) and pushes 2 to the power of x.
     pow2
     shift_l       # Sugar for 'pow2 mult'
     shift_ru      # Sugar for 'pow2 div_u'
-    shift_rs      # Sugar for 'pow2 div_s'
+    shift_rs      # Almost sugar for 'pow2 div_s', except handle the special
+                  # case of shifting the least negative value 63 bits to the
+                  # right. (It should be -1.)
 
 
     #### 8. COMPARISON
@@ -219,19 +226,19 @@ my_label:
 
     #### 9. ALLOC, DEALLOC
 
-    ## The alloc statement pops x (unsigned) from the stack, allocates x
-    ## consecutive bytes of unused memory, and pushes the address of the first
-    ## byte back onto the stack. Undefined if x is 0.
-    alloc
+    ## The allocate statement pops x (unsigned) from the stack, allocates a
+    ## range of x consecutive bytes of unused memory, and pushes the address of
+    ## the first byte back onto the stack. Undefined if x is 0.
+    allocate
 
-    alloc! prime_number  # Sugar for 'push! prime_number alloc'.
+    allocate! prime_number  # Sugar for 'push! prime_number allocate'.
 
-    ## The dealloc statement an address A from the stack. If it is the address of
-    ## a previously allocated range of memory which has not in the mean time been
-    ## deallocated, then this range is now deallocated.
-    dealloc
+    ## The deallocate statement pops an address A from the stack. If it is the
+    ## start address of a previously allocated range of memory (which has not in
+    ## the mean time been deallocated), then the whole range is now deallocated.
+    deallocate
 
-    dealloc! $8      # Sugar for 'push! $8 dealloc'.
+    deallocate! $8      # Sugar for 'push! $8 deallocate'.
 
 
     #### 10. IO STATEMENTS

@@ -53,9 +53,9 @@ let ExpressionTests =
             testCase "Stack0" <| success (EStack (ENum 0L)) expression "&0"
         ]
         testList "Unary" [
-            testCase "Minus" <| success (EMinus <| ELabel 1) expression "-x"
-            testCase "Negation" <| success (ENeg  <| pc) expression "~$pc"
-            testCase "Minus-negation" <| success (ENum 0xaL |> ENeg |> EMinus) expression "-~0xa"
+            testCase "Minus" <| success (ENeg <| ELabel 1) expression "-x"
+            testCase "Negation" <| success (ENot  <| pc) expression "~$pc"
+            testCase "Minus-negation" <| success (ENum 0xaL |> ENot |> ENeg) expression "-~0xa"
             testCase "Peek" <| success (ENum 0L |> EStack |> ELoad8) expression "$0"
             testCase "Stack" <| success (ELabel 1 |> EStack ) expression "&x"
         ]
