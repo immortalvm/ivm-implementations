@@ -23,7 +23,7 @@ let assem source binary symbols =
 let writeStack (endStack: seq<int64>) =
     printfn "End stack:"
     for x in endStack do
-        printfn "%s" <| showValue x
+        printfn "0x..%05X %7d" (uint64 x &&& 0xfffffUL) x
 
 let run fileName shouldTrace =
     let bytes = System.IO.File.ReadAllBytes fileName
