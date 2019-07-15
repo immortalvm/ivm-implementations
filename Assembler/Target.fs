@@ -379,7 +379,7 @@ let exprPushCore (lookup: int -> int) =
             let mutable spes = zeroSpes
             let multN n s = optM multSpes 1L s ([PUSH0], int64 n)
             spes <- addSpes spes <| multN nPc ([GET_PC], 0L)
-            spes <- addSpes spes <| multN nSp ([GET_SP], 0L)
+            spes <- addSpes spes <| multN nSp ([GET_SP], depth * 8 |> int64)
 
             for ex in lst do
                 let p, d = match spes with
