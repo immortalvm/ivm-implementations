@@ -11,6 +11,6 @@
     <Compile Include="Executor.fs" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="FSharp.Core" Version="4.6.2" />
+    <PackageReference Include="FSharp.Core" Version="4.7.0" />
   </ItemGroup>
 </Project>
