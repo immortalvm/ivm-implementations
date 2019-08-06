@@ -23,7 +23,7 @@ let check fileName =
 let integrationTests =
     let case (name : string) =
         let caseName = System.IO.Path.GetFileNameWithoutExtension name
-        let fileName = System.IO.Path.Combine([|DIRECTORY; name|])
+        let fileName = System.IO.Path.Combine [|DIRECTORY; name|]
         testCase caseName <| fun () -> check fileName
     System.IO.Directory.EnumerateFiles DIRECTORY
     |> Seq.map System.IO.Path.GetFileName

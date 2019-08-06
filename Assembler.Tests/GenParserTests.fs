@@ -28,8 +28,8 @@ let BasicTests =
         testCase "Comment" <| success () comment "# abc\n"
         testCase "Whitespace" <| success () whitespace " \r# abcd\n  \t #7"
         testCase "Identifier" <| success "xY_123" identifier "xY_123  # comment"
-        testCase "Numeral-dec" <| success  1234L positiveNumeral "1234 # comment"
-        testCase "Numeral-oct" <| success  08L positiveNumeral "0o10 # comment"
+        testCase "Numeral-dec" <| success 1234L positiveNumeral "1234 # comment"
+        testCase "Numeral-oct" <| success 08L positiveNumeral "0o10 # comment"
         testCase "Numeral-hex-big"<| success -1L positiveNumeral ("0x" + String.replicate 16 "f")
 
         testCase "Comment-fail" <| failure "Expecting: '#'" comment "not a comment"

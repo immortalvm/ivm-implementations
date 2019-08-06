@@ -11,6 +11,9 @@ open Assembler.Ast
 open Assembler.Parser
 
 
+[<Literal>]
+let DIRECTORY = "test_code"
+
 let parse (progString: string) =
     let bytes = System.Text.Encoding.UTF8.GetBytes(progString)
     use stream = new System.IO.MemoryStream(bytes)
@@ -20,9 +23,6 @@ let parse (progString: string) =
 let success expected progString () =
     let result = try parse progString with ParseException(msg) -> failtest msg
     Expect.sequenceEqual result expected "Unexpected parsing result"
-
-let successFile expected filename =
-    success expected <| System.IO.File.ReadAllText filename
 
 let failure pattern progString () =
     try parse progString |> failtestf "Success: %O"
@@ -131,11 +131,18 @@ let assemblyLanguageIntro =
         SExit
     ]
 
+let parseFile expected (name: string) =
+    let caseName = System.IO.Path.GetFileNameWithoutExtension name
+    testCase caseName <| fun () ->
+        let fileName = System.IO.Path.Combine [|DIRECTORY; name|]
+        let text = System.IO.File.ReadAllText fileName
+        success expected text ()
+
 [<Tests>]
-let ExampleFileTests =
-    testList "Example files" [
-        testCase "Example 1" <| successFile example1 "test_code/ex1_old.s"
-        testCase "Intro" <| successFile assemblyLanguageIntro "test_code/intro1_statements.s"
+let ParseFileTests =
+    testList "Parse files" [
+        parseFile example1 "ex1_old.s"
+        parseFile assemblyLanguageIntro "intro1_statements.s"
     ]
 
 [<Tests>]

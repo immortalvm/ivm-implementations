@@ -39,7 +39,7 @@ type State = {
             let s = str.UserState
             let i = s.Count + 1
             str.UserState <- { s with Count = i }
-            Reply [SCall i ]
+            Reply [SCall i]
 
         static member ObsLabel id (str: CharStream<State>) =
             let s = str.UserState
@@ -186,62 +186,62 @@ let statement: Parser<Statement list, State> =
                 else fun _ -> Reply (Error, unexpected "Too many arguments.")
 
             match id with
-             | "data" -> data |>> (SData >> List.singleton)
-             | "exit" -> nArgs 0 [SExit]
-             | "push" -> pArgs
-             | "set_sp" -> nArgs 1 [SSetSp]
-             | "call" -> nArgs 1 [] .>>. State.Call |>> fun (x, y) -> x @ y
-             | "return" -> nArgs 0 [SJump]
-             | "jump" -> nArgs 1 [SJump]
-             | "jump_zero" -> nArgs 2 [SJumpZero]
-             | "jump_not_zero" -> nArgs 2 [SJumpNotZero]
+            | "data" -> data |>> (SData >> List.singleton)
+            | "exit" -> nArgs 0 [SExit]
+            | "push" -> pArgs
+            | "set_sp" -> nArgs 1 [SSetSp]
+            | "call" -> nArgs 1 [] .>>. State.Call |>> fun (x, y) -> x @ y
+            | "return" -> nArgs 0 [SJump]
+            | "jump" -> nArgs 1 [SJump]
+            | "jump_zero" -> nArgs 2 [SJumpZero]
+            | "jump_not_zero" -> nArgs 2 [SJumpNotZero]
 
-             | "load1" -> nArgs 1 [SLoad1]
-             | "load2" -> nArgs 1 [SLoad2]
-             | "load4" -> nArgs 1 [SLoad4]
-             | "load8" -> nArgs 1 [SLoad8]
-             | "sigx1" -> nArgs 1 [SSigx1]
-             | "sigx2" -> nArgs 1 [SSigx2]
-             | "sigx4" -> nArgs 1 [SSigx4]
-             | "store1" -> nArgs 2 [SStore1]
-             | "store2" -> nArgs 2 [SStore2]
-             | "store4" -> nArgs 2 [SStore4]
-             | "store8" -> nArgs 2 [SStore8]
+            | "load1" -> nArgs 1 [SLoad1]
+            | "load2" -> nArgs 1 [SLoad2]
+            | "load4" -> nArgs 1 [SLoad4]
+            | "load8" -> nArgs 1 [SLoad8]
+            | "sigx1" -> nArgs 1 [SSigx1]
+            | "sigx2" -> nArgs 1 [SSigx2]
+            | "sigx4" -> nArgs 1 [SSigx4]
+            | "store1" -> nArgs 2 [SStore1]
+            | "store2" -> nArgs 2 [SStore2]
+            | "store4" -> nArgs 2 [SStore4]
+            | "store8" -> nArgs 2 [SStore8]
 
-             | "add" -> nArgs 2 [SAdd]
-             | "sub" -> nArgs 2 [SNeg; SAdd]
-             | "mult" -> nArgs 2 [SMult]
-             | "neg" -> nArgs 1 [SNeg]
-             | "and" -> nArgs 2 [SAnd]
-             | "or" -> nArgs 2 [SOr]
-             | "xor" -> nArgs 2 [SXor]
-             | "not" -> nArgs 1 [SNot]
-             | "pow2" -> nArgs 1 [SPow2]
-             | "shift_l" -> nArgs 2 [SPow2; SMult]
-             | "shift_ru" -> nArgs 2 [SPow2; SDivU]
-             // Use SDivUS to make sure that (-1L <<< 63) >>> 63 = -1 (not 1).
-             | "shift_rs" -> nArgs 2 [SPow2; SDivSU]
+            | "add" -> nArgs 2 [SAdd]
+            | "sub" -> nArgs 2 [SNeg; SAdd]
+            | "mult" -> nArgs 2 [SMult]
+            | "neg" -> nArgs 1 [SNeg]
+            | "and" -> nArgs 2 [SAnd]
+            | "or" -> nArgs 2 [SOr]
+            | "xor" -> nArgs 2 [SXor]
+            | "not" -> nArgs 1 [SNot]
+            | "pow2" -> nArgs 1 [SPow2]
+            | "shift_l" -> nArgs 2 [SPow2; SMult]
+            | "shift_ru" -> nArgs 2 [SPow2; SDivU]
+            // Use SDivUS to make sure that (-1L <<< 63) >>> 63 = -1 (not 1).
+            | "shift_rs" -> nArgs 2 [SPow2; SDivSU]
 
-             | "div_u" -> nArgs 2 [SDivU]
-             | "div_s" -> nArgs 2 [SDivS]
-             | "rem_u" -> nArgs 2 [SRemU]
-             | "rem_s" -> nArgs 2 [SRemS]
+            | "div_u" -> nArgs 2 [SDivU]
+            | "div_s" -> nArgs 2 [SDivS]
+            | "rem_u" -> nArgs 2 [SRemU]
+            | "rem_s" -> nArgs 2 [SRemS]
 
-             | "lt_u" -> nArgs 2 [SLtU]
-             | "lt_s" -> nArgs 2 [SLtS]
-             | "lte_u" -> nArgs 2 [SLtEU]
-             | "lte_s" -> nArgs 2 [SLtES]
-             | "eq" -> nArgs 2 [SEq]
-             | "gte_u" -> nArgs 2 [SGtEU]
-             | "gte_s" -> nArgs 2 [SGtES]
-             | "gt_u" -> nArgs 2 [SGtU]
-             | "gt_s" -> nArgs 2 [SGtS]
+            | "lt_u" -> nArgs 2 [SLtU]
+            | "lt_s" -> nArgs 2 [SLtS]
+            | "lte_u" -> nArgs 2 [SLtEU]
+            | "lte_s" -> nArgs 2 [SLtES]
+            | "eq" -> nArgs 2 [SEq]
+            | "gte_u" -> nArgs 2 [SGtEU]
+            | "gte_s" -> nArgs 2 [SGtES]
+            | "gt_u" -> nArgs 2 [SGtU]
+            | "gt_s" -> nArgs 2 [SGtS]
 
-             | "allocate" -> nArgs 1 [SAlloc]
-             | "deallocate" -> nArgs 1 [SDealloc]
+            | "allocate" -> nArgs 1 [SAlloc]
+            | "deallocate" -> nArgs 1 [SDealloc]
 
-             // Better error message than simply 'fail'.
-             | _ -> fun _ -> Reply (Error, unexpectedString id)
+            // Better error message than simply 'fail'.
+            | _ -> fun _ -> Reply (Error, unexpectedString id)
 
     // Eliminating >>= might lead to better performance.
     identifier .>>. (isLabel <|> isDef <|> countArgs) >>= stmt
