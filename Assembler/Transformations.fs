@@ -230,12 +230,12 @@ let rec safeN n e =
 let pushReduction (prog: Statement seq): Statement seq =
     let p = prog.GetEnumerator ()
     let mutable pending : Expression list = []
-    let flush () = let result = pending
-                                |> Seq.rev
-                                |> Seq.map (optimize 0L >> SPush)
-                                |> Seq.toList
-                   pending <- []
-                   result
+    let flush coda = let result = pending
+                                  |> Seq.rev
+                                  |> Seq.map (optimize 0L >> SPush)
+                                  |> Seq.toList
+                     pending <- []
+                     result @ coda
 
     let offset1 e = EOffset (-1, e)
     let safe1 = safeN 1
@@ -278,7 +278,16 @@ let pushReduction (prog: Statement seq): Statement seq =
             | SGtU, y::x::r when safe1 y -> pending <- EGtU (x, offset1 y) :: r
             | SGtS, y::x::r when safe1 y -> pending <- EGtS (x, offset1 y) :: r
 
-            | _ -> yield! flush (); yield s
+            | SCall i, x::r ->
+                pending <- EOffset (1, x) :: ELabel i :: r
+                yield! flush [SJump; SLabel i]
+            | SCall i, _ ->
+                pending <- [ENum 2L |> EStack
+                            ELabel i
+                            ENum 0L |> EStack |> ELoad8]
+                yield! flush [SStore8; SJump; SLabel i]
+
+            | _ -> yield! flush [s]
         // It would be strange to end the program with a push, though.
-        yield! flush ()
+        yield! flush []
     }

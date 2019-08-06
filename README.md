@@ -29,6 +29,8 @@ statement = identifier ":"               (* label *)
           | "jump" | "jump!" expression
           | "jump_zero" | "jump_zero!" expression | "jump_zero!!" expression expression
           | "jump_not_zero" | "jump_not_zero!" expression | "jump_not_zero!!" expression expression
+          | "call" | "call!" expression
+          | "return"
 
           | "load1" | "load1!" expression
           | "load2" | "load2!" expression
@@ -109,7 +111,7 @@ identifier = (letter | "_") (letter | "_" | digit)*;
 ```
 
 
-## Adapting asm-mode in Emacs
+## Adapting Emacs asm-mode
 
 Here are my adjustments to asm-mode in Emacs, in case you want to write
 iVM assembly by hand. If you put this in your .emacs, you should replace

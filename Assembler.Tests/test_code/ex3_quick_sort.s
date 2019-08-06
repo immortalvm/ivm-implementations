@@ -7,9 +7,10 @@
     set_sp
 
     width = 2
-    push!!! after_sort data_start (+ data_stop -width)
-    jump! sort
-after_sort:
+    push!! data_start (+ data_stop -width)
+    call! sort
+    set_sp! &2
+
     n = (/u (+ data_stop -data_start) width)
     ## Write result to stack
     set_sp! &-n                 # Make room on stack
@@ -24,32 +25,31 @@ copy_done:
     exit
 
 sort:
-    ## $0=hi, $1=lo, $2=return_address (no return value)
-    jump_not_zero!! (<u $1 $0) must_sort
-    set_sp! &2
-    jump
+    ## $0=return_address, $1=hi, $2=lo (no return value)
+    jump_not_zero!! (<u $2 $1) must_sort
+    return
 must_sort:
-    push!!!! 0 sort_partitioned $1 $0
-    jump! partition
-sort_partitioned:
-    ## $0=part, $1=hi, $2=lo, $3=return_address
-    jump_not_zero!! (<u $0 $1) sort_upper
+    push!!! 0 $2 $1
+    call! partition
+    set_sp! &2
+    ## $0=part, $1=return_address, $2=hi, $3=lo
+    jump_not_zero!! (<u $0 $2) sort_upper
     add! -width
     jump! half_sorted
 sort_upper:
-    push!!! half_sorted (+ $0 width) $1
-    jump! sort
+    push!! (+ $0 width) $2
+    call! sort
+    set_sp! &2
 half_sorted:
-    store8! &1
-    ## $0=part, $1=lo, $3=return_address
-    jump! sort                  # Tail-recursion!
+    store8! &2
+    jump! sort                  # Tail-recursion
 
 partition:
-    ## $0=hi, $1=lo, $2=return_address, $3=result_placeholder
-    ## stop > start
+    ## $0=return_address, $1=hi, $2=lo, $3=result_placeholder
+    ## hi > lo (or hi >= lo ??)
     ## Find pivot as median of 3.
-    push!!! (load2 $1) (load2 (+ $1 (/u (+ $0 -$1) 2))) (load2 $0)
-    ## $0=(load2 hi), $1=(load2 middle), $2=(load2 lo), $3=hi, ...
+    push!!! (load2 $2) (load2 (+ $2 (/u (+ $1 -$2) 2))) (load2 $1)
+    ## $0=(load2 hi), $1=(load2 middle), $2=(load2 lo), $3=return_address, ...
     jump_zero!! (<u $0 $1) gte01
     jump_zero!! (<u $1 $2) lt01_gte12
     store8!! $1 &2              # $0 < $1 < $2
@@ -69,29 +69,27 @@ gte01_gte21:
     store8!! $0 &2              # $1 <= $0 < $2
 pivot_found:
     set_sp! &2
-
-    ## $0=pivot, $1=hi, $2=lo, $3=return_address, $4=placeholder
+    ## $0=pivot, $1=return_address, $2=hi, $3=lo, $4=placeholder
 low_not_found:
-    jump_zero!! (<u (load2 $2) $0) high_not_found
+    jump_zero!! (<u (load2 $3) $0) high_not_found
     ## load2 lo < $0
-    store8!! (+ $2 width) &2
+    store8!! (+ $3 width) &3
     jump! low_not_found
 high_not_found:
-    jump_zero!! (>u (load2 $1) $0) both_found
+    jump_zero!! (>u (load2 $2) $0) both_found
     ## load2 hi > $0
-    store8!! (+ $1 -width) &1
+    store8!! (+ $2 -width) &2
     jump! high_not_found
 both_found:
-    jump_zero!! (<u $2 $1) partition_end
-
-    push!!!! (load2 $1) $2 (load2 $2) $1
+    jump_zero!! (<u $3 $2) partition_end
+    push!!!! (load2 $2) $3 (load2 $3) $2 # Swap
     store2
     store2
     jump! low_not_found
 partition_end:                  # lo >= hi
-    store8!! $1 &4
-    set_sp! &3
-    jump
+    store8!! $2 &4
+    set_sp! &1                  # Pop pivot
+    return
 
 
 data_start:

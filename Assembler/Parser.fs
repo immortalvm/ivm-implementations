@@ -35,6 +35,12 @@ type State = {
                 |> ELabel
             |> Reply
 
+        static member Call (str: CharStream<State>) =
+            let s = str.UserState
+            let i = s.Count + 1
+            str.UserState <- { s with Count = i }
+            Reply [SCall i ]
+
         static member ObsLabel id (str: CharStream<State>) =
             let s = str.UserState
             match s.Labels.TryFind id with
@@ -184,6 +190,8 @@ let statement: Parser<Statement list, State> =
              | "exit" -> nArgs 0 [SExit]
              | "push" -> pArgs
              | "set_sp" -> nArgs 1 [SSetSp]
+             | "call" -> nArgs 1 [] .>>. State.Call |>> fun (x, y) -> x @ y
+             | "return" -> nArgs 0 [SJump]
              | "jump" -> nArgs 1 [SJump]
              | "jump_zero" -> nArgs 2 [SJumpZero]
              | "jump_not_zero" -> nArgs 2 [SJumpNotZero]

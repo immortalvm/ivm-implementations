@@ -84,6 +84,12 @@ let assemblyLanguageIntro =
         SPush <| ELabel 1; SJumpZero
         SJumpNotZero
 
+        // Call, ...
+        SPush <| ELabel 2
+        SPush <| ELabel 1; SJump
+        SLabel 2
+        SJump
+
         SLoad1; SLoad2; SLoad4; SLoad8
         ELabel 1 |> ELoad4 |> ESigx4 |> SPush
         SPush <| ENum -1L

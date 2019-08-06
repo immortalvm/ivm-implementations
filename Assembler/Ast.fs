@@ -50,6 +50,7 @@ type Statement =
 
     | SPush of Expression
     | SExit | SSetSp
+    | SCall of int
     | SJump | SJumpZero | SJumpNotZero
 
     | SLoad1 | SLoad2 | SLoad4 | SLoad8

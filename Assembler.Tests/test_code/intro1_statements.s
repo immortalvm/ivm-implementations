@@ -49,7 +49,7 @@ my_label:
     ## issues such as choosing between long and short conditional jumps.
 
 
-    ### 2. PUSH
+### 2. PUSH
 
     ## The push statement pushes 64-bit numbers onto the stack.
     push! 13    # Push the number 13 onto the stack.
@@ -83,7 +83,7 @@ my_label:
     ## pointer at the start of the statement.
 
 
-    ### 3. JUMP, JUMP_ZERO, JUMP_NOT_ZERO
+### 3. JUMP, JUMP_ZERO, JUMP_NOT_ZERO
 
     ## The jump statement changes the program counter to an address popped from
     ## the stack.
@@ -108,7 +108,14 @@ my_label:
     jump_not_zero
 
 
-    ### 4. LOAD, SIGX
+### 4. CALL, RETURN
+
+    ## When calling a subroutine we want to continue execution at the next statement.
+    call! my_label           # Sugar for 'push! <fresh> jump! my_label <fresh>:'
+    return                   # Alias for 'jump'
+
+
+### 5. LOAD, SIGX
 
     ## The four load statements all pop one address from the stack and push a 64
     ## bit value,  the contents of  the memory  at that location  (and onwards).
@@ -139,7 +146,7 @@ my_label:
     sigx1! 0xff  # Push -1.
 
 
-    #### 5. STORE
+### 6. STORE
 
     ## The four store operations pop an address A, then a value V from the stack
     ## and writes the least significant bytes of V to A.
@@ -155,7 +162,7 @@ my_label:
     store8!! prime_number my_label  # Write prime_number to memory at my_label.
 
 
-    #### 6. ARITHMETIC OPERATIONS
+### 7. ARITHMETIC OPERATIONS
 
     xx = 99
     yy = -13
@@ -180,7 +187,7 @@ my_label:
     rem_s         # Similar, but using signed division.
 
 
-    #### 7. BITWISE OPERATIONS
+### 8. BITWISE OPERATIONS
 
     and           # Pop two (64-bit) values and push their binary "and".
 
@@ -204,7 +211,7 @@ my_label:
                   # right. (It should be -1.)
 
 
-    #### 8. COMPARISON
+### 9. COMPARISON
 
     ## For convenience, the comparison predicates below all return 0 for false
     ## and -1 (all bits set) for true. They also come in sugared variants.
@@ -225,7 +232,7 @@ my_label:
     gte_s        # greater than or equal (signed)
 
 
-    #### 9. ALLOC, DEALLOC
+### 10. ALLOC, DEALLOC
 
     ## The allocate statement pops x (unsigned) from the stack, allocates a
     ## range of x consecutive bytes of unused memory, and pushes the address of
@@ -242,12 +249,12 @@ my_label:
     deallocate! $8      # Sugar for 'push! $8 deallocate'.
 
 
-    #### 10. IO STATEMENTS
+### 11. IO STATEMENTS
 
     ## To be determined later.
 
 
-    #### 11. SET_SP, EXIT
+### 12. SET_SP, EXIT
 
     xx = 9      # Override previous definition of 9.
 

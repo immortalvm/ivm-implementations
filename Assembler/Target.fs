@@ -584,5 +584,5 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
 
             | SPush e :: r -> fragment r (expressionPush e)
 
-            | [] -> failwith "Impossible case"
+            | _ -> failwithf "Impossible case: %O" rest
     }
