@@ -8,6 +8,7 @@ type State = {
         Defs: Map<string, Expression> // Definitions
         Labels: Map<string, int>      // Label numbers
         Count: int                    // Labels defined/referenced so far
+        Globals: Map<string, int>     // Label numbers of global names
         // Count labels from 1 so that we can use negative numbers for
         // referenced but not yet defined labels.
     }
@@ -16,6 +17,7 @@ type State = {
             Defs = new Map<string, Expression>([])
             Labels = new Map<string, int>([])
             Count = 0
+            Globals = new Map<string, int>([])
         }
 
         static member TryExpand id (str: CharStream<State>) =
@@ -58,6 +60,14 @@ type State = {
                       }
                       i
             |> SLabel |> List.singleton |> Reply
+
+        static member Global id (str: CharStream<State>) =
+            match (State.TryExpand id str).Result with
+            | ELabel i ->
+                let s = str.UserState
+                str.UserState <- { s with Globals = s.Globals.Add (id, i) }
+                Reply ([] : Statement list)
+            | _ -> Reply (Error, unexpected "Not a label")
 
         static member AddDef id e =
             updateUserState<State> <|
@@ -186,6 +196,10 @@ let statement: Parser<Statement list, State> =
                 else fun _ -> Reply (Error, unexpected "Too many arguments.")
 
             match id with
+            | "GLOBAL" ->
+                if numArgs <> 0
+                then fun _ -> Reply (Error, unexpected "'!' does not make sense here.")
+                else identifier >>= State.Global .>> whitespace
             | "data" -> data |>> (SData >> List.singleton)
             | "exit" -> nArgs 0 [SExit]
             | "push" -> pArgs
@@ -260,7 +274,7 @@ let parseProgram (stream: System.IO.Stream): seq<Statement> * Map<string, int> =
             if pair.Value < 0
             then yield pair.Key]
         if missing.IsEmpty
-        then result |> pushReduction, s.Labels
+        then result |> pushReduction, s.Globals
         else sprintf "Label%s not found: %s"
                  (if missing.Length > 1 then "s" else "")
                  (System.String.Join(", ", missing))

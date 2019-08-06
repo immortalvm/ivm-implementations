@@ -1,6 +1,8 @@
 ﻿### Quicksort for 16-bit integers
 ### Example and integration test
 
+    GLOBAL sort                 # Make 'sort' as externally visible
+
     stack_size = 16384
     allocate! stack_size
     add! stack_size

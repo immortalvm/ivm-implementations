@@ -14,12 +14,13 @@ For code examples and language introduction see the source files in Assembler.Te
     ivm check <source>                  -  Assemble, run, and check final stack
 
 
-## Semi-formal EBNF, mostly ignoring whitespace and comments
+## Semi-formal EBNF, ignoring whitespace and comments
 
 ```ebnf
 program = statement*;
 
 statement = identifier ":"               (* label *)
+          | "GLOBAL" identifier          (* global label declaration *)
           | identifier "=" expression    (* abbreviation *)
           | "data" "[" byte* "]"         (* data segment *)
 
@@ -30,7 +31,7 @@ statement = identifier ":"               (* label *)
           | "jump_zero" | "jump_zero!" expression | "jump_zero!!" expression expression
           | "jump_not_zero" | "jump_not_zero!" expression | "jump_not_zero!!" expression expression
           | "call" | "call!" expression
-          | "return"
+          | "return"                     (* alias for "jump" *)
 
           | "load1" | "load1!" expression
           | "load2" | "load2!" expression

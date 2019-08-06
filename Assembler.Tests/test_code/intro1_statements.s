@@ -23,8 +23,15 @@
     ## runtime. By convention, all other statements should be indented.
 my_label:
 
+    ## For a label to be visible from other files, it must be declared global.
+    GLOBAL my_label
+
     ## Definitions define abbreviations, usually constants.
     prime_number = 982451653
+
+    ## A label can be exported under a different name as follows:
+    external_name = my_label
+    GLOBAL external_name
 
     ## Labels and definitions use the  same namespace, which is independent from
 	## the names  of instructions. Thus, you  are free to define  a label called
