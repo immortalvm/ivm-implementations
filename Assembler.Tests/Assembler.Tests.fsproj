@@ -29,6 +29,9 @@
     <None Include="test_code\test_expressions.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="test_code\test_self_referential_expressions.s">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <Compile Include="GenParserTests.fs" />
     <Compile Include="ProgParserTests.fs" />
     <Compile Include="CompositionTests.fs" />

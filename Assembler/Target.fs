@@ -364,6 +364,7 @@ let exprPushCore (lookup: int -> int) =
             List.fold fe ([PUSH0], u) lst
 
         match expression with
+        | EOffset (n, e) -> epc position (depth + n) e
         | ENum n -> [PUSH0], n
         | ELabel _| EStack _ -> ESum [expression] |> rec1
         | ESum lst ->

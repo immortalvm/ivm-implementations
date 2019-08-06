@@ -20,50 +20,54 @@ let combineLists f x y =
 
 
 // More optimizations are certainly possible.
-let rec optimize (e: Expression): Expression =
+// We eliminate all occurrences of EOffset, but others may get introduced later.
+let rec optimize (offset: int64) (e: Expression): Expression =
+    let o = offset // For brevity
     match e with
     | ENum _ -> e
     | ELabel _ -> e
-    | ENeg x -> neg <| optimize x
-    | ENot x -> binNot <| optimize x
-    | EPow2 x -> pow2 <| optimize x
-    | EStack x -> EStack <| optimize x
-    | ELoad1 x -> ELoad1 <| optimize x
-    | ELoad2 x -> ELoad2 <| optimize x
-    | ELoad4 x -> ELoad4 <| optimize x
-    | ELoad8 x -> ELoad8 <| optimize x
+    | ENeg x -> neg <| optimize o x
+    | ENot x -> binNot <| optimize o x
+    | EPow2 x -> pow2 <| optimize o x
+    | EStack x -> EStack <| sum [optimize o x; ENum o]
+    | ELoad1 x -> ELoad1 <| optimize o x
+    | ELoad2 x -> ELoad2 <| optimize o x
+    | ELoad4 x -> ELoad4 <| optimize o x
+    | ELoad8 x -> ELoad8 <| optimize o x
 
-    | ESum lst -> sum [for x in lst -> optimize x]
-    | EProd lst -> prod [for x in lst -> optimize x]
-    | EConj lst -> conj [for x in lst -> optimize x]
-    | EDisj lst -> disj [for x in lst -> optimize x]
-    | EXor lst -> xor [for x in lst -> optimize x]
-    | EDivU (x, y) -> divU (optimize x) (optimize y)
-    | EDivS (x, y) -> divS (optimize x) (optimize y)
-    | EDivSU (x, y) -> divSU (optimize x) (optimize y)
-    | ERemU (x, y) -> remU (optimize x) (optimize y)
-    | ERemS (x, y) -> remS (optimize x) (optimize y)
-    | ESigx1 x -> sign 1 <| optimize x
-    | ESigx2 x -> sign 2 <| optimize x
-    | ESigx4 x -> sign 4 <| optimize x
+    | ESum lst -> sum [for x in lst -> optimize o x]
+    | EProd lst -> prod [for x in lst -> optimize o x]
+    | EConj lst -> conj [for x in lst -> optimize o x]
+    | EDisj lst -> disj [for x in lst -> optimize o x]
+    | EXor lst -> xor [for x in lst -> optimize o x]
+    | EDivU (x, y) -> divU (optimize o x) (optimize o y)
+    | EDivS (x, y) -> divS (optimize o x) (optimize o y)
+    | EDivSU (x, y) -> divSU (optimize o x) (optimize o y)
+    | ERemU (x, y) -> remU (optimize o x) (optimize o y)
+    | ERemS (x, y) -> remS (optimize o x) (optimize o y)
+    | ESigx1 x -> sign 1 <| optimize o x
+    | ESigx2 x -> sign 2 <| optimize o x
+    | ESigx4 x -> sign 4 <| optimize o x
 
-    | ELtU (x, y) -> liftU ELtU (x, y) (<)
-    | ELtS (x, y) -> liftS ELtS (x, y) (<)
-    | ELtEU (x, y) -> liftU ELtEU (x, y) (<=)
-    | ELtES (x, y) -> liftS ELtES (x, y) (<=)
-    | EEq (x, y) -> liftS EEq (x, y) (=)
-    | EGtEU (x, y) -> liftU EGtEU (x, y) (>=)
-    | EGtES (x, y) -> liftS EGtES (x, y) (>=)
-    | EGtU (x, y) -> liftU EGtU (x, y) (>)
-    | EGtS (x, y) -> liftS EGtS (x, y) (>)
+    | ELtU (x, y) -> liftU o ELtU (x, y) (<)
+    | ELtS (x, y) -> liftS o ELtS (x, y) (<)
+    | ELtEU (x, y) -> liftU o ELtEU (x, y) (<=)
+    | ELtES (x, y) -> liftS o ELtES (x, y) (<=)
+    | EEq (x, y) -> liftS o EEq (x, y) (=)
+    | EGtEU (x, y) -> liftU o EGtEU (x, y) (>=)
+    | EGtES (x, y) -> liftS o EGtES (x, y) (>=)
+    | EGtU (x, y) -> liftU o EGtU (x, y) (>)
+    | EGtS (x, y) -> liftS o EGtS (x, y) (>)
 
-and private liftU ctor (x, y) rel =
-    match optimize x, optimize y with
+    | EOffset (m, x) -> optimize (o + int64 m) x
+
+and private liftU o ctor (x, y) rel =
+    match optimize o x, optimize o y with
     | ENum m, ENum n -> ENum (if rel (uint64 m) (uint64 n) then -1L else 0L)
     | xx, yy -> ctor (xx, yy)
 
-and private liftS ctor (x, y) rel =
-    match optimize x, optimize y with
+and private liftS o ctor (x, y) rel =
+    match optimize o x, optimize o y with
     | ENum m, ENum n -> ENum (if rel m n then -1L else 0L)
     | xx, yy -> ctor (xx, yy)
 
@@ -194,17 +198,47 @@ and private sign n x =
            | 4 -> ESigx4 x
            | _ -> failwithf "No such byte-width: %d" n
 
+// Whether it safe to make this expression the n'th argument (counting from 0)
+// of a larger expression. In particular, it must refer to any of the n previous
+// arguments. We are not trying to be too clever here.
+let rec safeN n e =
+    n < 1 || match e with
+             | ENum _ | ELabel _ -> true
+             | EOffset (k, e) -> safeN (n - k) e
+             | EStack (ENum m)
+             | ELoad8 (EStack (ENum m)) -> int64 n <= m
+             | ESum lst
+             | EProd lst
+             | EConj lst
+             | EDisj lst
+             | EXor lst -> List.forall (safeN n) lst
+             | ENeg x
+             | EPow2 x
+             | ENot x
+             | ESigx1 x
+             | ESigx2 x
+             | ESigx4 x -> safeN n x
+             | EDivU (x, y) | EDivS (x, y) | EDivSU (x, y)
+             | ERemU (x, y) | ERemS (x, y)
+             | ELtU (x, y) | ELtS (x, y) | ELtEU (x, y) | ELtES (x, y)
+             | EEq (x, y)
+             | EGtEU (x, y) | EGtES (x, y) | EGtU (x, y) | EGtS (x, y) ->
+                 safeN n x && safeN n y
+             | _ -> false
 
-// One of many passes
+// One of many passes?
 let pushReduction (prog: Statement seq): Statement seq =
     let p = prog.GetEnumerator ()
     let mutable pending : Expression list = []
     let flush () = let result = pending
                                 |> Seq.rev
-                                |> Seq.map (optimize >> SPush)
+                                |> Seq.map (optimize 0L >> SPush)
                                 |> Seq.toList
                    pending <- []
                    result
+
+    let offset1 e = EOffset (-1, e)
+    let safe1 = safeN 1
     seq {
 
         while p.MoveNext() do
@@ -220,29 +254,29 @@ let pushReduction (prog: Statement seq): Statement seq =
             | SSigx2, x::r -> pending <- ESigx2 x :: r
             | SSigx4, x::r -> pending <- ESigx4 x :: r
 
-            | SAdd, y::x::r -> pending <- ESum [x;y] :: r
-            | SMult, y::x::r -> pending <- EProd [x;y] :: r
             | SNeg, x::r -> pending <- ENeg x :: r
-            | SAnd, y::x::r -> pending <- EConj [x;y] :: r
-            | SOr, y::x::r -> pending <- EDisj [x;y] :: r
-            | SXor, y::x::r -> pending <- EXor [x;y] :: r
             | SNot, x::r -> pending <- ENot x :: r
             | SPow2, x::r -> pending <- EPow2 x :: r
-            | SDivU, y::x::r -> pending <- EDivU (x, y) :: r
-            | SDivS, y::x::r -> pending <- EDivS (x, y) :: r
-            | SDivSU, y::x::r -> pending <- EDivSU (x, y) :: r
-            | SRemU, y::x::r -> pending <- ERemU (x, y) :: r
-            | SRemS, y::x::r -> pending <- ERemS (x, y) :: r
+            | SAdd, y::x::r when safe1 y -> pending <- ESum [x; offset1 y] :: r
+            | SMult, y::x::r when safe1 y -> pending <- EProd [x; offset1 y] :: r
+            | SAnd, y::x::r when safe1 y -> pending <- EConj [x; offset1 y] :: r
+            | SOr, y::x::r when safe1 y -> pending <- EDisj [x; offset1 y] :: r
+            | SXor, y::x::r when safe1 y -> pending <- EXor [x; offset1 y] :: r
+            | SDivU, y::x::r when safe1 y -> pending <- EDivU (x, offset1 y) :: r
+            | SDivS, y::x::r when safe1 y -> pending <- EDivS (x, offset1 y) :: r
+            | SDivSU, y::x::r when safe1 y -> pending <- EDivSU (x, offset1 y) :: r
+            | SRemU, y::x::r when safe1 y -> pending <- ERemU (x, offset1 y) :: r
+            | SRemS, y::x::r when safe1 y -> pending <- ERemS (x, offset1 y) :: r
 
-            | SLtU , y::x::r -> pending <- ELtU (x, y) :: r
-            | SLtS , y::x::r -> pending <- ELtS (x, y) :: r
-            | SLtEU , y::x::r -> pending <- ELtEU (x, y) :: r
-            | SLtES , y::x::r -> pending <- ELtES (x, y) :: r
-            | SEq , y::x::r -> pending <- EEq (x, y) :: r
-            | SGtEU , y::x::r -> pending <- EGtEU (x, y) :: r
-            | SGtES , y::x::r -> pending <- EGtES (x, y) :: r
-            | SGtU , y::x::r -> pending <- EGtU (x, y) :: r
-            | SGtS, y::x::r -> pending <- EGtS (x, y) :: r
+            | SLtU, y::x::r when safe1 y -> pending <- ELtU (x, offset1 y) :: r
+            | SLtS, y::x::r when safe1 y -> pending <- ELtS (x, offset1 y) :: r
+            | SLtEU, y::x::r when safe1 y -> pending <- ELtEU (x, offset1 y) :: r
+            | SLtES, y::x::r when safe1 y -> pending <- ELtES (x, offset1 y) :: r
+            | SEq, y::x::r when safe1 y -> pending <- EEq (x, offset1 y) :: r
+            | SGtEU, y::x::r when safe1 y -> pending <- EGtEU (x, offset1 y) :: r
+            | SGtES, y::x::r when safe1 y -> pending <- EGtES (x, offset1 y) :: r
+            | SGtU, y::x::r when safe1 y -> pending <- EGtU (x, offset1 y) :: r
+            | SGtS, y::x::r when safe1 y -> pending <- EGtS (x, offset1 y) :: r
 
             | _ -> yield! flush (); yield s
         // It would be strange to end the program with a push, though.

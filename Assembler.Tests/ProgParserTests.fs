@@ -30,7 +30,6 @@ let failure pattern progString () =
          Expect.isMatch msg pattern "Unexpected error message"
 
 let example1 =
-    let n = ENum -13L
     [
         SExit
         SLabel 1
@@ -46,12 +45,12 @@ let example1 =
 
         SLabel 2
         SPush <| EStack (ENum 0L)
-        SPush <| EStack (ENum 1L)
+        SPush <| EStack (ENum -1L)
 
         SPush <| ESum [
             ENum 7L
-            EStack (ENum -2L)
-            ELoad8 (EStack n)
+            EStack (ENum 2L)
+            ELoad8 (EStack (ENum 12L))
         ]
         SLabel 3
         SData [0y; 1y; -1y; 1y]

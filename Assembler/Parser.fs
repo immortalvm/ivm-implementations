@@ -8,7 +8,6 @@ type State = {
         Defs: Map<string, Expression> // Definitions
         Labels: Map<string, int>      // Label numbers
         Count: int                    // Labels defined/referenced so far
-        Offset: int                   // Stack offset
         // Count labels from 1 so that we can use negative numbers for
         // referenced but not yet defined labels.
     }
@@ -17,7 +16,6 @@ type State = {
             Defs = new Map<string, Expression>([])
             Labels = new Map<string, int>([])
             Count = 0
-            Offset = 0
         }
 
         static member TryExpand id (str: CharStream<State>) =
@@ -59,12 +57,6 @@ type State = {
             updateUserState<State> <|
             fun s -> { s with Defs = s.Defs.Add (id, e) }
 
-        static member IncOffset =
-            updateUserState<State> <| fun s -> { s with Offset = s.Offset + 1 }
-
-        static member ResetOffset =
-            updateUserState<State> <| fun s -> { s with Offset = 0 }
-
 
 let comment: Parser<unit, State> = skipChar '#' >>. skipRestOfLine true
 let whitespace = skipSepBy spaces comment
@@ -87,16 +79,6 @@ let splitNums f g lst =
     if List.forall Option.isSome o
     then List.map Option.get o |> f |> ENum
     else g lst
-
-let offset e (str: CharStream<State>) =
-    let off = str.UserState.Offset |> int64
-    if off = 0L then e
-    else match e with
-         | ENum n -> ENum <| off + n
-         | ESum lst -> ESum <| [ENum off] @ lst
-         // Everything above are optimizations.
-         | _ -> ESum [ENum off; e]
-    |> Reply
 
 let expression: Parser<Expression, State> =
     let expr, exprRef = createParserForwardedToRef<Expression, State>()
@@ -155,8 +137,8 @@ let expression: Parser<Expression, State> =
         positiveNumeral |>> ENum
         skipChar '-' >>. expr |>> ENeg
         skipChar '~' >>. expr |>> ENot
-        skipChar '$' >>. expr >>= offset |>> (EStack >> ELoad8)
-        skipChar '&' >>. expr >>= offset |>> EStack
+        skipChar '$' >>. expr |>> (EStack >> ELoad8)
+        skipChar '&' >>. expr |>> EStack
         between (strWs "(") (strWs ")") innerExpr
     ]
     expr
@@ -171,9 +153,9 @@ let statement: Parser<Statement list, State> =
     let isDef = charReturn '=' -2 .>> whitespace
     let countArgs = many (skipChar '!' .>> whitespace) |>> List.length
 
-    let pushArgs numArgs = parray numArgs (expression .>> State.IncOffset)
-                           .>> State.ResetOffset
-                           |>> (Array.toList >> List.map SPush)
+    let push i x = SPush <| EOffset (i, x)
+    let pushArgs numArgs = parray numArgs expression
+                           |>> (Array.toList >> List.mapi push)
     // Computed once for efficiency
     let pushArgs0 = preturn []
     let pushArgs1 = pushArgs 1

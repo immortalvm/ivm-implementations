@@ -3,7 +3,8 @@
 type Expression =
     | ENum of int64
     | ELabel of int
-    | EStack of Expression  // &n = SP + n * 8
+    | EOffset of int * Expression
+    | EStack of Expression // &n = SP + n * 8
 
     | ESum of Expression list
     | EProd of Expression list
