@@ -16,8 +16,13 @@ let assem source binary symbols =
     System.IO.File.WriteAllBytes (binary, bytes |> List.toArray)
     printfn "Binary written to: %s" binary
 
-    let syms = seq { for (name, pos) in symbolList -> sprintf "%s %d" name pos }
-    System.IO.File.WriteAllLines (symbols, Seq.append ["--Relative--"] syms)
+    let lines = seq {
+        yield "--Size--"
+        yield bytes.Length.ToString ()
+        yield "--Relative--"
+        for name, pos in symbolList do yield sprintf "%s\t%d" name pos
+    }
+    System.IO.File.WriteAllLines (symbols, lines)
     printfn "Symbols written to: %s" symbols
 
 let writeStack (endStack: seq<int64>) =
