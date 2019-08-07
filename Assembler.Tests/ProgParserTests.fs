@@ -15,9 +15,9 @@ open Assembler.Parser
 let DIRECTORY = "test_code"
 
 let parse (progString: string) =
-    let bytes = System.Text.Encoding.UTF8.GetBytes(progString)
-    use stream = new System.IO.MemoryStream(bytes)
-    parseProgram stream |> fst
+    let bytes = System.Text.Encoding.UTF8.GetBytes progString
+    let bin, _, _ = parseProgram <| new System.IO.MemoryStream(bytes)
+    bin
 
 // Opposite order of Expect.* (for convenience).
 let success expected progString () =

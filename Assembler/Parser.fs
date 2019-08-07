@@ -266,7 +266,7 @@ let program = whitespace >>. many statement |>> List.concat .>> eof
 
 exception ParseException of string
 
-let parseProgram (stream: System.IO.Stream): seq<Statement> * Map<string, int> =
+let parseProgram (stream: System.IO.Stream): seq<Statement> * Map<string, int> * Map<string, int> =
     match runParserOnStream program State.Default "" stream System.Text.Encoding.UTF8 with
     | Success(result, s, _) ->
         let missing = [
@@ -274,7 +274,7 @@ let parseProgram (stream: System.IO.Stream): seq<Statement> * Map<string, int> =
             if pair.Value < 0
             then yield pair.Key]
         if missing.IsEmpty
-        then result |> pushReduction, s.Exported
+        then result |> pushReduction, s.Exported, s.Labels
         else sprintf "Label%s not found: %s"
                  (if missing.Length > 1 then "s" else "")
                  (System.String.Join(", ", missing))

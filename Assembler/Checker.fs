@@ -48,18 +48,17 @@ let showValue (x: int64) =
 let doAssemble fileName =
     use stream = System.IO.File.OpenRead fileName
     try 
-        let program, labels = parseProgram stream
-        let names = List.sort [for pair in labels -> pair.Key]
+        let program, exported, labels = parseProgram stream
         let bytes, symbols = assemble program
-        let symbolList = [for name in names -> (name, symbols.[labels.[name]])]
-        bytes, symbolList
+        let symList (map: Map<string, int>) =
+            [for pair in map -> (pair.Key, symbols.[pair.Value])]
+        bytes, symList exported, symList labels
     with
         ParseException(msg) -> failwith msg
 
-let doRun binary shouldTrace =
+let doRun binary traceSyms =
     try
-        (if shouldTrace then trace else execute) binary
-        |> Seq.map int64
+        execute binary traceSyms |> Seq.map int64
     with
         | AccessException msg -> failwith "Access exception!"
         | UndefinedException msg -> failwith "Undefined instruction!"
@@ -67,7 +66,7 @@ let doRun binary shouldTrace =
 let doCheck fileName =
     let mutable revOutput = []
     let output msg = revOutput <- msg :: revOutput
-    let binary = doAssemble fileName |> fst
+    let binary, _, _ = doAssemble fileName
     output <| sprintf "Binary size: %d\n" (List.length binary)
 
     let expectationsFound = System.IO.File.ReadLines fileName
@@ -76,7 +75,7 @@ let doCheck fileName =
     if not expectationsFound
     then output "Not executed since no expectations were found."
     else
-        let actual = doRun binary false
+        let actual = doRun binary None
 
         let expected =
             System.IO.File.ReadLines fileName

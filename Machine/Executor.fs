@@ -14,10 +14,10 @@ let fromBytes : seq<uint8> -> uint64 =
 let toBytes n (x: uint64) : seq<uint8> =
     [| 0 .. n-1 |] |> Seq.map (fun i -> x >>> i*8 |> uint8)
 
-type Machine(initialMemory: seq<uint8>, ?location: uint64, ?trace: unit) =
+type Machine(initialMemory: seq<uint8>, startLocation: uint64, traceSyms: Map<int, string> option) =
 
     // Reverse ordering
-    let mutable arrays = [ (valueOr 0UL location, Seq.toArray initialMemory) ]
+    let mutable arrays = [ (startLocation, Seq.toArray initialMemory) ]
 
     // Address of the next unused memory location.
     let mutable nextUnused =
@@ -96,7 +96,7 @@ type Machine(initialMemory: seq<uint8>, ?location: uint64, ?trace: unit) =
         m.StoreN 8 m.StackPointer value
 
     member m.Run () =
-        if trace.IsSome
+        if traceSyms.IsSome
         then
             printfn "\nInitial memory"
             initialMemory
@@ -110,14 +110,17 @@ type Machine(initialMemory: seq<uint8>, ?location: uint64, ?trace: unit) =
 
         while not m.Terminated do
 
-            if trace.IsSome
+            if traceSyms.IsSome
             then
                 let pc = m.ProgramCounter
+                match traceSyms.Value.TryFind <| int (pc - startLocation) with
+                | Some name -> printfn "-- %s --" name
+                | None -> ()
                 let op = m.LoadN 1 m.ProgramCounter
                 let name = Machine.Disassembler.instructionNames.[int op]
                 printfn
-                    "%4d :%3d  %-12s Stack: %s" pc op name
-                    <| System.String.Join(", ", Seq.map int64 <| m.Stack 20)
+                    "%4d :%3d  %-12s %s" pc op name
+                    <| System.String.Join(" ", m.Stack 50 |> Seq.rev |> Seq.map int64)
 
             m.Step ()
 
@@ -204,14 +207,9 @@ type Machine(initialMemory: seq<uint8>, ?location: uint64, ?trace: unit) =
 
 let random = System.Random ()
 
-let exec (prog: seq<uint8>) (trace: unit option) =
+let execute (prog: seq<uint8>) (traceSyms: Map<int, string> option) =
     // Start at 0, 1000, ... or 7000.
     let start = random.Next () % 8 |> (*) 1000 |> uint64
-    let machine = Machine(prog, start, ?trace=trace)
+    let machine = Machine(prog, start, traceSyms)
     machine.Run ()
     machine.Stack ()
-
-
-let execute (prog: seq<uint8>) = exec prog None
-
-let trace (prog: seq<uint8>) = exec prog <| Some ()
