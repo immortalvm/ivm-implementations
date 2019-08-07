@@ -20,7 +20,8 @@ let assem source binary symbols =
         yield "--Size--"
         yield bytes.Length.ToString ()
         yield "--Relative--"
-        for name, pos in symbolList do yield sprintf "%s\t%d" name pos
+        for name, pos in symbolList do
+            yield sprintf "%s\t%d" name pos
     }
     System.IO.File.WriteAllLines (symbols, lines)
     printfn "Symbols written to: %s" symbols
@@ -36,8 +37,16 @@ let run fileName shouldTrace =
     if not shouldTrace then writeStack stack
 
 let asRun source shouldTrace =
-    let bytes = doAssemble source |> fst |> List.toArray
-    let stack = doRun bytes shouldTrace |> Seq.toList
+    let bytes, symbolList = doAssemble source
+
+    if shouldTrace then
+        printfn ""
+        printfn "Exported "
+        for name, pos in symbolList do
+            printf "%20s %6d" name pos
+        printfn ""
+
+    let stack = doRun (List.toArray bytes) shouldTrace |> Seq.toList
     if not shouldTrace then writeStack stack
 
 let check source =
