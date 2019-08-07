@@ -20,7 +20,7 @@ For code examples and language introduction see the source files in Assembler.Te
 program = statement*;
 
 statement = identifier ":"               (* label *)
-          | "GLOBAL" identifier          (* global label declaration *)
+          | "EXPORT" identifier          (* export declaration *)
           | identifier "=" expression    (* abbreviation *)
           | "data" "[" byte* "]"         (* data segment *)
 
