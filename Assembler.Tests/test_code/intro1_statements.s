@@ -17,7 +17,13 @@
 
 ### 1. SPECIAL STATEMENTS
 
-    ## There are four special statements: labels, exports, definitions and data
+    ## There are five special statements: imports, labels, exports, definitions
+    ## and data.
+
+    ## Import statements can only occur at the  top of the file. It means that a
+    ## label  in file  can  be referenced  below (provided  that  the label  was
+    ## exported in the other file). Circular dependencies are not allowed.
+    IMPORT intro2_basics.x
 
     ## A  label statement  indicates a  place in  the code  (memory address)  at
     ## runtime. By convention, all other statements should be indented.

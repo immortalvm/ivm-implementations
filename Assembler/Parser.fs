@@ -5,6 +5,7 @@ open Assembler.Transformations
 
 
 type State = {
+        Imports: Map<string, string>  // Maps names to nodes (i.e. source files)
         Defs: Map<string, Expression> // Definitions
         Labels: Map<string, int>      // Label numbers
         Count: int                    // Labels defined/referenced so far
@@ -14,11 +15,23 @@ type State = {
     }
     with
         static member Default = {
+            Imports = Map.empty
             Defs = Map.empty
             Labels = Map.empty
             Count = 0
             Exported = Map.empty
         }
+
+        static member ObsImport (ids: string list) (str: CharStream<State>) =
+            let n = ids.Length
+            if n < 2
+            then Reply (Error, expected "Too few!")
+            else
+                let s = str.UserState
+                let node = System.String.Join ('.', Seq.take (n - 1) ids)
+                let id = List.last ids
+                str.UserState <- { s with Imports = s.Imports.Add(id, node) }
+                Reply (())
 
         static member TryExpand id (str: CharStream<State>) =
             let s = str.UserState
@@ -78,10 +91,12 @@ let comment: Parser<unit, State> = skipChar '#' >>. skipRestOfLine true
 let whitespace = skipSepBy spaces comment
 
 // Based on http://www.quanttec.com/fparsec/tutorial.html#parsing-string-data.
-let identifier: Parser<string, State> =
+let identifierNoWhitespace: Parser<string, State> =
     let first c = isLetter c || c = '_'
     let rest c = isLetter c || isDigit c || c = '_'
-    many1Satisfy2L first rest "identifier" .>> whitespace
+    many1Satisfy2L first rest "identifier"
+
+let identifier: Parser<string, State> = identifierNoWhitespace .>> whitespace
 
 let positiveNumeral: Parser<int64, State> = puint64 .>> whitespace |>> int64
 
@@ -260,11 +275,25 @@ let statement: Parser<Statement list, State> =
     // Eliminating >>= might lead to better performance.
     identifier .>>. (isLabel <|> isDef <|> countArgs) >>= stmt
 
+// Updates State rather than returning values.
+let import : Parser<unit, State> =
+    skipString "IMPORT"
+    >>? whitespace
+    >>. (sepBy1 identifierNoWhitespace <| skipChar '.')
+    >>= State.ObsImport
+    >>. whitespace
 
-let program = whitespace >>. many statement |>> List.concat .>> eof
+let prelude = whitespace >>. skipMany import
+
+let program = prelude >>. many statement |>> List.concat .>> eof
 
 
 exception ParseException of string
+
+let parseDependencies (stream: System.IO.Stream): Set<string> =
+    match runParserOnStream prelude State.Default "" stream System.Text.Encoding.UTF8 with
+    | Success(_, s, _) -> set <| seq {for pair in s.Imports -> pair.Value}
+    | Failure(errorMsg, _, _) -> errorMsg |> ParseException |> raise
 
 let parseProgram (stream: System.IO.Stream): seq<Statement> * Map<string, int> * Map<string, int> =
     match runParserOnStream program State.Default "" stream System.Text.Encoding.UTF8 with

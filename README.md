@@ -17,7 +17,9 @@ For code examples and language introduction see the source files in Assembler.Te
 ## Semi-formal EBNF, ignoring whitespace and comments
 
 ```ebnf
-program = statement*;
+program = import* statement*;
+
+import = "IMPORT" (identifier ".")+ identifier
 
 statement = identifier ":"               (* label *)
           | "EXPORT" identifier          (* export declaration *)

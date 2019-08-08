@@ -8,6 +8,11 @@ open Machine.Executor
 open FParsec
 open System.Text.RegularExpressions
 
+let getDependencies (fileName : string) : Set<string> =
+    use stream = File.OpenRead fileName
+    try parseDependencies stream
+    with ParseException(msg) -> failwith msg
+
 let expectationHeading : Parser<unit, unit> =
     spaces >>. many1 (skipChar '#')
            >>. spaces

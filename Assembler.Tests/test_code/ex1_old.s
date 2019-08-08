@@ -1,4 +1,6 @@
-﻿    exit                        # Make sure the program can be run without
+﻿    IMPORT intro1_statements.my_label
+
+    exit                        # Make sure the program can be run without
                                 # crashing.
 label1:
     push                        # No-op

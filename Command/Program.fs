@@ -15,6 +15,8 @@ let usage () =
     printfn "  %s as-run <source>                 -  Assemble and run (no output files)" ex
     printfn "  %s as-trace <source>               -  Assemble and trace (no output files)" ex
     printfn "  %s check <source>                  -  Assemble, run, and check final stack" ex
+    printfn ""
+    printfn "  %s gen-proj <root dir> <goal>      -  Create prototype <goal>.proj" ex
 
 let assem source binary symbols =
     let bytes, exported, labels = doAssemble source
@@ -74,6 +76,39 @@ let asRun source shouldTrace =
 let check source =
     printfn "%s" <| doCheck source
 
+[<Literal>]
+let SOURCE_EXTENSION = ".s"
+
+let genProj rootDir (goal: string) =
+    let projectFile = goal + ".proj"
+    if File.Exists projectFile
+    then failwithf "File exists: %s" projectFile
+
+    // Depth first topological sorting
+    let mutable processed : Set<string> = set []
+    let rec visit node (seen: Set<string>) =
+        seq {
+            if processed.Contains node then ()
+            else if seen.Contains node then failwithf "Circular dependency: %s" node
+            else
+                let path = (Array.append [|rootDir|] (node.Split '.') |> Path.Combine)
+                let deps = getDependencies <| path + SOURCE_EXTENSION
+                if not deps.IsEmpty
+                then
+                    let s = seen.Add node
+                    for d in deps do yield! visit d s
+                processed <- processed.Add(node)
+                yield node
+        }
+    let lines = seq {
+        yield "--Root--"
+        yield Path.GetFullPath rootDir
+        yield "--Relative--"
+        yield! visit goal <| set []
+    }
+    File.WriteAllLines (projectFile, lines)
+    printfn "Project file created: %s" projectFile
+
 [<EntryPoint>]
 let main argv =
     try
@@ -88,6 +123,8 @@ let main argv =
             | "as-run" when n = 2 -> asRun argv.[1] false; 0
             | "as-trace" when n = 2 -> asRun argv.[1] true; 0
             | "check" when n = 2 -> check argv.[1]; 0
+
+            | "gen-proj" when n = 3 -> genProj argv.[1] argv.[2]; 0
             | _ -> usage (); 1
     with
         Failure msg -> printfn "%s" msg; 1
