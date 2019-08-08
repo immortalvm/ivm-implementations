@@ -1,5 +1,7 @@
 ﻿module Assembler.Checker
 
+open System.IO
+
 open Assembler.Parser
 open Assembler.Composition
 open Machine.Executor
@@ -46,7 +48,7 @@ let showValue (x: int64) =
     sprintf "%d (0x%s)" x hex
 
 let doAssemble fileName =
-    use stream = System.IO.File.OpenRead fileName
+    use stream = File.OpenRead fileName
     try 
         let program, exported, labels = parseProgram stream
         let bytes, symbols = assemble program
@@ -69,7 +71,7 @@ let doCheck fileName =
     let binary, _, _ = doAssemble fileName
     output <| sprintf "Binary size: %d\n" (List.length binary)
 
-    let expectationsFound = System.IO.File.ReadLines fileName
+    let expectationsFound = File.ReadLines fileName
                             |> Seq.exists isExpectationHeading
 
     if not expectationsFound
@@ -78,7 +80,7 @@ let doCheck fileName =
         let actual = doRun binary None
 
         let expected =
-            System.IO.File.ReadLines fileName
+            File.ReadLines fileName
             |> Seq.skipWhile (isExpectationHeading >> not)
             |> Seq.append [""]
             |> Seq.skip 1 // Skip the heading

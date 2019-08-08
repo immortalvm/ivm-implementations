@@ -26,7 +26,7 @@ let compose (nops: int -> int8 list) (prog: Intermediate list) : uint8 list * in
     let mutable allStable = false
 
     // (from statement, to label) -> distance
-    let mutable replies = new Map<int * int, int>([])
+    let mutable replies = Map.empty
 
     let mutable attempts = 0
 

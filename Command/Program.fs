@@ -1,4 +1,6 @@
-﻿open Assembler.Checker
+﻿open System.IO
+
+open Assembler.Checker
 
 [<Literal>]
 let LABELS_HEADING = "--Labels--"
@@ -16,7 +18,7 @@ let usage () =
 
 let assem source binary symbols =
     let bytes, exported, labels = doAssemble source
-    System.IO.File.WriteAllBytes (binary, bytes |> List.toArray)
+    File.WriteAllBytes (binary, bytes |> List.toArray)
     printfn "Binary written to: %s" binary
     let mapLines map = seq {
         for name, pos in Seq.sortBy fst map do
@@ -30,12 +32,12 @@ let assem source binary symbols =
         yield LABELS_HEADING
         yield! mapLines labels
     }
-    System.IO.File.WriteAllLines (symbols, lines)
+    File.WriteAllLines (symbols, lines)
     printfn "Symbols written to: %s" symbols
 
 let readTraceSyms symbols =
     let notHeading line = line <> LABELS_HEADING
-    let lines = Seq.skipWhile notHeading <| System.IO.File.ReadLines symbols
+    let lines = Seq.skipWhile notHeading <| File.ReadLines symbols
     let readLine (line: string) = let arr = line.Split '\t'
                                   int arr.[1], arr.[0]
     new Map<int, string>(Seq.map readLine <| Seq.skip 1 lines)
@@ -46,7 +48,7 @@ let writeStack (endStack: seq<int64>) =
         printfn "0x..%05X %7d" (uint64 x &&& 0xfffffUL) x
 
 let run binary (symbolsIfShouldTrace: string option) =
-    let bytes = System.IO.File.ReadAllBytes binary
+    let bytes = File.ReadAllBytes binary
     let traceSyms =
         match symbolsIfShouldTrace with
         | Some name -> Some <| readTraceSyms name

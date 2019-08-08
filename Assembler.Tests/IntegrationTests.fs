@@ -1,6 +1,6 @@
 ﻿module Assembler.Tests.IntegrationTests
 
-open System
+open System.IO
 open Expecto
 open Expecto.Impl
 open FsCheck
@@ -22,11 +22,11 @@ let check fileName =
 [<Tests>]
 let integrationTests =
     let case (name : string) =
-        let caseName = System.IO.Path.GetFileNameWithoutExtension name
-        let fileName = System.IO.Path.Combine [|DIRECTORY; name|]
+        let caseName = Path.GetFileNameWithoutExtension name
+        let fileName = Path.Combine [|DIRECTORY; name|]
         testCase caseName <| fun () -> check fileName
-    System.IO.Directory.EnumerateFiles DIRECTORY
-    |> Seq.map System.IO.Path.GetFileName
+    Directory.EnumerateFiles DIRECTORY
+    |> Seq.map Path.GetFileName
     |> Seq.map case
     |> Seq.toList
     |> testList DIRECTORY

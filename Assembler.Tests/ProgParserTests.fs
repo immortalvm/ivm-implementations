@@ -1,6 +1,6 @@
 ﻿module Assembler.Tests.ProgParserTests
 
-open System
+open System.IO
 open Expecto
 open Expecto.Impl
 open FsCheck
@@ -16,7 +16,7 @@ let DIRECTORY = "test_code"
 
 let parse (progString: string) =
     let bytes = System.Text.Encoding.UTF8.GetBytes progString
-    let bin, _, _ = parseProgram <| new System.IO.MemoryStream(bytes)
+    let bin, _, _ = parseProgram <| new MemoryStream(bytes)
     bin
 
 // Opposite order of Expect.* (for convenience).
@@ -132,10 +132,10 @@ let assemblyLanguageIntro =
     ]
 
 let parseFile expected (name: string) =
-    let caseName = System.IO.Path.GetFileNameWithoutExtension name
+    let caseName = Path.GetFileNameWithoutExtension name
     testCase caseName <| fun () ->
-        let fileName = System.IO.Path.Combine [|DIRECTORY; name|]
-        let text = System.IO.File.ReadAllText fileName
+        let fileName = Path.Combine [|DIRECTORY; name|]
+        let text = File.ReadAllText fileName
         success expected text ()
 
 [<Tests>]

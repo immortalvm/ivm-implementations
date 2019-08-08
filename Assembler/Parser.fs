@@ -14,10 +14,10 @@ type State = {
     }
     with
         static member Default = {
-            Defs = new Map<string, Expression>([])
-            Labels = new Map<string, int>([])
+            Defs = Map.empty
+            Labels = Map.empty
             Count = 0
-            Exported = new Map<string, int>([])
+            Exported = Map.empty
         }
 
         static member TryExpand id (str: CharStream<State>) =
