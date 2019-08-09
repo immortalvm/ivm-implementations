@@ -7,12 +7,14 @@
 
 ### 1. THE STACK
 
-    ## Fresh stack size in bytes, normally a multiple of 8
+    ## Fresh stack size in bytes, normally a multiple of 8.
     stack_size = 16384
 
-    ## Important: Also add an empty data segment  of 16 bytes or more at the end
-    ## of  this  file for  the  initial  stack.  Otherwise,  your data  will  be
-    ## overwritten when we set up the fresh stack:
+    ## When the program starts, the stack pointer points to the first byte after
+    ## the binary.  In other words, the  binary will become overwritten  when we
+    ## start pushing values to the stack.  For this reason, the compiler adds 16
+    ## bytes to  the binary  (after linking).  This is just  enough to  create a
+    ## fresh stack:
     allocate! stack_size
     add! stack_size
     set_sp
@@ -87,10 +89,6 @@ after_x:
 
 
     exit
-
-    ## Make room for initial stack.
-    data [0 0 0 0 0 0 0 0]
-    data [0 0 0 0 0 0 0 0]
 
 ### EXPECTED STACK:
 ### 2

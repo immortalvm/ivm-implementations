@@ -15,8 +15,12 @@ open Assembler.Parser
 let DIRECTORY = "test_code"
 
 let parse (progString: string) =
+    let lookup name = match name with
+                      | "intro1_statements.my_label"
+                      | "intro2_basics.x" -> 999
+                      | _ -> -1
     let bytes = System.Text.Encoding.UTF8.GetBytes progString
-    let bin, _, _ = parseProgram <| new MemoryStream(bytes)
+    let bin, _, _ = parseProgram (State.Init lookup) (new MemoryStream(bytes))
     bin
 
 // Opposite order of Expect.* (for convenience).

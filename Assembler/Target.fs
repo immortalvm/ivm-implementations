@@ -46,7 +46,7 @@ let pushNum (x: int64): int8 list =
 let pushInt = int64 >> pushNum
 
 // If x = pushFix f, then x = pushInt (f (length x)) @ [NOP; ...].
-let pushFix (f: int -> int) =
+let pushFix (f: int -> int64) =
     let mutable currLen = 1
     let mutable result = None
     while result.IsNone do
@@ -134,24 +134,24 @@ let gtS = offsetSign2 @ gtU
 let gteS = offsetSign2 @ gteU
 
 
-let byteDist x = -128 <= x && x <= 127
+let byteDist x = -128L <= x && x <= 127L
 
 // NB. The delta is w.r.t. before the code.
 let deltaJump delta =
-    if delta = 0 then []
-    elif byteDist <| delta - 3 then [PUSH0; JUMP_ZERO; int8 (delta - 3)]
-    elif delta < 0 then [GET_PC] @ pushInt (delta - 1) @ [ADD; JUMP]
+    if delta = 0L then []
+    elif byteDist <| delta - 3L then [PUSH0; JUMP_ZERO; int8 (delta - 3L)]
+    elif delta < 0L then [GET_PC] @ pushNum (delta - 1L) @ [ADD; JUMP]
     else 
-        let f pushLength = delta - pushLength - 1
+        let f pushLength = delta - int64 pushLength - 1L
         pushFix f @ [GET_PC; ADD; JUMP]
 
 let deltaJumpZero delta =
-    if byteDist <| delta - 2 then [JUMP_ZERO; int8 (delta - 2)]
+    if byteDist <| delta - 2L then [JUMP_ZERO; int8 (delta - 2L)]
     else
-        let jump = deltaJump (delta - 5)
+        let jump = deltaJump (delta - 5L)
         [JUMP_ZERO; 3y; PUSH0; JUMP_ZERO; int8 (opLen jump)] @ jump
 
-let deltaJumpNotZero delta = isZero @ deltaJumpZero (delta - opLen isZero)
+let deltaJumpNotZero delta = isZero @ deltaJumpZero (delta - int64 (opLen isZero))
 
 let genericConditional interjection =
     [
@@ -502,12 +502,21 @@ type Intermediate =
     | Label of int
     | Fragment of FlexCode
 
+// The added generality is mainly relevant when linking (and even then, it hardly
+// matters since labels in other files are usually > 128 bytes away.
+let (|PushLabelOffset|_|) (s: Statement) =
+    match s with
+    | SPush (ELabel i) -> Some (i, 0L)
+    | SPush (ESum [ENum o; ELabel i]) -> Some (i, o)
+    | SPush (ESum [ELabel i; ENum o]) -> Some (i, o)
+    | _ -> None
+
 let intermediates (prog: Statement list) : seq<Intermediate> =
     let mutable rest = prog
 
     let fragment r f = rest <- r; [Fragment f]
     let frag r code = fragment r <| fun _ -> code
-    let withDelta i r f = rest <- r; [Fragment <| fun lookup -> f (lookup i)]
+    let withDelta i o r f = rest <- r; [Fragment <| fun lookup -> lookup i |> int64 |> (+) o |> f]
 
     seq {
         while not rest.IsEmpty do
@@ -540,9 +549,9 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
 
             | SLabel i :: r -> rest <- r; [Label i]
 
-            | SPush (ELabel i) :: SJump :: r -> withDelta i r deltaJump
-            | SPush (ELabel i) :: SJumpZero :: r -> withDelta i r deltaJumpZero
-            | SPush (ELabel i) :: SJumpNotZero :: r -> withDelta i r deltaJumpNotZero
+            | PushLabelOffset (i, o) :: SJump :: r -> withDelta i o r deltaJump
+            | PushLabelOffset (i, o) :: SJumpZero :: r -> withDelta i o r deltaJumpZero
+            | PushLabelOffset (i, o) :: SJumpNotZero :: r -> withDelta i o r deltaJumpNotZero
             | SPush e :: SAdd :: r -> fragment r (expressionAdd e)
             | SPush e :: SMult :: r -> fragment r (expressionMult e)
             | SPush e :: SAnd :: r -> fragment r (expressionAnd e)

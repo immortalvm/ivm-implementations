@@ -10,14 +10,16 @@ open FParsec
 open Assembler.Ast
 open Assembler.Parser
 
+let stateNoImports = State.Init <| fun _ -> -1
+
 // Opposite order of Expect.* (for convenience).
 let success expected parser input () =
-    match runParserOnString (parser .>> eof) State.Default "" input with
+    match runParserOnString (parser .>> eof) stateNoImports "" input with
     | Success(result, _, _)   -> test <@ result = expected @>
     | Failure(errorMsg, _, _) -> failtestf "Failure: %s" errorMsg
 
 let failure pattern parser input () =
-    match runParserOnString (parser .>> eof) State.Default "" input with
+    match runParserOnString (parser .>> eof) stateNoImports "" input with
     | Success(result, _, _)   -> failtestf "Success: %O" result
     | Failure(errorMsg, _, _) -> Expect.isMatch errorMsg pattern "Unexpected error message"
 

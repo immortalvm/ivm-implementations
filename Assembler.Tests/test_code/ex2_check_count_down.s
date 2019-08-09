@@ -14,10 +14,6 @@ loop:
     jump_not_zero! loop
     exit
 
-    ## Make room for initial stack.
-    data [0 0 0 0 0 0 0 0]
-    data [0 0 0 0 0 0 0 0]
-
 ### EXPECTED STACK:
 ### 0
 ### 1

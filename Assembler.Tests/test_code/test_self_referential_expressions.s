@@ -18,10 +18,6 @@
 
     exit
 
-    ## Make room for initial stack.
-    data [0 0 0 0 0 0 0 0]
-    data [0 0 0 0 0 0 0 0]
-
 ### EXPECTED STACK:
 ###
 ### 14

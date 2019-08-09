@@ -104,10 +104,6 @@ more_stuff:
 X_data:
     data [ 0 0 0 0 0 0 0 0x80 ]
 
-    ## Make room for initial stack.
-    data [0 0 0 0 0 0 0 0]
-    data [0 0 0 0 0 0 0 0]
-
 ### EXPECTED STACK:
 ###
 

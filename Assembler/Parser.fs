@@ -4,18 +4,48 @@ open Assembler.Ast
 open Assembler.Transformations
 
 
+exception ParseException of string
+
+// Observe that we must use "eta expansion" (fun str -> ... str) for F# to
+// define generic parsers. We need this so that we can reuse the same parsers
+// for analyzing dependencies as well as full parsing.
+let comment: Parser<unit, _> = fun str -> (skipChar '#' >>. skipRestOfLine true) str
+let whitespace = fun str -> skipSepBy spaces comment str
+
+// Based on http://www.quanttec.com/fparsec/tutorial.html#parsing-string-data.
+let identifierNoWhitespace: Parser<string, _> = fun str ->
+    let first c = isLetter c || c = '_'
+    let rest c = isLetter c || isDigit c || c = '_'
+    many1Satisfy2L first rest "identifier" str
+
+let importBase : Parser<string list, _> = fun str ->
+    (skipString "IMPORT"
+     >>? whitespace
+     >>. (sepBy1 identifierNoWhitespace <| skipChar '.')) str
+
+let importsOnly : Parser<string list, unit> =
+    let node ids = System.String.Join('.', Seq.take (List.length ids - 1) ids)
+    whitespace >>. many (importBase |>> node .>> whitespace)
+
+let parseDependencies (stream: System.IO.Stream): Set<string> =
+    match runParserOnStream importsOnly () "" stream System.Text.Encoding.UTF8 with
+    | Success(result, _, _) -> set result
+    | Failure(errorMsg, _, _) -> errorMsg |> ParseException |> raise
+
+
 type State = {
-        Imports: Map<string, string>  // Maps names to nodes (i.e. source files)
+        ExtSymbols: string -> int     // Positions after end of this file.
         Defs: Map<string, Expression> // Definitions
         Labels: Map<string, int>      // Label numbers
         Count: int                    // Labels defined/referenced so far
         Exported: Map<string, int>    // Label numbers of exported names
-        // Count labels from 1 so that we can use negative numbers for
+        // Label 0 will refer to the end/length of this (sub)binary.
+        // Count other labels from 1 so that we can use negative numbers for
         // referenced but not yet defined labels.
     }
     with
-        static member Default = {
-            Imports = Map.empty
+        static member Init externalSymbols = {
+            ExtSymbols = externalSymbols
             Defs = Map.empty
             Labels = Map.empty
             Count = 0
@@ -30,8 +60,14 @@ type State = {
                 let s = str.UserState
                 let node = System.String.Join ('.', Seq.take (n - 1) ids)
                 let id = List.last ids
-                str.UserState <- { s with Imports = s.Imports.Add(id, node) }
-                Reply (())
+                let qualifiedName = node + "." + id
+                let offset = s.ExtSymbols qualifiedName
+                if offset < 0
+                then Reply (FatalError, messageError <| "Not found: " + qualifiedName)
+                else
+                    let e = ESum [ENum <| int64 offset; ELabel 0]
+                    str.UserState <- { s with Defs = s.Defs.Add (id, e) }
+                    Reply (())
 
         static member TryExpand id (str: CharStream<State>) =
             let s = str.UserState
@@ -85,16 +121,6 @@ type State = {
         static member AddDef id e =
             updateUserState<State> <|
             fun s -> { s with Defs = s.Defs.Add (id, e) }
-
-
-let comment: Parser<unit, State> = skipChar '#' >>. skipRestOfLine true
-let whitespace = skipSepBy spaces comment
-
-// Based on http://www.quanttec.com/fparsec/tutorial.html#parsing-string-data.
-let identifierNoWhitespace: Parser<string, State> =
-    let first c = isLetter c || c = '_'
-    let rest c = isLetter c || isDigit c || c = '_'
-    many1Satisfy2L first rest "identifier"
 
 let identifier: Parser<string, State> = identifierNoWhitespace .>> whitespace
 
@@ -275,28 +301,16 @@ let statement: Parser<Statement list, State> =
     // Eliminating >>= might lead to better performance.
     identifier .>>. (isLabel <|> isDef <|> countArgs) >>= stmt
 
-// Updates State rather than returning values.
-let import : Parser<unit, State> =
-    skipString "IMPORT"
-    >>? whitespace
-    >>. (sepBy1 identifierNoWhitespace <| skipChar '.')
-    >>= State.ObsImport
-    >>. whitespace
+let program : Parser<Statement list, State> =
+    whitespace
+    >>. skipMany (importBase >>= State.ObsImport >>. whitespace)
+    >>. many statement
+    |>> List.concat
+    .>> eof
 
-let prelude = whitespace >>. skipMany import
-
-let program = prelude >>. many statement |>> List.concat .>> eof
-
-
-exception ParseException of string
-
-let parseDependencies (stream: System.IO.Stream): Set<string> =
-    match runParserOnStream prelude State.Default "" stream System.Text.Encoding.UTF8 with
-    | Success(_, s, _) -> set <| seq {for pair in s.Imports -> pair.Value}
-    | Failure(errorMsg, _, _) -> errorMsg |> ParseException |> raise
-
-let parseProgram (stream: System.IO.Stream): seq<Statement> * Map<string, int> * Map<string, int> =
-    match runParserOnStream program State.Default "" stream System.Text.Encoding.UTF8 with
+let parseProgram (initState: State) (stream: System.IO.Stream)
+    : seq<Statement> * Map<string, int> * Map<string, int> =
+    match runParserOnStream program initState "" stream System.Text.Encoding.UTF8 with
     | Success(result, s, _) ->
         let missing = [
             for pair in s.Labels do

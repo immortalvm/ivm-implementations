@@ -13,6 +13,8 @@ For code examples and language introduction see the source files in Assembler.Te
     ivm as-trace <source>               -  Assemble and trace (no output files)
     ivm check <source>                  -  Assemble, run, and check final stack
 
+    ivm gen-proj <root dir> <goal>      -  Create prototype project (<goal>.proj)
+    ivm build <project> <dest dir>      -  Assemble project
 
 ## Semi-formal EBNF, ignoring whitespace and comments
 

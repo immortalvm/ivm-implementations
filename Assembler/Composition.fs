@@ -14,8 +14,8 @@ let compose (nops: int -> int8 list) (prog: Intermediate list) : uint8 list * in
                        | Label i -> yield i
                        | _ -> ()
                    ]
-    // positions[0] will refer to the beginning of the file.
-    // This will be useful for absolute adressing (of initial program).
+    // positions[0] will refer to the length/end of the file.
+    // This is used for "linking".
     let positions = Array.create (maxLabel + 1) 0
 
     let pLength = List.length prog
@@ -55,6 +55,7 @@ let compose (nops: int -> int8 list) (prog: Intermediate list) : uint8 list * in
                 position <- position + opLen codes.[num]
 
         List.iteri updateIfNecessary prog
+        positions.[0] <- position // End of file
 
         // Check all replies (not only the recently recalculated).
         allStable <- true

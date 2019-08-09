@@ -1,5 +1,6 @@
 ﻿open System.IO
 
+open Machine.Utils
 open Assembler.Checker
 
 [<Literal>]
@@ -16,17 +17,20 @@ let usage () =
     printfn "  %s as-trace <source>               -  Assemble and trace (no output files)" ex
     printfn "  %s check <source>                  -  Assemble, run, and check final stack" ex
     printfn ""
-    printfn "  %s gen-proj <root dir> <goal>      -  Create prototype <goal>.proj" ex
+    printfn "  %s gen-proj <root dir> <goal>      -  Create prototype project (<goal>.proj)" ex
+    // Ignore incremental builds for now
+    printfn "  %s build <project> <dest dir>      -  Assemble project" ex
 
-let assem source binary symbols =
-    let bytes, exported, labels = doAssemble source
-    File.WriteAllBytes (binary, bytes |> List.toArray)
-    printfn "Binary written to: %s" binary
+let writeAssemblerOutput binaryFile symbolsFile bytes exported labels previous =
+    File.WriteAllBytes (binaryFile, bytes |> List.toArray)
+    printfn "Binary written to: %s" binaryFile
     let mapLines map = seq {
         for name, pos in Seq.sortBy fst map do
             yield sprintf "%s\t%d" name pos
     }
     let lines = seq {
+        yield "--Previous--"
+        yield valueOr "" previous
         yield "--Size--"
         yield bytes.Length.ToString ()
         yield "--Relative--"
@@ -34,8 +38,12 @@ let assem source binary symbols =
         yield LABELS_HEADING
         yield! mapLines labels
     }
-    File.WriteAllLines (symbols, lines)
-    printfn "Symbols written to: %s" symbols
+    File.WriteAllLines (symbolsFile, lines)
+    printfn "Symbols written to: %s" symbolsFile
+
+let assem source binary symbols =
+    let _, bytes, exported, labels = doAssemble source
+    writeAssemblerOutput source binary bytes exported labels None
 
 let readTraceSyms symbols =
     let notHeading line = line <> LABELS_HEADING
@@ -59,7 +67,7 @@ let run binary (symbolsIfShouldTrace: string option) =
     if symbolsIfShouldTrace.IsNone then writeStack stack
 
 let asRun source shouldTrace =
-    let bytes, exported, labels = doAssemble source
+    let _, bytes, exported, labels = doAssemble source
 
     if shouldTrace then
         for name, pos in Seq.sortBy fst exported do
@@ -76,38 +84,47 @@ let asRun source shouldTrace =
 let check source =
     printfn "%s" <| doCheck source
 
-[<Literal>]
-let SOURCE_EXTENSION = ".s"
+let nodePath rootDir (node: string) extension =
+    (Array.append [|rootDir|] (node.Split '.') |> Path.Combine) + extension
 
 let genProj rootDir (goal: string) =
     let projectFile = goal + ".proj"
     if File.Exists projectFile
     then failwithf "File exists: %s" projectFile
-
-    // Depth first topological sorting
-    let mutable processed : Set<string> = set []
-    let rec visit node (seen: Set<string>) =
-        seq {
-            if processed.Contains node then ()
-            else if seen.Contains node then failwithf "Circular dependency: %s" node
-            else
-                let path = (Array.append [|rootDir|] (node.Split '.') |> Path.Combine)
-                let deps = getDependencies <| path + SOURCE_EXTENSION
-                if not deps.IsEmpty
-                then
-                    let s = seen.Add node
-                    for d in deps do yield! visit d s
-                processed <- processed.Add(node)
-                yield node
-        }
     let lines = seq {
         yield "--Root--"
         yield Path.GetFullPath rootDir
         yield "--Relative--"
-        yield! visit goal <| set []
+        yield! getBuildOrder rootDir goal
     }
     File.WriteAllLines (projectFile, lines)
     printfn "Project file created: %s" projectFile
+
+let build projectFile destinationDir =
+    let mutable lines = seq <| File.ReadAllLines projectFile
+    let goto x = Seq.skip (1 + Seq.findIndex ((=) x) lines) lines
+    let write node =
+        let bFile = nodePath destinationDir node BINARY_EXTENSION
+        let sFile = nodePath destinationDir node SYMBOLS_EXTENSION
+        writeAssemblerOutput bFile sFile
+
+    lines <- goto "--Root--"
+    let rootDir = Seq.head lines
+    lines <- Seq.skip 1 lines
+    lines <- goto "--Relative--"
+    let buildOrder = Seq.toList lines
+
+    let tuples = doBuild rootDir buildOrder
+    let withSaving = seq {
+        let mutable previous = projectFile
+        for node, bin, sym, lab in tuples do
+            write node bin sym lab <| Some previous
+            yield node, bin, sym, lab
+            previous <- node
+    }
+    // This triggers the saving of individual binaries as a side effect.
+    let node, bin, sym, lab = doCollect withSaving
+    write (node + "$") bin sym lab None
 
 [<EntryPoint>]
 let main argv =
@@ -125,6 +142,7 @@ let main argv =
             | "check" when n = 2 -> check argv.[1]; 0
 
             | "gen-proj" when n = 3 -> genProj argv.[1] argv.[2]; 0
+            | "build" when n = 3 -> build argv.[1] argv.[2]; 0
             | _ -> usage (); 1
     with
         Failure msg -> printfn "%s" msg; 1

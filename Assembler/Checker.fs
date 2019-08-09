@@ -8,10 +8,41 @@ open Machine.Executor
 open FParsec
 open System.Text.RegularExpressions
 
+// These constants should be annotated [<Literal>], but then they can no longer
+// be made available through the signature file. This is (yet another) reason
+// to stop using signature files.
+let SOURCE_EXTENSION = ".s"
+let BINARY_EXTENSION = ".b"
+let SYMBOLS_EXTENSION = ".sym"
+
+type assemblerOutput = string * uint8 list * (string * int) list * (string * int) list
+
 let getDependencies (fileName : string) : Set<string> =
+    printfn "Analyzing dependencies in %s..." fileName
     use stream = File.OpenRead fileName
     try parseDependencies stream
     with ParseException(msg) -> failwith msg
+
+let nodePath rootDir (node: string) extension =
+    (Array.append [|rootDir|] (node.Split '.') |> Path.Combine) + extension
+
+// Depth first topological sorting
+let getBuildOrder (rootDir: string) (goal : string) : seq<string> =
+    let mutable processed : Set<string> = set []
+    let rec visit node (seen: Set<string>) =
+        seq {
+            if processed.Contains node then ()
+            else if seen.Contains node then failwithf "Circular dependency: %s" node
+            else
+                let deps = getDependencies <| nodePath rootDir node SOURCE_EXTENSION
+                if not deps.IsEmpty
+                then
+                    let s = seen.Add node
+                    for d in deps do yield! visit d s
+                processed <- processed.Add(node)
+                yield node
+        }
+    visit goal <| set []
 
 let expectationHeading : Parser<unit, unit> =
     spaces >>. many1 (skipChar '#')
@@ -52,16 +83,53 @@ let showValue (x: int64) =
     hex <- Regex.Replace(hex, "^FFF+", "..FF")
     sprintf "%d (0x%s)" x hex
 
-let doAssemble fileName =
+let buildOne (fileName: string) (relSymbols: string -> int) =
+    printfn "Building %s..." fileName
     use stream = File.OpenRead fileName
-    try 
-        let program, exported, labels = parseProgram stream
+    try
+        let program, exported, labels = parseProgram (State.Init relSymbols) stream
         let bytes, symbols = assemble program
         let symList (map: Map<string, int>) =
             [for pair in map -> (pair.Key, symbols.[pair.Value])]
         bytes, symList exported, symList labels
     with
         ParseException(msg) -> failwith msg
+
+let doBuild (rootDir: string) (buildOrder: seq<string>) : seq<assemblerOutput> =
+    let mutable currentSize : int = 0
+    // Distance from the end: [0, currentSize]
+    let mutable allSymbols : Map<string, int> = Map.empty
+    let lookup label = match allSymbols.TryFind label with
+                       | None -> -1
+                       | Some dist -> currentSize - dist // >= 0
+    seq {
+        for node in buildOrder do
+            let sourceFile = nodePath rootDir node SOURCE_EXTENSION
+            let bytes, exported, labels = buildOne sourceFile lookup
+            yield node, bytes, exported, labels
+
+            currentSize <- currentSize + bytes.Length
+            for label, pos in exported do
+                allSymbols <- allSymbols.Add (node + "." + label, currentSize - pos)
+    }
+
+let doCollect (outputs: seq<assemblerOutput>) : assemblerOutput =
+    let tuples = outputs |> Seq.toList |> Seq.rev
+    let bin = Seq.append (tuples |> Seq.map (fun (_,b,_,_) -> List.toArray b)) [Array.zeroCreate 16] |> Seq.concat |> Seq.toList
+    let lab = [
+        let mutable offset = 0
+        for n, b, _, lst in tuples do
+            let o = offset
+            yield seq {for label, pos in lst -> n + "." + label, pos + o}
+            offset <- offset + List.length b
+    ]
+    let lastNode = let n,_,_,_ = Seq.item 0 tuples in n
+    lastNode, bin, [], lab |> Seq.concat |> Seq.toList
+
+let doAssemble (fileName: string) =
+    let rootDir = Path.GetDirectoryName fileName
+    let buildOrder = getBuildOrder rootDir <| Path.GetFileNameWithoutExtension fileName
+    buildOrder |> doBuild rootDir |> doCollect
 
 let doRun binary traceSyms =
     try
@@ -73,8 +141,8 @@ let doRun binary traceSyms =
 let doCheck fileName =
     let mutable revOutput = []
     let output msg = revOutput <- msg :: revOutput
-    let binary, _, _ = doAssemble fileName
-    output <| sprintf "Binary size: %d\n" (List.length binary)
+    let _, binary, _, _ = doAssemble fileName
+    output <| sprintf "Binary size: %d" (List.length binary)
 
     let expectationsFound = File.ReadLines fileName
                             |> Seq.exists isExpectationHeading
