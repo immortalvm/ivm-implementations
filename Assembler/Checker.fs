@@ -115,7 +115,7 @@ let doBuild (rootDir: string) (buildOrder: seq<string>) : seq<assemblerOutput> =
 
 let doCollect (outputs: seq<assemblerOutput>) : assemblerOutput =
     let tuples = outputs |> Seq.toList |> Seq.rev
-    let bin = Seq.append (tuples |> Seq.map (fun (_,b,_,_) -> List.toArray b)) [Array.zeroCreate 16] |> Seq.concat |> Seq.toList
+    let bin = tuples |> Seq.map (fun (_,b,_,_) -> List.toArray b) |> Seq.concat |> Seq.toList
     let lab = [
         let mutable offset = 0
         for n, b, _, lst in tuples do
@@ -131,9 +131,9 @@ let doAssemble (fileName: string) =
     let buildOrder = getBuildOrder rootDir <| Path.GetFileNameWithoutExtension fileName
     buildOrder |> doBuild rootDir |> doCollect
 
-let doRun binary traceSyms =
+let doRun binary arg traceSyms =
     try
-        execute binary traceSyms |> Seq.map int64
+        execute binary arg traceSyms |> Seq.map int64
     with
         | AccessException msg -> failwith "Access exception!"
         | UndefinedException msg -> failwith "Undefined instruction!"
@@ -150,7 +150,7 @@ let doCheck fileName =
     if not expectationsFound
     then output "Not executed since no expectations were found."
     else
-        let actual = doRun binary None
+        let actual = doRun binary Seq.empty None
 
         let expected =
             File.ReadLines fileName

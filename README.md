@@ -6,15 +6,19 @@ For code examples and language introduction see the source files in Assembler.Te
 
 ## Usage
 
-    ivm as <source> <binary> <symbols>  -  Assemble
-    ivm run <binary>                    -  Run binary and print final stack
-    ivm trace <binary> <symbols>        -  Trace binary
-    ivm as-run <source>                 -  Assemble and run (no output files)
-    ivm as-trace <source>               -  Assemble and trace (no output files)
-    ivm check <source>                  -  Assemble, run, and check final stack
+    ivm                                     -  Show this text
+    ivm as <source> <binary> <symbols>      -  Assemble
+    ivm run <binary>                        -  Run binary and print final stack
+    ivm run <binary> <arg file>             -  Run binary and print final stack
+    ivm trace <binary> <symbols>            -  Trace binary
+    ivm trace <binary> <arg file> <symbols> -  Trace binary
+    ivm as-run <source>                     -  Assemble and run (no output files)
+    ivm as-trace <source>                   -  Assemble and trace (no output files)
+    ivm check <source>                      -  Assemble, run, and check final stack
 
-    ivm gen-proj <root dir> <goal>      -  Create prototype project (<goal>.proj)
-    ivm build <project> <dest dir>      -  Assemble project
+    ivm gen-proj <root dir> <goal>          -  Create prototype project (<goal>.proj)
+    ivm build <project> <dest dir>          -  Assemble project
+
 
 ## Semi-formal EBNF, ignoring whitespace and comments
 

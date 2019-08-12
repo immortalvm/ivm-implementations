@@ -10,14 +10,19 @@
     ## Fresh stack size in bytes, normally a multiple of 8.
     stack_size = 16384
 
-    ## When the program starts, the stack pointer points to the first byte after
-    ## the binary.  In other words, the  binary will become overwritten  when we
-    ## start pushing values to the stack.  For this reason, the compiler adds 16
-    ## bytes to  the binary  (after linking).  This is just  enough to  create a
-    ## fresh stack:
+    ## Before  the program  starts, a  segment of  the memory  is allocated  and
+    ## filled with  (1) the binary,  (2) the contents  of the argument  file (if
+    ## provided), and (3)  16 zero bytes (2  * 64 bits). The  program counter is
+    ## set the the start of this segment and the stack pointer to the stop (i.e.
+    ## the  first byte  after the  segment). In  other words,  the argument  and
+    ## binary may become overwritten when push values to the stack. Fortunately,
+    ## the 16 bytes at the end is just enough to create a fresh stack:
     allocate! stack_size
     add! stack_size
     set_sp
+
+    ## (There is also a trick to avoid loosing the old stack pointer which will
+    ## be explained later.)
 
     ## It is often necessary push a copy of an element in the stack onto the
     ## stack. This can be done as follows:

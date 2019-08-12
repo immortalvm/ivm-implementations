@@ -207,9 +207,9 @@ type Machine(initialMemory: seq<uint8>, startLocation: uint64, traceSyms: Map<in
 
 let random = System.Random ()
 
-let execute (prog: seq<uint8>) (traceSyms: Map<int, string> option) =
+let execute (prog: seq<uint8>) (arg: seq<uint8>)(traceSyms: Map<int, string> option) =
     // Start at 0, 1000, ... or 7000.
     let start = random.Next () % 8 |> (*) 1000 |> uint64
-    let machine = Machine(prog, start, traceSyms)
+    let machine = Machine(Seq.concat [prog; arg; Seq.replicate (2 * 8) 0uy], start, traceSyms)
     machine.Run ()
     machine.Stack ()

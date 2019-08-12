@@ -14,7 +14,7 @@ val getBuildOrder : string -> string -> seq<string>
 
 val doAssemble : string -> assemblerOutput
 
-val doRun : seq<uint8> -> Map<int, string> option -> seq<int64>
+val doRun : seq<uint8> -> seq<uint8> -> Map<int, string> option -> seq<int64>
 
 // Returns message if stack as expected, otherwise raises exception.
 val doCheck : string -> string
