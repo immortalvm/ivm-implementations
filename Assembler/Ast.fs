@@ -71,4 +71,6 @@ type Statement =
 
     | SAlloc | SDealloc
 
-    // TODO: Input and output
+    | SNewFrame |SSetPixel | SAddSample
+
+    // TODO: More input and output

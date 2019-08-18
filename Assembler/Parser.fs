@@ -295,6 +295,10 @@ let statement: Parser<Statement list, State> =
             | "allocate" -> nArgs 1 [SAlloc]
             | "deallocate" -> nArgs 1 [SDealloc]
 
+            | "new_frame" -> nArgs 3 [SNewFrame]
+            | "set_pixel" -> nArgs 5 [SSetPixel]
+            | "add_sample" -> nArgs 3 [SAddSample]
+
             // Better error message than simply 'fail'.
             | _ -> fun _ -> Reply (Error, unexpectedString id)
 

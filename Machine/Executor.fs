@@ -3,6 +3,9 @@
 open Machine.Instructions
 open Machine.Utils
 
+open System.Drawing
+open System.IO
+
 exception AccessException of string
 exception UndefinedException of string
 
@@ -14,7 +17,7 @@ let fromBytes : seq<uint8> -> uint64 =
 let toBytes n (x: uint64) : seq<uint8> =
     [| 0 .. n-1 |] |> Seq.map (fun i -> x >>> i*8 |> uint8)
 
-type Machine(initialMemory: seq<uint8>, startLocation: uint64, traceSyms: Map<int, string> option) =
+type Machine(initialMemory: seq<uint8>, startLocation: uint64, outputDir: string option, traceSyms: Map<int, string> option) =
 
     // Reverse ordering
     let mutable arrays = [ (startLocation, Seq.toArray initialMemory) ]
@@ -41,6 +44,53 @@ type Machine(initialMemory: seq<uint8>, startLocation: uint64, traceSyms: Map<in
     let store location value =
         let (a, i) = getArray location in a.[i] <- value
 
+    let mutable outputEncountered = false
+    let mutable frameCounter = -1 // Since the first "flush" will be a no-op.
+    let mutable bitmap : Bitmap option = None
+    let mutable sampleRate = 0u
+    let mutable samples : (int16 * int16) list = [] // Reversed
+    let flushFrame () =
+        if outputDir.IsNone
+        then
+            if not outputEncountered
+            then printfn "Output ignored"
+                 outputEncountered <- true
+        else
+            if not outputEncountered
+            then Directory.CreateDirectory outputDir.Value |> ignore
+                 printfn "Output to: %s" outputDir.Value
+                 outputEncountered <- true
+            let path = Path.Combine(outputDir.Value, sprintf "%08d." frameCounter)
+            match bitmap with
+            | None -> ()
+            | Some b ->
+                b.Save(path + "png", Imaging.ImageFormat.Png)
+            match samples with
+            | [] -> ()
+            | _ ->
+                // See http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html
+                Directory.CreateDirectory outputDir.Value |> ignore
+                let data = samples |> Seq.rev |> Seq.collect (fun (l, r) -> [l; r]) |> Seq.toArray
+                let sampleLength = 2 // 16 bits
+                let channels = 2 // left, right
+                let blockAlign = sampleLength * channels
+                let blocks = Array.length data / channels
+                use s = File.OpenWrite <| path + "wav"
+                let w = new BinaryWriter (s)
+                w.Write("RIFF".ToCharArray ())
+                w.Write(uint32 <| 36 + blocks * channels * sampleLength)
+                w.Write("WAVEfmt ".ToCharArray ());
+                w.Write(uint32 16) // Chunk size
+                w.Write(uint16 1) // WAVE_FORMAT_PCM
+                w.Write(uint16 channels)
+                w.Write(uint32 sampleRate)
+                w.Write(uint32 blocks * sampleRate)
+                w.Write(uint16 <| blockAlign);
+                w.Write(uint16 <| 8 * sampleLength);
+                w.Write("data".ToCharArray ());
+                w.Write(uint32 blockAlign * uint32 blocks) // Chunk size
+                for x in data do w.Write(x)
+            frameCounter <- frameCounter + 1
 
     member m.Allocate size =
         // NB: We leave a gap of 1 unused byte to catch pointer errors.
@@ -123,6 +173,8 @@ type Machine(initialMemory: seq<uint8>, startLocation: uint64, traceSyms: Map<in
                     <| System.String.Join(" ", m.Stack 50 |> Seq.rev |> Seq.map int64)
 
             m.Step ()
+        flushFrame ()
+        printfn ""
 
     // For testing
     member m.Stack ?max : seq<uint64> =
@@ -202,14 +254,35 @@ type Machine(initialMemory: seq<uint8>, startLocation: uint64, traceSyms: Map<in
             if n >= 0UL && n <= 63UL then 1UL <<< int n else 0UL
             |> m.Push
 
+        | NEW_FRAME ->
+            flushFrame ()
+            sampleRate <- m.Pop () |> uint32
+            samples <- []
+            let height = m.Pop () |> int
+            let width = m.Pop () |> int
+            bitmap <- Some <| new Bitmap (width, height)
+            printf "."
+        | SET_PIXEL ->
+            let b = m.Pop () |> int
+            let g = m.Pop () |> int
+            let r = m.Pop () |> int
+            let y = m.Pop () |> int
+            let x = m.Pop () |> int
+            let c = Color.FromArgb(r &&& 255, g &&& 255, b &&& 255)
+            bitmap.Value.SetPixel(x, y, c)
+        | ADD_SAMPLE ->
+            let right = m.Pop () |> int16
+            let left = m.Pop () |> int16
+            samples <- (left, right) :: samples
+
         | undefined -> raise (UndefinedException(sprintf "%d" undefined))
 
 
 let random = System.Random ()
 
-let execute (prog: seq<uint8>) (arg: seq<uint8>)(traceSyms: Map<int, string> option) =
+let execute (prog: seq<uint8>) (arg: seq<uint8>) (outputDir: string option) (traceSyms: Map<int, string> option) =
     // Start at 0, 1000, ... or 7000.
     let start = random.Next () % 8 |> (*) 1000 |> uint64
-    let machine = Machine(Seq.concat [prog; arg; Seq.replicate (2 * 8) 0uy], start, traceSyms)
+    let machine = Machine(Seq.concat [prog; arg; Seq.replicate (2 * 8) 0uy], start, outputDir, traceSyms)
     machine.Run ()
     machine.Stack ()

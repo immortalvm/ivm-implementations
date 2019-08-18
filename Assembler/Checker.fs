@@ -131,9 +131,9 @@ let doAssemble (fileName: string) =
     let buildOrder = getBuildOrder rootDir <| Path.GetFileNameWithoutExtension fileName
     buildOrder |> doBuild rootDir |> doCollect
 
-let doRun binary arg traceSyms =
+let doRun binary arg outputDir traceSyms =
     try
-        execute binary arg traceSyms |> Seq.map int64
+        execute binary arg outputDir traceSyms |> Seq.map int64
     with
         | AccessException msg -> failwith "Access exception!"
         | UndefinedException msg -> failwith "Undefined instruction!"
@@ -150,7 +150,7 @@ let doCheck fileName =
     if not expectationsFound
     then output "Not executed since no expectations were found."
     else
-        let actual = doRun binary Seq.empty None
+        let actual = doRun binary Seq.empty None None
 
         let expected =
             File.ReadLines fileName

@@ -593,5 +593,9 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
 
             | SPush e :: r -> fragment r (expressionPush e)
 
+            | SNewFrame :: r -> frag r [NEW_FRAME]
+            | SSetPixel :: r -> frag r [SET_PIXEL]
+            | SAddSample :: r -> frag r [ADD_SAMPLE]
+
             | _ -> failwithf "Impossible case: %O" rest
     }

@@ -9,19 +9,25 @@ let LABELS_HEADING = "--Labels--"
 let usage () =
     let ex = System.AppDomain.CurrentDomain.FriendlyName
     printfn "Usage:"
-    printfn "  %s                                     -  Show this text" ex
-    printfn "  %s as <source> <binary> <symbols>      -  Assemble" ex
-    printfn "  %s run <binary>                        -  Run binary and print final stack" ex
-    printfn "  %s run <binary> <arg file>             -  Run binary and print final stack" ex
-    printfn "  %s trace <binary> <symbols>            -  Trace binary" ex
-    printfn "  %s trace <binary> <arg file> <symbols> -  Trace binary" ex
-    printfn "  %s as-run <source>                     -  Assemble and run (no output files)" ex
-    printfn "  %s as-trace <source>                   -  Assemble and trace (no output files)" ex
-    printfn "  %s check <source>                      -  Assemble, run, and check final stack" ex
+    printfn "  %s                                                  -  Show this text" ex
+    printfn "  %s as <source> <binary> <symbols>                   -  Assemble" ex
+    printfn "  %s run <binary>                                     -  Run binary and print final stack" ex
+    printfn "  %s run <binary> <arg file>                          -  Run binary and print final stack" ex
+    printfn "  %s run <binary> <arg file> <output dir>             -  Run binary and print final stack" ex
+    printfn "  %s trace <binary> <symbols>                         -  Trace binary" ex
+    printfn "  %s trace <binary> <symbols> <arg file>              -  Trace binary" ex
+    printfn "  %s trace <binary> <symbols> <arg file> <output dir> -  Trace binary" ex
+    printfn "  %s as-run <source>                                  -  Assemble and run" ex
+    printfn "  %s as-run <source> <arg file>                       -  Assemble and run" ex
+    printfn "  %s as-run <source> <arg file> <output dir>          -  Assemble and run" ex
+    printfn "  %s as-trace <source>                                -  Assemble and trace" ex
+    printfn "  %s as-trace <source> <arg file>                     -  Assemble and trace" ex
+    printfn "  %s as-trace <source> <arg file> <output dir>        -  Assemble and trace" ex
+    printfn "  %s check <source>                                   -  Assemble, run, and check final stack" ex
     printfn ""
-    printfn "  %s gen-proj <root dir> <goal>          -  Create prototype project (<goal>.proj)" ex
-    // Ignore incremental builds for now
-    printfn "  %s build <project> <dest dir>          -  Assemble project" ex
+    printfn "  %s gen-proj <root dir> <goal>     -  Create prototype project (<goal>.proj)" ex
+    // No incremental builds for now
+    printfn "  %s build <project> <dest dir>     -  Assemble project" ex
 
 let writeAssemblerOutput binaryFile symbolsFile bytes exported labels previous =
     File.WriteAllBytes (binaryFile, bytes |> List.toArray)
@@ -59,7 +65,7 @@ let writeStack (endStack: seq<int64>) =
     for x in endStack do
         printfn "0x..%05X %7d" (uint64 x &&& 0xfffffUL) x
 
-let run binary (argFile: string option) (symbolsIfShouldTrace: string option) =
+let run binary (argFile: string option) (outputDir: string option) (symbolsIfShouldTrace: string option) =
     let bytes = File.ReadAllBytes binary
     let arg = match argFile with
               | Some name -> File.ReadAllBytes name
@@ -68,10 +74,10 @@ let run binary (argFile: string option) (symbolsIfShouldTrace: string option) =
         match symbolsIfShouldTrace with
         | Some name -> Some <| readTraceSyms name
         | None -> None
-    let stack = doRun bytes arg traceSyms |> Seq.toList
+    let stack = doRun bytes arg outputDir traceSyms |> Seq.toList
     if symbolsIfShouldTrace.IsNone then writeStack stack
 
-let asRun source shouldTrace =
+let asRun source argFile outputDir shouldTrace =
     let _, bytes, exported, labels = doAssemble source
 
     if shouldTrace then
@@ -83,7 +89,10 @@ let asRun source shouldTrace =
         else let flip (x, y) = (y, x)
              Some <| new Map<int, string> (Seq.map flip labels)
 
-    let stack = doRun (List.toArray bytes) Seq.empty traceSyms |> Seq.toList
+    let arg = match argFile with
+              | Some name -> File.ReadAllBytes name
+              | None -> Array.empty
+    let stack = doRun (List.toArray bytes) arg outputDir traceSyms |> Seq.toList
     if not shouldTrace then writeStack stack
 
 let check source =
@@ -134,20 +143,27 @@ let build projectFile destinationDir =
 [<EntryPoint>]
 let main argv =
     try
-        printfn "iVM Assembler and VM, version 0.6"
+        printfn "iVM Assembler and VM, version 0.7"
         let n = Array.length argv
         if n = 0 then usage (); 0
         else
             match argv.[0] with
             | "as" when n = 4 -> assem argv.[1] argv.[2] argv.[3]; 0
-            | "run" when n = 2 -> run argv.[1] None None; 0
-            | "run" when n = 3 -> run argv.[1] (Some argv.[2]) None; 0
-            | "trace" when n = 3 -> run argv.[1] None (Some argv.[2]); 0
-            | "trace" when n = 4 -> run argv.[1] (Some argv.[2]) (Some argv.[3]); 0
-            | "as-run" when n = 2 -> asRun argv.[1] false; 0
-            | "as-trace" when n = 2 -> asRun argv.[1] true; 0
-            | "check" when n = 2 -> check argv.[1]; 0
+            | "run" when n = 2 -> run argv.[1] None None None; 0
+            | "run" when n = 3 -> run argv.[1] (Some argv.[2]) None None; 0
+            | "run" when n = 4 -> run argv.[1] (Some argv.[2]) (Some argv.[3]) None; 0
+            | "trace" when n = 3 -> run argv.[1] None None (Some argv.[2]); 0
+            | "trace" when n = 4 -> run argv.[1] (Some argv.[2]) None (Some argv.[3]); 0
+            | "trace" when n = 5 -> run argv.[1] (Some argv.[2]) (Some argv.[4]) (Some argv.[3]); 0
 
+            | "as-run" when n = 2 -> asRun argv.[1] None None false; 0
+            | "as-run" when n = 3 -> asRun argv.[1] (Some argv.[2]) None false; 0
+            | "as-run" when n = 4 -> asRun argv.[1] (Some argv.[2]) (Some argv.[3]) false; 0
+            | "as-trace" when n = 2 -> asRun argv.[1] None None true; 0
+            | "as-trace" when n = 3 -> asRun argv.[1] (Some argv.[2]) None true; 0
+            | "as-trace" when n = 4 -> asRun argv.[1] (Some argv.[2]) (Some argv.[3]) true; 0
+
+            | "check" when n = 2 -> check argv.[1]; 0
             | "gen-proj" when n = 3 -> genProj argv.[1] argv.[2]; 0
             | "build" when n = 3 -> build argv.[1] argv.[2]; 0
             | _ -> usage (); 1

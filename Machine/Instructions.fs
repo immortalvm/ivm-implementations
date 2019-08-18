@@ -118,6 +118,18 @@ let XOR = 43y
 [<Literal>]
 let POW2 = 44y
 
+// 45-47: Unused
+
+[<Literal>]
+let NEW_FRAME = 48y
+
+[<Literal>]
+let SET_PIXEL = 49y
+
+[<Literal>]
+let ADD_SAMPLE = 50y
+
+
 // Used by Machine.Disassembler to find the module.
 // type internal ReflectionMarker = interface end
 type ReflectionMarker = interface end

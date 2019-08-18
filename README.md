@@ -6,18 +6,24 @@ For code examples and language introduction see the source files in Assembler.Te
 
 ## Usage
 
-    ivm                                     -  Show this text
-    ivm as <source> <binary> <symbols>      -  Assemble
-    ivm run <binary>                        -  Run binary and print final stack
-    ivm run <binary> <arg file>             -  Run binary and print final stack
-    ivm trace <binary> <symbols>            -  Trace binary
-    ivm trace <binary> <arg file> <symbols> -  Trace binary
-    ivm as-run <source>                     -  Assemble and run (no output files)
-    ivm as-trace <source>                   -  Assemble and trace (no output files)
-    ivm check <source>                      -  Assemble, run, and check final stack
+    ivm                                                  -  Show this text
+    ivm as <source> <binary> <symbols>                   -  Assemble
+    ivm run <binary>                                     -  Run binary and print final stack
+    ivm run <binary> <arg file>                          -  Run binary and print final stack
+    ivm run <binary> <arg file> <output dir>             -  Run binary and print final stack
+    ivm trace <binary> <symbols>                         -  Trace binary
+    ivm trace <binary> <symbols> <arg file>              -  Trace binary
+    ivm trace <binary> <symbols> <arg file> <output dir> -  Trace binary
+    ivm as-run <source>                                  -  Assemble and run
+    ivm as-run <source> <arg file>                       -  Assemble and run
+    ivm as-run <source> <arg file> <output dir>          -  Assemble and run
+    ivm as-trace <source>                                -  Assemble and trace
+    ivm as-trace <source> <arg file>                     -  Assemble and trace
+    ivm as-trace <source> <arg file> <output dir>        -  Assemble and trace
+    ivm check <source>                                   -  Assemble, run, and check final stack
 
-    ivm gen-proj <root dir> <goal>          -  Create prototype project (<goal>.proj)
-    ivm build <project> <dest dir>          -  Assemble project
+    ivm gen-proj <root dir> <goal>     -  Create prototype project (<goal>.proj)
+    ivm build <project> <dest dir>     -  Assemble project
 
 
 ## Semi-formal EBNF, ignoring whitespace and comments
@@ -82,7 +88,11 @@ statement = identifier ":"               (* label *)
           | "gt_s" | "gt_s!" expression | "gt_s!!" expression expression
 
           | "allocate" | "allocate!" expression
-          | "deallocate" | "deallocate!" expression;
+          | "deallocate" | "deallocate!" expression
+
+          ... | "new_frame!!!" expression expression expression
+          ... | "set_pixel!!!!!" expression ...
+          ... | "add_sample!!" expression expression;
 
 expression = positive_numeral  (* 0 to 2^64-1 *)
            | identifier        (* label or abbreviation *)

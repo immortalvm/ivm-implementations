@@ -29,6 +29,9 @@
     <None Include="test_code\ex3_quick_sort.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="test_code\ex4_short_video.s">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="test_code\test_expressions.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -49,13 +52,13 @@
     <Compile Include="CompositionTests.fs" />
     <Compile Include="IntegrationTests.fs" />
     <Compile Include="Main.fs" />
+    <PackageReference Include="Expecto" Version="8.11.0" />
+    <PackageReference Include="FsCheck" Version="2.14.0" />
+    <ProjectReference Include="..\Machine\Machine.fsproj" />
     <PackageReference Include="Unquote" Version="5.0.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.8.0" />
     <ProjectReference Include="..\Assembler\Assembler.fsproj" />
     <PackageReference Include="Expecto.FsCheck" Version="8.11.0" />
-    <PackageReference Include="Expecto" Version="8.11.0" />
-    <PackageReference Include="FsCheck" Version="2.14.0" />
-    <ProjectReference Include="..\Machine\Machine.fsproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.2.0" />
   </ItemGroup>
 </Project>
