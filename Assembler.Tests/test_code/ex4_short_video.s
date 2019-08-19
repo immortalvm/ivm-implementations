@@ -21,13 +21,16 @@
     right_step = 75
 
 ### "Local variables"
-    push!!!!!! 0 0 0 0 0 0
-    i = 5                       # Frame counter
-    x = 4
-    y = 3
+    push!!!!!!!! 0 0 0 base_volume (+ base_volume (* frames volume_factor)) 0 0 0
+    i = 7                       # Frame counter
+    x = 6
+    y = 5
+
+    left_volume = 4
+    right_volume = 3
     left = 2
     right = 1
-    sample = 0
+    j = 0                       # Sample counter (within frame)
 
 per_frame:
     new_frame!!! width height sample_rate
@@ -37,29 +40,34 @@ per_frame:
 per_column:
     store8!! 0 &y
 per_row:
-    set_pixel!!!!! $x $y (+ 255 -$i) (+ $i -$x) (+ $i -(* $y 2))
+    R = (+ 255 -$i)
+    G = (+ $i -$x)
+    B = (+ $i -(* $y 2))
+    set_pixel!!!!! $x $y R G B
     store8!! (+ $y 1) &y
     jump_not_zero!! (<=u (* $y ratio) $x) per_row
     store8!! (+ $x 1) &x
     jump_not_zero!! (<=u $x $i) per_column
 
 ### Sound
-    store8!! (/u sample_rate fps) &sample # 44100/50 = 882
+    store8!! (/u sample_rate fps) &j # Count down from 44100/50.
 per_sample:
     store8!! (+ $left left_step) &left
-    jump_not_zero!! (<s $left (+ base_volume (* $i volume_factor))) left_ok
+    jump_not_zero!! (<s $left $left_volume) left_ok
     store8!! -$left &left       # Does this makes sense?
 left_ok:
     store8!! (+ $right right_step) &right
-    jump_not_zero!! (<s $right (+ base_volume (* (+ frames -$i) volume_factor))) right_ok
+    jump_not_zero!! (<s $right $right_volume) right_ok
     store8!! -$right &right
 right_ok:
     add_sample!! $left $right
-    store8!! (+ $sample -1) &sample
-    jump_not_zero!! $sample per_sample
+    store8!! (+ $j -1) &j
+    jump_not_zero!! $j per_sample
+    store8!! (+ $left_volume volume_factor) &left_volume
+    store8!! (+ $right_volume -volume_factor) &right_volume
 
     store8!! (+ $i 1) &i
     jump_not_zero!! (<u $i frames) per_frame
 
-    set_sp! &6                  # Clear local variables
+    set_sp! &8                  # Clear local variables
     exit
