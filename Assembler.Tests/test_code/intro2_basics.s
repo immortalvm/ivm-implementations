@@ -5,6 +5,7 @@
 ### This is part 2 of the iVM assembly language introduction. Unlike in part 1,
 ### the statements below should actually make some sense.
 
+
 ### 1. THE STACK
 
     ## Fresh stack size in bytes, normally a multiple of 8.
@@ -12,17 +13,17 @@
 
     ## Before  the program  starts, a  segment of  the memory  is allocated  and
     ## filled with  (1) the binary,  (2) the contents  of the argument  file (if
-    ## provided), and (3)  16 zero bytes (2  * 64 bits). The  program counter is
+    ## provided), and (3)  24 zero bytes (3  * 64 bits). The  program counter is
     ## set the the start of this segment and the stack pointer to the stop (i.e.
     ## the  first byte  after the  segment). In  other words,  the argument  and
     ## binary may become overwritten when push values to the stack. Fortunately,
-    ## the 16 bytes at the end is just enough to create a fresh stack:
+    ## the 24 bytes at the end is enough to create a fresh stack:
     allocate! stack_size
     add! stack_size
     set_sp
 
-    ## (There is also a trick to avoid loosing the old stack pointer which will
-    ## be explained later.)
+    ## There is also a way to avoid loosing the old stack pointer. This will be
+    ## explained later.
 
     ## It is often necessary push a copy of an element in the stack onto the
     ## stack. This can be done as follows:
@@ -41,7 +42,7 @@
     ## The previous statement is sugar for:
     push! (load8 &4)
 
-    ## which is sugar for
+    ## which is sugar for:
     push! &4
     load8
 

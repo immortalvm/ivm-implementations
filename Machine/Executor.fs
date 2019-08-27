@@ -283,6 +283,6 @@ let random = System.Random ()
 let execute (prog: seq<uint8>) (arg: seq<uint8>) (outputDir: string option) (traceSyms: Map<int, string> option) =
     // Start at 0, 1000, ... or 7000.
     let start = random.Next () % 8 |> (*) 1000 |> uint64
-    let machine = Machine(Seq.concat [prog; arg; Seq.replicate (2 * 8) 0uy], start, outputDir, traceSyms)
+    let machine = Machine(Seq.concat [prog; arg; Seq.replicate (3 * 8) 0uy], start, outputDir, traceSyms)
     machine.Run ()
     machine.Stack ()

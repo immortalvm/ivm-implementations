@@ -17,6 +17,7 @@
     <None Include="test_code\intro2_basics.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="test_code\intro3_advanced.s" />
     <None Include="test_code\ex0_push_zero.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
