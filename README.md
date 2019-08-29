@@ -1,7 +1,8 @@
 
-# Work in progress...
+# The iVM assembler and prototype VM
 
-For code examples and language introduction see the source files in Assembler.Tests/test_code.
+This is work in progress.<br>
+For code examples and language introduction see the source files in [Assembler.Tests/test_code](Assembler.Tests/test_code).
 
 
 ## Usage
@@ -25,6 +26,67 @@ For code examples and language introduction see the source files in Assembler.Te
 
     ivm gen-proj <root dir> <goal>     -  Create prototype project (<goal>.proj)
     ivm build <project> <dest dir>     -  Assemble project
+
+
+### Getting started
+
+When getting started with the assembly language, the most convenient
+commands are `as-run`, `as-trace` and `check` with a single source file as
+argument:
+
+    cd Assembler.Tests/test_code
+
+    ivm as-run ex2_check_count_down.s
+
+    ivm as-trace test_linking1.s
+
+    ivm check ex3_quick_sort.s
+
+The `as-run` command assembles a source file, executes the resulting
+binary and prints out the final contents of the stack. `as-trace` is
+similar, but prints out lots of debug information on the way. Finally,
+`check` works as `as-run`, except that the final stack is compared to an
+expected list of numbers written in the file itself.
+
+If an "arg file" is specified, its contents is appended to the binary
+before running it. Thus, this is a form of 'command line argument'. If an
+"output dir" is also specified, then any output (image and sound files)
+will be written to this directory. At this point, it is recommended to use
+an empty directory (as any contents may get overwritten). If no output dir
+is provided, any output will be discarded.
+
+
+### Dependencies, projects and builds
+
+Assembly files may refer to each other. Such references must be explicit,
+using EXPORT and IMPORT statements. Currently, all imports are resolved
+relative to the "root" directory from where `ivm` was called. Use dots to
+refer to subdirectories (cf. Java packages).
+
+When calling `as`, `as-run`, `as-trace` and `check`, the assembler first
+builds a graph of references and attempts a topological sort. Circular
+dependencies are not allowed. Next, all the source files get assembled
+into one binary file. This is not ideal when we have a large tree of
+dependencies. In this situation, we split the process in two:
+
+* First, we generate a "project file" using `gen-proj` containing the
+  result of the topological sort.
+* Then we build (and re-build) this project using the `build` command.
+
+Observe that:
+
+1. The goal passed to `gen-proj` is the file where the execution should
+   start, but referred to as in import statements, i.e. with . instead of
+   / and without the file suffix (.s).
+
+2. Whereas `as` only outputs the "linked" binary and symbols files (i.e.
+   for all the code) and lets you choose the names of these files, `build`
+   also produces binary and symbol files for each source file and puts
+   them in a directory tree under "bin". The file suffixes are .b and
+   .sym, respectively. However, it also produces "linked" binary and
+   symbol files. These have $ in the name before the suffix.
+   
+In time, we plan to support incremental project builds.
 
 
 ## Semi-formal EBNF, ignoring whitespace and comments
