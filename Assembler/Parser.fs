@@ -206,23 +206,36 @@ let data: Parser<int8 list, State> =
     between (strWs "[") (strWs "]") <| many either
 
 let statement: Parser<Statement list, State> =
-    let isLabel = charReturn ':' -1 .>> whitespace
-    let isDef = charReturn '=' -2 .>> whitespace
+    let labelKey = -1
+    let defKey = -2
+    let listKey = -3
+
+    let isLabel = charReturn ':' labelKey .>> whitespace
+    let isDef = charReturn '=' defKey .>> whitespace
+    let hasArgList = charReturn '*' listKey .>> whitespace
     let countArgs = many (skipChar '!' .>> whitespace) |>> List.length
 
     let push i x = SPush <| EOffset (i, x)
     let pushArgs numArgs = parray numArgs expression
                            |>> (Array.toList >> List.mapi push)
-    // Computed once for efficiency
+    // Computed once, for efficiency
     let pushArgs0 = preturn []
     let pushArgs1 = pushArgs 1
     let pushArgs2 = pushArgs 2
 
+    let argList = between (strWs "[") (strWs "]") <| many expression
+    let pushList = argList |>> List.mapi push
+    let maxPushList maxArgs =
+        let check lst =
+            if List.length lst <= maxArgs then preturn lst
+            else fun _ -> Reply (Error, unexpected "Too many arguments.")
+        argList >>= check |>> List.mapi push
+
     let stmt (id, numArgs) =
-        if numArgs = -1
+        if numArgs = labelKey
         then State.ObsLabel id
 
-        else if numArgs = -2
+        else if numArgs = defKey
         then expression >>=
              fun e -> preturn [] .>> State.AddDef id e
         else
@@ -231,19 +244,22 @@ let statement: Parser<Statement list, State> =
                         | 1 -> pushArgs1
                         | 2 -> pushArgs2
                         | _ -> pushArgs numArgs
-            let argsOp ops = pArgs |>> fun a -> a @ ops
             let nArgs maxArgs ops =
-                if numArgs <= maxArgs then argsOp ops
+                if numArgs = listKey then maxPushList maxArgs
+                elif numArgs <= maxArgs then pArgs
                 else fun _ -> Reply (Error, unexpected "Too many arguments.")
+                |>> fun a -> a @ ops
 
             match id with
             | "EXPORT" ->
                 if numArgs <> 0
-                then fun _ -> Reply (Error, unexpected "'!' does not make sense here.")
+                then fun _ ->
+                    let c = if numArgs = listKey then "'*'" else "'!'"
+                    Reply (Error, unexpected <| c + " does not make sense here.")
                 else identifier >>= State.Export .>> whitespace
             | "data" -> data |>> (SData >> List.singleton)
             | "exit" -> nArgs 0 [SExit]
-            | "push" -> pArgs
+            | "push" -> if numArgs = listKey then pushList else pArgs
             | "set_sp" -> nArgs 1 [SSetSp]
             | "call" -> nArgs 1 [] .>>. State.Call |>> fun (x, y) -> x @ y
             | "return" -> nArgs 0 [SJump]
@@ -303,7 +319,7 @@ let statement: Parser<Statement list, State> =
             | _ -> fun _ -> Reply (Error, unexpectedString id)
 
     // Eliminating >>= might lead to better performance.
-    identifier .>>. (isLabel <|> isDef <|> countArgs) >>= stmt
+    identifier .>>. (isLabel <|> isDef <|> hasArgList <|> countArgs) >>= stmt
 
 let program : Parser<Statement list, State> =
     whitespace

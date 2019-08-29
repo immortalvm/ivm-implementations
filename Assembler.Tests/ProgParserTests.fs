@@ -60,9 +60,11 @@ let example1 =
         SData [0y; 1y; -1y; 1y]
     ]
 
-let assemblyLanguageIntro =
+let intro1 =
     let prime = ENum 982451653L
     let n = ENum 7L
+    let pushSeven = [for i in 1..7 -> i |> int64 |> ENum |> SPush]
+
     let xx = ENum 99L
     let yy = ENeg (ENum 13L)
     let xx2 = ENum 9L
@@ -78,6 +80,7 @@ let assemblyLanguageIntro =
         SPush <| EStack n
         SPush <| ELoad8 (EStack n)
         SPush <| ESum [ELabel 1; ENeg (ELoad8 (EStack (ENum 0L)))]
+    ] @ pushSeven @ pushSeven @ [
 
         SJump
         SPush <| ELabel 1; SJump
@@ -146,7 +149,7 @@ let parseFile expected (name: string) =
 let ParseFileTests =
     testList "Parse files" [
         parseFile example1 "ex1_old.s"
-        parseFile assemblyLanguageIntro "intro1_statements.s"
+        parseFile intro1 "intro1_statements.s"
     ]
 
 [<Tests>]

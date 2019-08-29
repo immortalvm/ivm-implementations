@@ -4,6 +4,9 @@ open Machine.Utils
 open Assembler.Checker
 
 [<Literal>]
+let VERSION = "0.8" // How can we automatically get this from Git?
+
+[<Literal>]
 let LABELS_HEADING = "--Labels--"
 
 let usage () =
@@ -17,6 +20,7 @@ let usage () =
     printfn "  %s trace <binary> <symbols>                         -  Trace binary" ex
     printfn "  %s trace <binary> <symbols> <arg file>              -  Trace binary" ex
     printfn "  %s trace <binary> <symbols> <arg file> <output dir> -  Trace binary" ex
+    printfn ""
     printfn "  %s as-run <source>                                  -  Assemble and run" ex
     printfn "  %s as-run <source> <arg file>                       -  Assemble and run" ex
     printfn "  %s as-run <source> <arg file> <output dir>          -  Assemble and run" ex
@@ -143,7 +147,7 @@ let build projectFile destinationDir =
 [<EntryPoint>]
 let main argv =
     try
-        printfn "iVM Assembler and VM, version 0.7"
+        printfn "iVM Assembler and VM, version %s" VERSION
         let n = Array.length argv
         if n = 0 then usage (); 0
         else

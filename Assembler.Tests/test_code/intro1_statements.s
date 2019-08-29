@@ -95,6 +95,13 @@ my_label:
     ## since within a statement $x and &x will be relative to value of the stack
     ## pointer at the start of the statement.
 
+    ## The following notation is more convenient when pushing many values onto
+    ## the stack:
+    push* [1 2 3 4 5 6 7]
+
+    ## This is syntactic sugar for:
+    push!!!!!!! 1 2 3 4 5 6 7
+
 
 ### 3. JUMP, JUMP_ZERO, JUMP_NOT_ZERO
 

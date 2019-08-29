@@ -14,6 +14,7 @@ For code examples and language introduction see the source files in Assembler.Te
     ivm trace <binary> <symbols>                         -  Trace binary
     ivm trace <binary> <symbols> <arg file>              -  Trace binary
     ivm trace <binary> <symbols> <arg file> <output dir> -  Trace binary
+
     ivm as-run <source>                                  -  Assemble and run
     ivm as-run <source> <arg file>                       -  Assemble and run
     ivm as-run <source> <arg file> <output dir>          -  Assemble and run
@@ -97,7 +98,7 @@ statement = identifier ":"               (* label *)
 expression = positive_numeral  (* 0 to 2^64-1 *)
            | identifier        (* label or abbreviation *)
 
-           | "-" expression    (* neg *)
+           | "-" expression    (* corresponding statement: neg *)
            | "~" expression    (* not *)
            | "$" expression    (* stack content *)
            | "&" expression    (* stack pointer *)
@@ -118,16 +119,26 @@ expression = positive_numeral  (* 0 to 2^64-1 *)
            | "(" ">=u" expression expression ")"    (* gte_u *)
            | "(" ">=s" expression expression ")"    (* gte_s *)
 
-           | "(" "load1" expression ")"   (* load1 *)
-           | "(" "load2" expression ")"   (* load2 *)
-           | "(" "load4" expression ")"   (* load4 *)
-           | "(" "load8" expression ")"   (* load8 *)
-           | "(" "sigx1" expression ")"   (* sigx1 *)
-           | "(" "sigx2" expression ")"   (* sigx2 *)
-           | "(" "sigx4" expression ")"   (* sigx4 *);
+           | "(" "load1" expression ")"
+           | "(" "load2" expression ")"
+           | "(" "load4" expression ")"
+           | "(" "load8" expression ")"
+           | "(" "sigx1" expression ")"
+           | "(" "sigx2" expression ")"
+           | "(" "sigx4" expression ")"
 
 identifier = (letter | "_") (letter | "_" | digit)*;
 ```
+
+In v0.8 we added an alternative notation for "immediate arguments":
+
+    push* [ <e1> <e2> ... <en> ]
+
+is syntactic sugar for:
+
+    push!!..! <e1> <e2> ... <en>        # with n exclamation marks
+
+Similarly for the other statements, e.g. `set_pixel*`.
 
 
 ## Adapting Emacs asm-mode
@@ -136,7 +147,7 @@ Here are my adjustments to asm-mode in Emacs, in case you want to write
 iVM assembly by hand. If you put this in your .emacs, you should replace
 the path in the first line to where you can find the ivm executable.
 
-    (setenv "PATH" (concat "/Users/ivarru/Source/NR/ivm-implementations" ":" (getenv "PATH")))
+    (setenv "PATH" (concat "~/ivm-implementations" ":" (getenv "PATH")))
 
     (defun ivarru-asm-fill-paragraph (&optional justify)
       (interactive)

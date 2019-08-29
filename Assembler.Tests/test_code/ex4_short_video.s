@@ -21,7 +21,7 @@
     right_step = 75
 
 ### "Local variables"
-    push!!!!!!!! 0 0 0 base_volume (+ base_volume (* frames volume_factor)) 0 0 0
+    push* [0 0 0 base_volume (+ base_volume (* frames volume_factor)) 0 0 0]
     i = 7                       # Frame counter
     x = 6
     y = 5
@@ -33,7 +33,7 @@
     j = 0                       # Sample counter (within frame)
 
 per_frame:
-    new_frame!!! width height sample_rate
+    new_frame* [width height sample_rate]
 
 ### Image
     store8!! 0 &x
@@ -43,7 +43,7 @@ per_row:
     R = (+ 255 -$i)
     G = (+ $i -$x)
     B = (+ $i -(* $y 2))
-    set_pixel!!!!! $x $y R G B
+    set_pixel* [$x $y R G B]
     store8!! (+ $y 1) &y
     jump_not_zero!! (<=u (* $y ratio) $x) per_row
     store8!! (+ $x 1) &x
