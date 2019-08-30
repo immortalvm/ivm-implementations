@@ -287,6 +287,11 @@ let pushReduction (prog: Statement seq): Statement seq =
                             ENum 0L |> EStack |> ELoad8]
                 yield! flush [SStore8; SJump; SLabel i]
 
+            | SData1 (line, p), _ -> yield! flush [SData1 (line, optimize 0L p)]
+            | SData2 (line, p), _ -> yield! flush [SData2 (line, optimize 0L p)]
+            | SData4 (line, p), _ -> yield! flush [SData4 (line, optimize 0L p)]
+            | SData8 (line, p), _ -> yield! flush [SData8 (line, optimize 0L p)]
+
             | _ -> yield! flush [s]
         // It would be strange to end the program with a push, though.
         yield! flush []

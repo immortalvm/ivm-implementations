@@ -200,10 +200,10 @@ let expression: Parser<Expression, State> =
     ]
     expr
 
-let data: Parser<int8 list, State> =
-    let neg = skipChar '-' >>. puint8 |>> (int8 >> (~-))
-    let either = ((puint8 |>> int8) <|> neg) .>> whitespace
-    between (strWs "[") (strWs "]") <| many either
+
+let data: Parser<(int64 * Expression) list, State> =
+    let lineNumAndExpr = (fun s -> Reply s.Line) .>>. expression
+    between (strWs "[") (strWs "]") <| many lineNumAndExpr
 
 let statement: Parser<Statement list, State> =
     let labelKey = -1
@@ -257,7 +257,10 @@ let statement: Parser<Statement list, State> =
                     let c = if numArgs = listKey then "'*'" else "'!'"
                     Reply (Error, unexpected <| c + " does not make sense here.")
                 else identifier >>= State.Export .>> whitespace
-            | "data" -> data |>> (SData >> List.singleton)
+            | "data1" -> data |>> (List.map SData1)
+            | "data2" -> data |>> (List.map SData2)
+            | "data4" -> data |>> (List.map SData4)
+            | "data8" -> data |>> (List.map SData8)
             | "exit" -> nArgs 0 [SExit]
             | "push" -> if numArgs = listKey then pushList else pArgs
             | "set_sp" -> nArgs 1 [SSetSp]

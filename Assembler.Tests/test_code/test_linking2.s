@@ -8,4 +8,4 @@ label2a:
     return
 
 label2b:
-    data [0]
+    data1 [0]

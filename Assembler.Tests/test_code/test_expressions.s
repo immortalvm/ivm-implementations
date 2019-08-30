@@ -96,13 +96,13 @@
 
     exit
 
-    data [ 7 ]                  # Something other than 0
+    data1 [ 7 ]                  # Something other than 0
 stuff:
-    data [ 0 10 20 30 40 50 60 70 80 90 100 110 120 ]
+    data1 [ 0 10 20 30 40 50 60 70 80 90 100 110 120 ]
 more_stuff:
-    data [ 0 -10 -20 -30 -40 -50 -60 -70 -80 -90 -100 -110 -120 ]
+    data1 [ 0 -10 -20 -30 -40 -50 -60 -70 -80 -90 -100 -110 -120 ]
 X_data:
-    data [ 0 0 0 0 0 0 0 0x80 ]
+    data1 [ 0 0 0 0 0 0 0 0x80 ]
 
 ### EXPECTED STACK:
 ###

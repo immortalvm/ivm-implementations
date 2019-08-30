@@ -58,14 +58,14 @@
     ## A data segment can be used for shared global variables.
     jump! after_x               # Equivalent to 'jump! (+ x 1)'
 x:
-    data [0]
+    data1 [0]
 after_x:
     store1!! (+ 1 (load1 x)) x  # Increase x with 1
 
     ## If we export x, it can even be accessed from other files.
     EXPORT x
 
-    ## The statement above is simply (syntactic) sugar for:
+    ## The store statement above is simply (syntactic) sugar for:
     push! (+ 1 (load1 x))
     push! x
     store1

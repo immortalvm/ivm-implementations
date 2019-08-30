@@ -33,7 +33,7 @@ label2:
   add! 7                        # Add 7, i.e. do 'push! 7', then 'add'.
 
 label3:
-  data [ 0 1 0xff -0xff]
+  data1 [ 0 1 0xff -0xff]
 
 ### EXPECTED STACK:
 ###

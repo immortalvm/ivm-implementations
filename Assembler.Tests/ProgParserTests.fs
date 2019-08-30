@@ -33,6 +33,11 @@ let failure pattern progString () =
     with ParseException(msg) ->
          Expect.isMatch msg pattern "Unexpected error message"
 
+let data1 line values = [for x in values -> SData1 (int64 line, ENum <| int64 x)]
+let data2 line values = [for x in values -> SData2 (int64 line, ENum <| int64 x)]
+let data4 line values = [for x in values -> SData4 (int64 line, ENum <| int64 x)]
+let data8 line values = [for x in values -> SData8 (int64 line, ENum x)]
+
 let example1 =
     [
         SExit
@@ -57,8 +62,8 @@ let example1 =
             ELoad8 (EStack (ENum 12L))
         ]
         SLabel 3
-        SData [0y; 1y; -1y; 1y]
-    ]
+    ] @ data1 36 [0; 1; 255; -255]
+
 
 let intro1 =
     let prime = ENum 982451653L
@@ -70,8 +75,12 @@ let intro1 =
     let xx2 = ENum 9L
     [
         SLabel 1
-        SData [0y; 1y; -2y; -128y; 1y]
-
+    ]
+    @ data1 55 [0; 1; -2; 128; -0x99ff]
+    @ data2 59 [0x1000; 0x2000; 0x3000]
+    @ data4 62 [0x40000000]
+    @ data8 63 [-0x0123456789abcdefL]
+    @ [
         SPush <| ENum 13L
         SPush <| ENum -1L
         SPush <| ENum 0L; SPush <| ENum 1L
@@ -80,8 +89,10 @@ let intro1 =
         SPush <| EStack n
         SPush <| ELoad8 (EStack n)
         SPush <| ESum [ELabel 1; ENeg (ELoad8 (EStack (ENum 0L)))]
-    ] @ pushSeven @ pushSeven @ [
-
+    ]
+    @ pushSeven
+    @ pushSeven
+    @ [
         SJump
         SPush <| ELabel 1; SJump
         SJumpZero

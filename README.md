@@ -85,7 +85,7 @@ Observe that:
    them in a directory tree under "bin". The file suffixes are .b and
    .sym, respectively. However, it also produces "linked" binary and
    symbol files. These have $ in the name before the suffix.
-   
+
 In time, we plan to support incremental project builds.
 
 
@@ -99,7 +99,10 @@ import = "IMPORT" (identifier ".")+ identifier
 statement = identifier ":"               (* label *)
           | "EXPORT" identifier          (* export declaration *)
           | identifier "=" expression    (* abbreviation *)
-          | "data" "[" byte* "]"         (* data segment *)
+          | "data1" [ expression* ]      (* data segment,  8 bits per value *)
+          | "data2" [ expression* ]      (* data segment, 16 bits per value *)
+          | "data4" [ expression* ]      (* data segment, 32 bits per value *)
+          | "data8" [ expression* ]      (* data segment, 64 bits per value *)
 
           | "exit"
           | "push" | "push!" expression | "push!!" expression expression | ...

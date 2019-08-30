@@ -46,7 +46,12 @@ type MaxTwoArguments = (Expression * Expression option) option
 
 type Statement =
     | SLabel of int
-    | SData of int8 list
+
+    // Include line number to be used in error message if the expression is not an "assembly time" constant
+    | SData1 of int64 * Expression
+    | SData2 of int64 * Expression
+    | SData4 of int64 * Expression
+    | SData8 of int64 * Expression
 
     | SPush of Expression
     | SExit | SSetSp

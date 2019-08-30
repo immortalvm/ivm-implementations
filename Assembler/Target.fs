@@ -12,6 +12,11 @@ let nopsFor i = List.replicate i NOP
 
 let powers = [|for i in 0 .. 63 -> 1UL <<< i|]
 
+let bytes (n: int) (y: uint64) : int8 list =
+    [|0..n-1|]
+    |> Seq.map (fun i -> y >>> i*8 |> uint8 |> int8)
+    |> Seq.toList
+
 let pushNum (x: int64): int8 list =
     let n = uint64 x
     let nn = x ^^^ -1L |> uint64
@@ -29,10 +34,6 @@ let pushNum (x: int64): int8 list =
         let k = System.Array.BinarySearch (powers, nn)
         [PUSH1; int8 k; POW2; NOT]                     // 4
     else
-        let bytes (n: int) (y: uint64) : int8 list =
-            [|0..n-1|]
-            |> Seq.map (fun i -> y >>> i*8 |> uint8 |> int8)
-            |> Seq.toList
         if n = 0UL then [PUSH0]                         // 1
         elif nn = 0UL then [PUSH0; NOT]                 // 2 (pushTrue)
         elif n < b8 then [PUSH1; int8 n]                // 2
@@ -431,6 +432,11 @@ let exprPushCore (lookup: int -> int) =
 
     epc // Return the recursive function
 
+let expressionData n line e lookup =
+    match exprPushCore lookup 0 0 e with
+    | [PUSH0], x -> bytes n (uint64 x)
+    | _ -> failwithf "Non-constant data expression on line %d." line
+
 let expressionPush e lookup = exprPushCore lookup 0 0 e |> collapseSpes
 
 let expressionAdd e lookup =
@@ -522,7 +528,6 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
         while not rest.IsEmpty do
         yield!
             match rest with
-            | SData lst :: r -> frag r lst
             | SExit :: r -> frag r [EXIT]
             | SNot :: r -> frag r [NOT]
             | SNeg :: r -> frag r changeSign
@@ -592,6 +597,10 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
                 frag (SLabel j :: r) [GET_PC]
 
             | SPush e :: r -> fragment r (expressionPush e)
+            | SData1 (line, e) :: r -> fragment r (expressionData 1 line e)
+            | SData2 (line, e) :: r -> fragment r (expressionData 2 line e)
+            | SData4 (line, e) :: r -> fragment r (expressionData 4 line e)
+            | SData8 (line, e) :: r -> fragment r (expressionData 8 line e)
 
             | SNewFrame :: r -> frag r [NEW_FRAME]
             | SSetPixel :: r -> frag r [SET_PIXEL]

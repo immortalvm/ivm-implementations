@@ -44,16 +44,28 @@ my_label:
 	## 'add'  or 'exit'.  Names of  labels and  definitions consist  of letters,
 	## digits and underscore (_), and they cannot start with a digit.
 
-    ## A data statement specifies a list of bytes that should be included in the
-    ## binary as is.  It is a whitespace-separated list of  numbers between -255
-    ## and 255  with "wrapping". For example,  -1 and 255 denote  the same byte.
-    ## All numbers can be specified in decimal, octal or hexadecimal notation.
-    data [ 0 1 -2 0o200 -0xff ]
+    ## Data statements specify bytes that should be included in the binary as is
+    ## (more or less). It includes a whitespace-separated list of constant
+    ## expressions, usually numbers. All numbers can be specified in decimal,
+    ## octal or hexadecimal notation.
 
-    ## Starting a program with a data block is currently a bad idea, as
-    ## currently our VM does always execute programs from the top.
-    ## (Incidentally, 0 means that the VM should terminate immediately. Thus,
-    ## the meaningless statements below do not cause the machine to crash.)
+    ## data1 includes a list of bytes in the binary. Only the 8 least
+    ## significant bits are used of each number. Thus, the last number can be
+    ## replaced by 1.
+    data1 [ 0 1 -2 0o200 -0x99ff ]
+
+    ## Similarly, data2 includes a list of (little-endian) 16-bit words, using
+    ## the 16 least significant bits.
+    data2 [ 0x1000 0x2000 0x3000 ]
+
+    ## data4 and data8 include lists of 32-bit and 64-bit words, respectively.
+    data4 [ 0x40000000 ]
+    data8 [-0x0123456789abcdef]
+
+    ## It should be noted that starting a program with a data block is generally
+    ## a bad  idea, as our VM  executes programs from the  top. (Incidentally, 0
+    ## means that  the VM  should terminate  immediately. Thus,  the meaningless
+    ## statements below do not cause the machine to crash.)
 
     ## The  remaining  statements  correspond to  actual  machine  instructions.
     ## However, there is not a  one-to-one correspondence. The assembly language
