@@ -8,10 +8,8 @@
     first_number_pushed = 10
     push! first_number_pushed
 loop:
-    load8! &0
-    add! -1
-    load8! &0
-    jump_not_zero! loop
+    push! (+ $0 -1)
+    jump_not_zero!! $0 loop
     exit
 
 ### EXPECTED STACK:
