@@ -1,8 +1,14 @@
-
 # The iVM assembler and prototype VM
 
-This is work in progress.<br>
-For code examples and language introduction see the source files in [Assembler.Tests/test_code](Assembler.Tests/test_code).
+For code examples and a language introduction see the source files in [Assembler.Tests/test_code](Assembler.Tests/test_code),
+in particular these files:
+
+* [intro1_statements.s](Assembler.Tests/test_code/intro1_statements.s)
+* [intro2_basics.s](Assembler.Tests/test_code/intro2_basics.s)
+* [intro3_advanced.s](Assembler.Tests/test_code/intro3_advanced.s)
+* [ex2_check_count_down.s](Assembler.Tests/test_code/ex2_check_count_down.s)
+* [ex3_quick_sort.s](Assembler.Tests/test_code/ex3_quick_sort.s)
+* [ex4_short_video.s](Assembler.Tests/test_code/ex4_short_video.s)
 
 
 ## Usage
