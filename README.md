@@ -32,6 +32,7 @@ in particular these files:
 
     ivm gen-proj <root dir> <goal>     -  Create prototype project (<goal>.proj)
     ivm build <project> <dest dir>     -  Assemble project
+    ivm make <project> <dest dir>      -  Assemble project incrementally
 
 
 ### Getting started
@@ -77,7 +78,9 @@ dependencies. In this situation, we split the process in two:
 
 * First, we generate a "project file" using `gen-proj` containing the
   result of the topological sort.
-* Then we build (and re-build) this project using the `build` command.
+* Then we build this project using the `build` command.
+* If instead we use the `make` command, we attempt to re-build only what
+  has changed "incrementally".
 
 Observe that:
 
@@ -87,12 +90,10 @@ Observe that:
 
 2. Whereas `as` only outputs the "linked" binary and symbols files (i.e.
    for all the code) and lets you choose the names of these files, `build`
-   also produces binary and symbol files for each source file and puts
-   them in the directory tree under "dest dir". The file suffixes are `.b`
-   and `.sym`, respectively. However, it also produces "linked" binary and
-   symbol files. These have `$` in the name before the suffix.
-
-In time, we plan to support incremental project builds.
+   and `make` also produce binary and symbol files for each source file
+   and puts them in the directory tree under "dest dir". The file suffixes
+   are `.b` and `.sym`, respectively. These commands also produce "linked"
+   binary and symbol files. They have `$` in the name before the suffix.
 
 
 ## Semi-formal EBNF, ignoring whitespace and comments

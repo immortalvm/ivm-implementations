@@ -15,7 +15,12 @@ let SOURCE_EXTENSION = ".s"
 let BINARY_EXTENSION = ".b"
 let SYMBOLS_EXTENSION = ".sym"
 
-type assemblerOutput = string * uint8 list * (string * int) list * (string * int) list
+type AssemblerOutput = {
+    Node: string;
+    Binary: seq<uint8>;
+    Exported: seq<string * int>;
+    Labels: seq<string * int>;
+}
 
 let getDependencies (fileName : string) : Set<string> =
     printfn "Analyzing dependencies in %s..." fileName
@@ -23,7 +28,7 @@ let getDependencies (fileName : string) : Set<string> =
     try parseDependencies stream
     with ParseException(msg) -> failwith msg
 
-let nodePath rootDir (node: string) extension =
+let nodePath rootDir extension (node: string) =
     (Array.append [|rootDir|] (node.Split '.') |> Path.Combine) + extension
 
 // Depth first topological sorting
@@ -34,7 +39,7 @@ let getBuildOrder (rootDir: string) (goal : string) : seq<string> =
             if processed.Contains node then ()
             else if seen.Contains node then failwithf "Circular dependency: %s" node
             else
-                let deps = getDependencies <| nodePath rootDir node SOURCE_EXTENSION
+                let deps = getDependencies <| nodePath rootDir SOURCE_EXTENSION node
                 if not deps.IsEmpty
                 then
                     let s = seen.Add node
@@ -83,7 +88,8 @@ let showValue (x: int64) =
     hex <- Regex.Replace(hex, "^FFF+", "..FF")
     sprintf "%d (0x%s)" x hex
 
-let buildOne (fileName: string) (relSymbols: string -> int) =
+let buildOne rootDir (node: string) (relSymbols: string -> int) =
+    let fileName = nodePath rootDir SOURCE_EXTENSION node
     printfn "Building %s..." fileName
     use stream = File.OpenRead fileName
     try
@@ -91,45 +97,54 @@ let buildOne (fileName: string) (relSymbols: string -> int) =
         let bytes, symbols = assemble program
         let symList (map: Map<string, int>) =
             [for pair in map -> (pair.Key, symbols.[pair.Value])]
-        bytes, symList exported, symList labels
+        {Node=node; Binary=bytes; Exported=symList exported; Labels=symList labels}
     with
         ParseException(msg) -> failwith msg
 
-let doBuild (rootDir: string) (buildOrder: seq<string>) : seq<assemblerOutput> =
+let doBuild (rootDir: string) (reused: seq<AssemblerOutput>) (buildOrder: seq<string>) : seq<AssemblerOutput> =
     let mutable currentSize : int = 0
-    // Distance from the end: [0, currentSize]
+    // Maps each qualified names to its distance from the end [0, currentSize].
     let mutable allSymbols : Map<string, int> = Map.empty
+
+    let incorporate (ao: AssemblerOutput) =
+        currentSize <- currentSize + Seq.length ao.Binary
+        for label, pos in ao.Exported do
+            allSymbols <- allSymbols.Add (ao.Node + "." + label, currentSize - pos)
+
+    for ao in reused do
+        incorporate ao
+
     let lookup label = match allSymbols.TryFind label with
                        | None -> -1
                        | Some dist -> currentSize - dist // >= 0
     seq {
         for node in buildOrder do
-            let sourceFile = nodePath rootDir node SOURCE_EXTENSION
-            let bytes, exported, labels = buildOne sourceFile lookup
-            yield node, bytes, exported, labels
-
-            currentSize <- currentSize + bytes.Length
-            for label, pos in exported do
-                allSymbols <- allSymbols.Add (node + "." + label, currentSize - pos)
+            let ao = buildOne rootDir node lookup
+            yield ao
+            incorporate ao
     }
 
-let doCollect (outputs: seq<assemblerOutput>) : assemblerOutput =
-    let tuples = outputs |> Seq.toList |> Seq.rev
-    let bin = tuples |> Seq.map (fun (_,b,_,_) -> List.toArray b) |> Seq.concat |> Seq.toList
-    let lab = [
+let doCollect (outputs: seq<AssemblerOutput>) : AssemblerOutput =
+    let rev = outputs |> Seq.cache |> Seq.rev
+    let binary = rev |> Seq.map (fun ao -> ao.Binary) |> Seq.concat
+    let labels = seq {
         let mutable offset = 0
-        for n, b, _, lst in tuples do
-            let o = offset
-            yield seq {for label, pos in lst -> n + "." + label, pos + o}
-            offset <- offset + List.length b
-    ]
-    let lastNode = let n,_,_,_ = Seq.item 0 tuples in n
-    lastNode, bin, [], lab |> Seq.concat |> Seq.toList
+        for ao in rev do
+            for label, pos in ao.Labels do
+                yield ao.Node + "." + label, pos + offset
+            offset <- offset + Seq.length ao.Binary
+    }
+    {
+        Node=(Seq.head rev).Node;
+        Binary=Seq.cache binary;
+        Exported=[];
+        Labels=Seq.cache labels;
+    }
 
 let doAssemble (fileName: string) =
     let rootDir = Path.GetDirectoryName fileName
     let buildOrder = getBuildOrder rootDir <| Path.GetFileNameWithoutExtension fileName
-    buildOrder |> doBuild rootDir |> doCollect
+    buildOrder |> doBuild rootDir [] |> doCollect
 
 let doRun binary arg outputDir traceSyms =
     try
@@ -141,8 +156,8 @@ let doRun binary arg outputDir traceSyms =
 let doCheck fileName =
     let mutable revOutput = []
     let output msg = revOutput <- msg :: revOutput
-    let _, binary, _, _ = doAssemble fileName
-    output <| sprintf "Binary size: %d" (List.length binary)
+    let binary = (doAssemble fileName).Binary
+    output <| sprintf "Binary size: %d" (Seq.length binary)
 
     let expectationsFound = File.ReadLines fileName
                             |> Seq.exists isExpectationHeading

@@ -1,6 +1,11 @@
 ﻿module Assembler.Checker
 
-type assemblerOutput = string * uint8 list * (string * int) list * (string * int) list
+type AssemblerOutput = {
+    Node: string;
+    Binary: seq<uint8>;
+    Exported: seq<string * int>;
+    Labels: seq<string * int>;
+}
 
 val showValue : int64 -> string
 
@@ -12,13 +17,13 @@ val nodePath : string -> string -> string -> string
 
 val getBuildOrder : string -> string -> seq<string>
 
-val doAssemble : string -> assemblerOutput
+val doAssemble : string -> AssemblerOutput
 
 val doRun : seq<uint8> -> seq<uint8> -> string option -> Map<int, string> option -> seq<int64>
 
 // Returns message if stack as expected, otherwise raises exception.
 val doCheck : string -> string
 
-val doBuild : string -> seq<string> -> seq<assemblerOutput>
+val doBuild : string -> seq<AssemblerOutput> -> seq<string> -> seq<AssemblerOutput>
 
-val doCollect : seq<assemblerOutput> -> assemblerOutput
+val doCollect : seq<AssemblerOutput> -> AssemblerOutput
