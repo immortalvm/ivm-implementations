@@ -167,176 +167,195 @@ let genericConditional interjection =
 let genericJumpNotZero = genericConditional []
 let genericJumpZero = genericConditional isZero
 
-// Pair consisting of (i) a piece of code with the net effect of pushing a
-// single number onto the stack and (ii) a number which should (at some point)
-// be added to this number. I could not think of a good name for this type.
-type Spes = int8 list * int64
+// Pair consisting of (i) a piece of code with the net effect of pushing a single
+// value onto the stack and (ii) a constant "offset" which should (at some point)
+// be added to this value. I could not think of a good name for this type.
+type Value = Val of (int8 list) * int64
 
-let collapseSpes ((code, acc): Spes) : int8 list =
-    match code, acc with
-    | _, 0L -> code
-    | [PUSH0], _ -> pushNum acc
-    | _, _ -> code @ pushNum acc @ [ADD]
+let constant offset = Val([PUSH0], offset)
+let noOffset code = Val(code, 0L)
 
-let zeroSpes: Spes = [PUSH0], 0L
-let oneSpes: Spes = [PUSH0], 1L
-let trueSpes: Spes = [PUSH0], -1L
+let (|Const|_|) (v: Value) =
+    match v with
+    | Val([PUSH0], n) -> Some n
+    | _ -> None
 
-let addSpes ((c1, a1): Spes) ((c2, a2): Spes) =
-    let c = match c1, c2 with
-            | _, [PUSH0] -> c1
-            | [PUSH0], _ -> c2
-            | _, _ -> c1 @ c2 @ [ADD]
-    (c, a1 + a2)
+let (|NoOff|_|) (v: Value) =
+    match v with
+    | Val(c, 0L) -> Some c
+    | _ -> None
 
-let negSpes ((code, acc): Spes) : Spes =
-    match code with
-    | [PUSH0] -> [PUSH0], -acc
-    | _ -> code @ changeSign, -acc
+let collapseValue (v: Value) : int8 list =
+    match v with
+    | NoOff(c) -> c
+    | Const(n) -> pushNum n
+    | Val(c, n) -> c @ pushNum n @ [ADD]
 
-let multSpes (s1: Spes) (s2: Spes) : Spes =
-    match s1, s2 with
-    | ([PUSH0], m), ([PUSH0], n) -> ([PUSH0], m * n)
-    | _, ([PUSH0], 0L) -> zeroSpes
-    | ([PUSH0], 0L), _ -> zeroSpes
-    | (c, m), ([PUSH0], n) -> c @ pushNum n @ [MULT], m * n
-    | ([PUSH0], m), (c, n) -> c @ pushNum m @ [MULT], m * n
-    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ [MULT], 0L
+let zeroValue = constant 0L
+let oneValue = constant 1L
+let trueValue = constant -1L
 
-let pow2Spes (spes: Spes) : Spes =
-    match spes with
-    | [PUSH0], n -> [PUSH0], if n < 0L || n > 63L then 0L else 1L <<< int n
-    | _ -> collapseSpes spes @ [POW2], 0L
+let (|Zero|One|True|OtherValue|) (v: Value) =
+    match v with
+    | Const(0L) -> Zero
+    | Const(1L) -> One
+    | Const(-1L) -> True
+    | _ -> OtherValue
 
-let andSpes (s1: Spes) (s2: Spes) : Spes =
-    match s1, s2 with
-    | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], m &&& n
-    | _, ([PUSH0], 0L) -> ([PUSH0], 0L)
-    | ([PUSH0], 0L), _ -> ([PUSH0], 0L)
-    | _ -> collapseSpes s1 @ collapseSpes s2 @ [AND], 0L
+let addValue v1 v2 =
+    match v1, v2 with
+    | Val(c1, m), Const(n) -> Val(c1, m + n)
+    | Const(m), Val(c2, n) -> Val(c2, m + n)
+    | Val(c1, m), Val(c2, n) -> Val(c1 @ c2 @ [ADD], m + n)
 
-let orSpes (s1: Spes) (s2: Spes) : Spes =
-    match s1, s2 with
-    | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], m ||| n
-    | _, ([PUSH0], -1L)
-    | ([PUSH0], -1L), _ -> ([PUSH0], -1L)
-    | _ -> collapseSpes s1 @ collapseSpes s2 @ [OR], 0L
+let negValue (v: Value) : Value =
+    match v with
+    | Const(n) -> constant -n
+    | Val(c, n) -> Val(c @ changeSign, -n)
 
-let xorSpes (s1: Spes) (s2: Spes) : Spes =
-    match s1, s2 with
-    | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], m ^^^ n
-    | _ -> collapseSpes s1 @ collapseSpes s2 @ [XOR], 0L
+let multValue (v1: Value) (v2: Value) : Value =
+    match v1, v2 with
+    | Const(m), Const(n) -> constant (m * n)
+    | _, Zero
+    | Zero, _ -> zeroValue
+    | Val(c, m), Const(n) -> Val(c @ pushNum n @ [MULT], m * n)
+    | Const(m), Val(c, n) -> Val(c @ pushNum m @ [MULT], m * n)
+    | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ [MULT]
 
-let notSpes ((code, acc): Spes) : Spes =
-    match code with
-    | [PUSH0] -> [PUSH0], acc ^^^ -1L
-    | _ -> code @ [NOT], (acc ^^^ -1L) + 1L
+let pow2Value (v: Value) : Value =
+    match v with
+    | Const(n) -> constant <| if n < 0L || n > 63L then 0L else 1L <<< int n
+    | _ -> noOffset <| collapseValue v @ [POW2]
 
-let sigx1Spes (spes: Spes) : Spes =
-    match spes with
-    | [PUSH0], n -> [PUSH0], uint64 n |> signExtend1 |> int64
-    | _ -> collapseSpes spes @ [SIGX1], 0L
+let andValue (v1: Value) (v2: Value) : Value =
+    match v1, v2 with
+    | Const(m), Const(n) -> constant (m &&& n)
+    | _, Zero -> zeroValue
+    | Zero, _ -> zeroValue
+    | _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ [AND]
 
-let sigx2Spes (spes: Spes) : Spes =
-    match spes with
-    | [PUSH0], n -> [PUSH0], uint64 n |> signExtend2 |> int64
-    | _ -> collapseSpes spes @ [SIGX2], 0L
+let orValue (v1: Value) (v2: Value) : Value =
+    match v1, v2 with
+    | Const(m), Const(n) -> constant (m ||| n)
+    | _, True
+    | True, _ -> trueValue
+    | _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ [OR]
 
-let sigx4Spes (spes: Spes) : Spes =
-    match spes with
-    | [PUSH0], n -> [PUSH0], uint64 n |> signExtend4 |> int64
-    | _ -> collapseSpes spes @ [SIGX4], 0L
+let xorValue (v1: Value) (v2: Value) : Value =
+    match v1, v2 with
+    | Const(m), Const(n) -> constant (m ^^^ n)
+    | _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ [XOR]
+
+let notValue (v: Value) : Value =
+    match v with
+    | Const(n) -> constant (n ^^^ -1L)
+    | Val(c, n) -> Val(c @ [NOT], (n ^^^ -1L) + 1L)
+
+let sigx1Value (v: Value) : Value =
+    match v with
+    | Const(n) -> constant (uint64 n |> signExtend1 |> int64)
+    | _ -> noOffset <| collapseValue v @ [SIGX1]
+
+let sigx2Value (v: Value) : Value =
+    match v with
+    | Const(n) -> constant (uint64 n |> signExtend2 |> int64)
+    | _ -> noOffset <| collapseValue v @ [SIGX2]
+
+let sigx4Value (v: Value) : Value =
+    match v with
+    | Const(n) -> constant (uint64 n |> signExtend4 |> int64)
+    | _ -> noOffset <| collapseValue v @ [SIGX4]
 
 
-let divUSpes (s1: Spes) (s2: Spes) : Spes =
-    match s1, s2 with
-    | _, ([PUSH0], 0L) -> zeroSpes // x / 0 = 0 !
-    | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], (uint64 m / uint64 n |> int64)
-    | _, ([PUSH0], 1L) -> s1
-    | ([PUSH0], 0L), _ -> zeroSpes
-    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ [DIV], 0L
+let divUValue (v1: Value) (v2: Value) : Value =
+    match v1, v2 with
+    | _, Zero -> zeroValue // x / 0 = 0 !
+    | Const(m), Const(n) -> constant (uint64 m / uint64 n |> int64)
+    | _, One -> v1
+    | Zero, _ -> zeroValue
+    | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ [DIV]
 
-let divSSpes (s1: Spes) (s2: Spes) : Spes =
-    match s1, s2 with
-    | _, ([PUSH0], 0L) -> zeroSpes // x / 0 = 0 !
-    | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], m / n
-    | _, ([PUSH0], 1L) -> s1
-    | ([PUSH0], 0L), _ -> zeroSpes
-    | (c, m), ([PUSH0], -1L) -> c @ changeSign, -m
-    | _, ([PUSH0], n) when n > 0L -> collapseSpes s1 @ pushNum n @ divSU, 0L
-    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ divS, 0L
+let divSValue (v1: Value) (v2: Value) : Value =
+    match v1, v2 with
+    | _, Zero -> zeroValue // x / 0 = 0 !
+    | Const(m), Const(n) -> constant (m / n)
+    | _, One -> v1
+    | Zero, _ -> zeroValue
+    | Val(c, m), True -> Val(c @ changeSign, -m)
+    | _, Const(n) when n > 0L -> noOffset <| collapseValue v1 @ pushNum n @ divSU
+    | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ divS
 
-let divSUSpes (s1: Spes) (s2: Spes) : Spes =
-    match s1, s2 with
-    | _, ([PUSH0], 0L) -> zeroSpes // x / 0 = 0 !
-    | ([PUSH0], m), ([PUSH0], n) ->
+let divSUValue (v1: Value) (v2: Value) : Value =
+    match v1, v2 with
+    | _, Zero -> zeroValue // x / 0 = 0 !
+    | Const(m), Const(n) ->
         let sign = if m < 0L then -1L else 1L
-        [PUSH0], ((m * sign |> uint64) / (uint64 n)) |> int64 |> (*) sign
-    | _, ([PUSH0], 1L) -> s1
-    | ([PUSH0], 0L), _ -> zeroSpes
-    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ divSU, 0L
+        ((m * sign |> uint64) / (uint64 n)) |> int64 |> (*) sign |> constant
+    | _, One -> v1
+    | Zero, _ -> zeroValue
+    | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ divSU
 
-let remUSpes (s1: Spes) (s2: Spes) : Spes =
-    match s1, s2 with
-    | _, ([PUSH0], 0L) -> zeroSpes // x % 0 = 0 !
-    | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], (uint64 m % uint64 n |> int64)
-    | _, ([PUSH0], 1L) -> zeroSpes
-    | ([PUSH0], 0L), _ -> zeroSpes
-    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ [REM], 0L
+let remUValue (v1: Value) (v2: Value) : Value =
+    match v1, v2 with
+    | _, Zero -> zeroValue // x % 0 = 0 !
+    | Const(m), Const(n) -> constant ((uint64 m % uint64 n |> int64))
+    | _, One -> zeroValue
+    | Zero, _ -> zeroValue
+    | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ [REM]
 
-let remSSpes (s1: Spes) (s2: Spes) : Spes =
-    match s1, s2 with
-    | _, ([PUSH0], 0L) -> zeroSpes // x % 0 = 0 !
-    | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], m % n
-    | _, ([PUSH0], 1L) -> zeroSpes
-    | ([PUSH0], 0L), _ -> zeroSpes
-    | _, ([PUSH0], -1L) -> zeroSpes
-    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ remS, 0L
+let remSValue (v1: Value) (v2: Value) : Value =
+    match v1, v2 with
+    | _, Zero -> zeroValue // x % 0 = 0 !
+    | Const(m), Const(n) -> constant (m % n)
+    | _, One -> zeroValue
+    | Zero, _ -> zeroValue
+    | _, True -> zeroValue
+    | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ remS
 
-let eqSpes (s1: Spes) (s2: Spes) : Spes =
-    match s1, s2 with
-    | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], if m = n then -1L else 0L
-    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ eq, 0L
+let eqValue (v1: Value) (v2: Value) : Value =
+    match v1, v2 with
+    | Const(m), Const(n) -> if m = n then trueValue else zeroValue
+    | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ eq
 
-let ltUSpes (s1: Spes) (s2: Spes) : Spes =
-    match s1, s2 with
-    | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], if uint64 m < uint64 n then -1L else 0L
-    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ ltU, 0L
+let ltUValue (v1: Value) (v2: Value) : Value =
+    match v1, v2 with
+    | Const(m), Const(n) -> if uint64 m < uint64 n then trueValue else zeroValue
+    | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ ltU
 
-let ltSSpes (s1: Spes) (s2: Spes) : Spes =
-    match s1, s2 with
-    | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], if m < n then -1L else 0L
-    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ ltS, 0L
+let ltSValue (v1: Value) (v2: Value) : Value =
+    match v1, v2 with
+    | Const(m), Const(n) -> if m < n then trueValue else zeroValue
+    | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ ltS
 
-let lteUSpes (s1: Spes) (s2: Spes) : Spes =
-    match s1, s2 with
-    | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], if uint64 m <= uint64 n then -1L else 0L
-    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ lteU, 0L
+let lteUValue (v1: Value) (v2: Value) : Value =
+    match v1, v2 with
+    | Const(m), Const(n) -> if uint64 m <= uint64 n then trueValue else zeroValue
+    | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ lteU
 
-let lteSSpes (s1: Spes) (s2: Spes) : Spes =
-    match s1, s2 with
-    | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], if m <= n then -1L else 0L
-    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ lteS, 0L
+let lteSValue (v1: Value) (v2: Value) : Value =
+    match v1, v2 with
+    | Const(m), Const(n) -> if m <= n then trueValue else zeroValue
+    | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ lteS
 
-let gtUSpes (s1: Spes) (s2: Spes) : Spes =
-    match s1, s2 with
-    | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], if uint64 m > uint64 n then -1L else 0L
-    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ gtU, 0L
+let gtUValue (v1: Value) (v2: Value) : Value =
+    match v1, v2 with
+    | Const(m), Const(n) -> if uint64 m > uint64 n then trueValue else zeroValue
+    | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ gtU
 
-let gtSSpes (s1: Spes) (s2: Spes) : Spes =
-    match s1, s2 with
-    | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], if m > n then -1L else 0L
-    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ gtS, 0L
+let gtSValue (v1: Value) (v2: Value) : Value =
+    match v1, v2 with
+    | Const(m), Const(n) -> if m > n then trueValue else zeroValue
+    | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ gtS
 
-let gteUSpes (s1: Spes) (s2: Spes) : Spes =
-    match s1, s2 with
-    | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], if uint64 m >= uint64 n then -1L else 0L
-    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ gteU, 0L
+let gteUValue (v1: Value) (v2: Value) : Value =
+    match v1, v2 with
+    | Const(m), Const(n) -> if uint64 m >= uint64 n then trueValue else zeroValue
+    | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ gteU
 
-let gteSSpes (s1: Spes) (s2: Spes) : Spes =
-    match s1, s2 with
-    | ([PUSH0], m), ([PUSH0], n) -> [PUSH0], if m >= n then -1L else 0L
-    | _, _ -> collapseSpes s1 @ collapseSpes s2 @ gteS, 0L
+let gteSValue (v1: Value) (v2: Value) : Value =
+    match v1, v2 with
+    | Const(m), Const(n) -> if m >= n then trueValue else zeroValue
+    | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ gteS
 
 
 let exprPushCore (lookup: int -> int) =
@@ -344,29 +363,29 @@ let exprPushCore (lookup: int -> int) =
 
         let rec1 e = epc position depth e
 
-        let rec1coll e = rec1 e |> collapseSpes
+        let rec1coll e = rec1 e |> collapseValue
 
         let relRec s e =
-            let c = collapseSpes s
+            let c = collapseValue s
             epc (position + List.length c) (depth + 1) e
 
         let rec2 f e1 e2 = let s = rec1 e1 in f s <| relRec s e2
 
         let optM f u x y = match x, y with
-                           | ([PUSH0], m), _ when m = u -> y
-                           | _, ([PUSH0], n) when n = u -> x
+                           | Const(m), _ when m = u -> y
+                           | _, Const(n) when n = u -> x
                            | _, _ -> f x y
 
-        let foldM (f: Spes -> Spes -> Spes) (u: int64) (lst: Expression list) =
+        let foldM (f: Value -> Value -> Value) (u: int64) (lst: Expression list) =
             let fu = optM f u
             let fe s e = match s with
-                         | [PUSH0], _ -> fu (rec1 e) s
+                         | Const(_) -> fu (rec1 e) s
                          | _ -> fu s (relRec s e)
-            List.fold fe ([PUSH0], u) lst
+            List.fold fe (constant u) lst
 
         match expression with
         | EOffset (n, e) -> epc position (depth + n) e
-        | ENum n -> [PUSH0], n
+        | ENum n -> constant (n)
         | ELabel _| EStack _ -> ESum [expression] |> rec1
         | ESum lst ->
             let tag e =
@@ -378,129 +397,129 @@ let exprPushCore (lookup: int -> int) =
             let nPc = mapGet cnt 1 0 - mapGet cnt -1 0
             let nSp = mapGet cnt 2 0 - mapGet cnt -2 0
 
-            let mutable spes = zeroSpes
-            let multN n s = optM multSpes 1L s ([PUSH0], int64 n)
-            spes <- addSpes spes <| multN nPc ([GET_PC], 0L)
-            spes <- addSpes spes <| multN nSp ([GET_SP], depth * 8 |> int64)
+            let mutable value = zeroValue
+            let multN n s = optM multValue 1L s <| constant (int64 n)
+            value <- addValue value <| multN nPc (noOffset [GET_PC])
+            value <- addValue value <| multN nSp (Val([GET_SP], depth * 8 |> int64))
 
             for ex in lst do
-                let p, d = match spes with
-                           | [PUSH0], _ -> position, depth
-                           | code, _ -> position + opLen code, depth + 1
+                let p, d = match value with
+                           | Const(_) -> position, depth
+                           | Val(code, _) -> position + opLen code, depth + 1
                 let inner = epc p d
                 let s = match ex with
-                        | ELabel i -> [PUSH0], int64 (lookup i - p)
-                        | ENeg (ELabel i) -> [PUSH0], int64 (p - lookup i)
+                        | ELabel i -> constant (int64 (lookup i - p))
+                        | ENeg (ELabel i) -> constant (int64 (p - lookup i))
                         | EStack e -> inner e |> multN 8
                         | ENeg (EStack e) -> inner e |> multN -8
                         | e -> inner e
-                spes <- addSpes spes s
+                value <- addValue value s
             // Finally return the result
-            spes
+            value
 
-        | ENeg e -> e |> rec1 |> negSpes
-        | EPow2 e -> e |> rec1 |> pow2Spes
-        | ENot e -> e |> rec1 |> notSpes
-        | ESigx1 e -> e |> rec1 |> sigx1Spes
-        | ESigx2 e -> e |> rec1 |> sigx2Spes
-        | ESigx4 e -> e |> rec1 |> sigx4Spes
-        | ELoad1 e -> rec1coll e @ [LOAD1], 0L
-        | ELoad2 e -> rec1coll e @ [LOAD2], 0L
-        | ELoad4 e -> rec1coll e @ [LOAD4], 0L
-        | ELoad8 e -> rec1coll e @ [LOAD8], 0L
+        | ENeg e -> e |> rec1 |> negValue
+        | EPow2 e -> e |> rec1 |> pow2Value
+        | ENot e -> e |> rec1 |> notValue
+        | ESigx1 e -> e |> rec1 |> sigx1Value
+        | ESigx2 e -> e |> rec1 |> sigx2Value
+        | ESigx4 e -> e |> rec1 |> sigx4Value
+        | ELoad1 e -> noOffset <| rec1coll e @ [LOAD1]
+        | ELoad2 e -> noOffset <| rec1coll e @ [LOAD2]
+        | ELoad4 e -> noOffset <| rec1coll e @ [LOAD4]
+        | ELoad8 e -> noOffset <| rec1coll e @ [LOAD8]
 
-        | EProd lst -> foldM multSpes 1L lst
-        | EConj lst -> foldM andSpes -1L lst
-        | EDisj lst -> foldM orSpes 0L lst
-        | EXor lst -> foldM xorSpes 0L lst
+        | EProd lst -> foldM multValue 1L lst
+        | EConj lst -> foldM andValue -1L lst
+        | EDisj lst -> foldM orValue 0L lst
+        | EXor lst -> foldM xorValue 0L lst
 
-        | EDivU (e1, e2) -> rec2 divUSpes e1 e2
-        | EDivS (e1, e2) -> rec2 divSSpes e1 e2
-        | EDivSU (e1, e2) -> rec2 divSUSpes e1 e2
-        | ERemU (e1, e2) -> rec2 remUSpes e1 e2
-        | ERemS (e1, e2) -> rec2 remSSpes e1 e2
+        | EDivU (e1, e2) -> rec2 divUValue e1 e2
+        | EDivS (e1, e2) -> rec2 divSValue e1 e2
+        | EDivSU (e1, e2) -> rec2 divSUValue e1 e2
+        | ERemU (e1, e2) -> rec2 remUValue e1 e2
+        | ERemS (e1, e2) -> rec2 remSValue e1 e2
 
-        | EEq (e1, e2) -> rec2 eqSpes e1 e2
-        | ELtU (e1, e2) -> rec2 ltUSpes e1 e2
-        | ELtS (e1, e2) -> rec2 ltSSpes e1 e2
-        | ELtEU (e1, e2) -> rec2 lteUSpes e1 e2
-        | ELtES (e1, e2) -> rec2 lteSSpes e1 e2
-        | EGtU (e1, e2) -> rec2 gtUSpes e1 e2
-        | EGtS (e1, e2) -> rec2 gtSSpes e1 e2
-        | EGtEU (e1, e2) -> rec2 gteUSpes e1 e2
-        | EGtES (e1, e2) -> rec2 gteSSpes e1 e2
+        | EEq (e1, e2) -> rec2 eqValue e1 e2
+        | ELtU (e1, e2) -> rec2 ltUValue e1 e2
+        | ELtS (e1, e2) -> rec2 ltSValue e1 e2
+        | ELtEU (e1, e2) -> rec2 lteUValue e1 e2
+        | ELtES (e1, e2) -> rec2 lteSValue e1 e2
+        | EGtU (e1, e2) -> rec2 gtUValue e1 e2
+        | EGtS (e1, e2) -> rec2 gtSValue e1 e2
+        | EGtEU (e1, e2) -> rec2 gteUValue e1 e2
+        | EGtES (e1, e2) -> rec2 gteSValue e1 e2
 
     epc // Return the recursive function
 
 let expressionData n line e lookup =
     match exprPushCore lookup 0 0 e with
-    | [PUSH0], x -> bytes n (uint64 x)
+    | Const(x) -> bytes n (uint64 x)
     | _ -> failwithf "Non-constant data expression on line %d." line
 
-let expressionPush e lookup = exprPushCore lookup 0 0 e |> collapseSpes
+let expressionPush e lookup = exprPushCore lookup 0 0 e |> collapseValue
 
 let expressionAdd e lookup =
     match exprPushCore lookup 0 0 e with
-    | [PUSH0], 0L -> []
-    | spes -> collapseSpes spes @ [ADD]
+    | Zero -> []
+    | v -> collapseValue v @ [ADD]
 
 let expressionMult e lookup =
     match exprPushCore lookup 0 0 e with
-    | [PUSH0], 1L -> []
-    | [PUSH0], 0L -> pop 1 @ [PUSH0] // Pop value, push 0.
-    | spes -> collapseSpes spes @ [MULT]
+    | One -> []
+    | Zero -> pop 1 @ [PUSH0] // Pop value, push 0.
+    | v -> collapseValue v @ [MULT]
 
 let expressionAnd e lookup =
     match exprPushCore lookup 0 0 e with
-    | [PUSH0], -1L -> []
-    | [PUSH0], 0L -> pop 1 @ [PUSH0] // Pop value, push 0.
-    | spes -> collapseSpes spes @ [AND]
+    | True -> []
+    | Zero -> pop 1 @ [PUSH0] // Pop value, push 0.
+    | v -> collapseValue v @ [AND]
 
 let expressionOr e lookup =
     match exprPushCore lookup 0 0 e with
-    | [PUSH0], 0L -> []
-    | [PUSH0], -1L -> pop 1 @ pushTrue // Pop value, push -1.
-    | spes -> collapseSpes spes @ [OR]
+    | Zero -> []
+    | True -> pop 1 @ pushTrue // Pop value, push -1.
+    | v -> collapseValue v @ [OR]
 
 let expressionXor e lookup =
     match exprPushCore lookup 0 0 e with
-    | [PUSH0], 0L -> []
-    | [PUSH0], -1L -> [NOT]
-    | spes -> collapseSpes spes @ [XOR]
+    | Zero -> []
+    | True -> [NOT]
+    | v -> collapseValue v @ [XOR]
 
 
 let expressionDivU e lookup =
     match exprPushCore lookup 0 0 e with
-    | [PUSH0], 0L -> pop 1 @ [PUSH0] // NB: x / 0 = 0
-    | [PUSH0], 1L -> []
-    | spes -> collapseSpes spes @ [DIV]
+    | Zero -> pop 1 @ [PUSH0] // NB: x / 0 = 0
+    | One -> []
+    | v -> collapseValue v @ [DIV]
 
 let expressionRemU e lookup =
     match exprPushCore lookup 0 0 e with
-    | [PUSH0], 0L -> pop 1 @ [PUSH0] // NB: x % 0 = 0
-    | [PUSH0], 1L -> pop 1 @ [PUSH0] // Pop value, push 0.
-    | spes -> collapseSpes spes @ [REM]
+    | Zero -> pop 1 @ [PUSH0] // NB: x % 0 = 0
+    | One -> pop 1 @ [PUSH0] // Pop value, push 0.
+    | v -> collapseValue v @ [REM]
 
 let expressionDivS e lookup =
     match exprPushCore lookup 0 0 e with
-    | [PUSH0], 0L -> pop 1 @ [PUSH0] // NB: x / 0 = 0
-    | [PUSH0], 1L -> []
-    | [PUSH0], -1L -> changeSign
-    | [PUSH0], n when n > 0L -> pushNum n @ divSU
-    | spes -> collapseSpes spes @ divS
+    | Zero -> pop 1 @ [PUSH0] // NB: x / 0 = 0
+    | One -> []
+    | True -> changeSign
+    | Const(n) when n > 0L -> pushNum n @ divSU
+    | v -> collapseValue v @ divS
 
 let expressionRemS e lookup =
     match exprPushCore lookup 0 0 e with
-    | [PUSH0], 0L -> pop 1 @ [PUSH0] // NB: x % 0 = 0
-    | [PUSH0], 1L -> pop 1 @ [PUSH0] // Pop value, push 0.
-    | [PUSH0], -1L -> pop 1 @ [PUSH0] // Pop value, push 0.
-    | spes -> collapseSpes spes @ remS
+    | Zero -> pop 1 @ [PUSH0] // NB: x % 0 = 0
+    | One -> pop 1 @ [PUSH0] // Pop value, push 0.
+    | True -> pop 1 @ [PUSH0] // Pop value, push 0.
+    | v -> collapseValue v @ remS
 
 let expressionDivSU e lookup =
     match exprPushCore lookup 0 0 e with
-    | [PUSH0], 0L -> pop 1 @ [PUSH0] // NB: x / 0 = 0
-    | [PUSH0], 1L -> []
-    | spes -> collapseSpes spes @ divSU
+    | Zero -> pop 1 @ [PUSH0] // NB: x / 0 = 0
+    | One -> []
+    | v -> collapseValue v @ divSU
 
 type FlexCode = (int -> int) -> int8 list
 
