@@ -88,9 +88,9 @@ Observe that:
 2. Whereas `as` only outputs the "linked" binary and symbols files (i.e.
    for all the code) and lets you choose the names of these files, `build`
    also produces binary and symbol files for each source file and puts
-   them in a directory tree under "bin". The file suffixes are .b and
-   .sym, respectively. However, it also produces "linked" binary and
-   symbol files. These have $ in the name before the suffix.
+   them in the directory tree under "dest dir". The file suffixes are `.b`
+   and `.sym`, respectively. However, it also produces "linked" binary and
+   symbol files. These have `$` in the name before the suffix.
 
 In time, we plan to support incremental project builds.
 
