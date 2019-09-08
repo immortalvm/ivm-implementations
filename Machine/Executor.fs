@@ -167,7 +167,7 @@ type Machine(initialMemory: seq<uint8>, startLocation: uint64, outputDir: string
                 match traceSyms.Value.TryFind <| int (pc - startLocation) with
                 | Some name -> printfn "-- %s --" name
                 | None -> ()
-                let op = m.LoadN 1 m.ProgramCounter
+                let op = m.LoadN 1 pc
                 let name = Machine.Disassembler.instructionNames.[int op]
                 printfn
                     "%4d :%3d  %-12s %s" pc op name
@@ -252,7 +252,7 @@ type Machine(initialMemory: seq<uint8>, startLocation: uint64, outputDir: string
 
         | POW2 ->
             let n = m.Pop()
-            if n >= 0UL && n <= 63UL then 1UL <<< int n else 0UL
+            if n <= 63UL then 1UL <<< int n else 0UL
             |> m.Push
 
         | NEW_FRAME ->
