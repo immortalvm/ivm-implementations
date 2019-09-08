@@ -95,14 +95,15 @@ type Machine(initialMemory: seq<uint8>, startLocation: uint64, outputDir: string
     member m.Allocate size =
         // NB: We leave a gap of 1 unused byte to catch pointer errors.
         let start = nextUnused + 1UL
-        arrays <- (start, Array.zeroCreate (int size)) :: arrays
-        nextUnused <- start + size
+        if size > 0UL then
+            arrays <- (start, Array.zeroCreate (int size)) :: arrays
+            nextUnused <- start + size
         start
 
     member m.Deallocate start =
         let rec de arrs =
             match arrs with
-            | [] -> raise (AccessException(""))
+            | [] -> arrs
             | (st, a) :: rest ->
                 if st > start then (st, a) :: de rest
                 elif st.Equals(start) then rest
