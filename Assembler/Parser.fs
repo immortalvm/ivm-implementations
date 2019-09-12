@@ -317,6 +317,7 @@ let statement: Parser<Statement list, State> =
             | "new_frame" -> nArgs 3 [SNewFrame]
             | "set_pixel" -> nArgs 5 [SSetPixel]
             | "add_sample" -> nArgs 3 [SAddSample]
+            | "put_char" -> nArgs 1 [SPutChar]
 
             | "read_frame" -> nArgs 0 [SReadFrame]
             | "read_pixel" -> nArgs 2 [SReadPixel]

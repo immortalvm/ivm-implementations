@@ -302,6 +302,13 @@ type Machine(initialMemory: seq<uint8>, startLocation: uint64, inputDir: string 
             let right = m.Pop () |> int16
             let left = m.Pop () |> int16
             samples <- (left, right) :: samples
+        | PUT_CHAR ->
+            m.Pop ()
+            |> toBytes 4
+            |> Seq.toArray
+            |> System.Text.Encoding.UTF32.GetChars
+            |> if traceSyms.IsNone then id else fun c -> Array.append c [|'\n'|]
+            |> System.Console.Error.Write
 
         | READ_FRAME ->
             let width, height = readFrame ()

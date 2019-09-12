@@ -164,8 +164,9 @@ statement = identifier ":"               (* label *)
           | "deallocate" | "deallocate!" expression
 
           | "read_frame"
-          | "read_pixel" | "read_pixel!" expression | "read_pixel!!" expression expression
+          | ... | "read_pixel!!" expression expression
 
+          | ... | "put_char!" expression
           | ... | "new_frame!!!" expression expression expression
           | ... | "set_pixel!!!!!" expression ...
           | ... | "add_sample!!" expression expression;

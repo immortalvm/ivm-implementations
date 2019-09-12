@@ -129,7 +129,12 @@ let SET_PIXEL = 49y
 [<Literal>]
 let ADD_SAMPLE = 50y
 
-// 51-55: Unused
+// 51: Unused
+
+[<Literal>]
+let PUT_CHAR = 52y
+
+// 53-55: Unused
 
 [<Literal>]
 let READ_FRAME = 56y

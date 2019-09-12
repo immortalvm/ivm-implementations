@@ -77,6 +77,7 @@ type Statement =
     | SAlloc | SDealloc
 
     | SNewFrame |SSetPixel | SAddSample
+    | SPutChar
 
     | SReadFrame | SReadPixel
 
