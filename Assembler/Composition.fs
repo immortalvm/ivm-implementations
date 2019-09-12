@@ -7,7 +7,9 @@ open Assembler.Target
 let private ATTEMPTS_BEFORE_MONOTINICITY = 3;
 
 // 'nops n' must return a nop sequence of at least n signed bytes.
-let compose (nops: int -> int8 list) (prog: Intermediate list) : uint8 list * int[] =
+let compose
+        (nops: int -> int8 list)
+        (prog: Intermediate list) : uint8 list * int[] * ((int * uint64) list) =
     let maxLabel = List.max <| 0 :: [
                        for x in prog do
                        match x with
@@ -17,6 +19,7 @@ let compose (nops: int -> int8 list) (prog: Intermediate list) : uint8 list * in
     // positions[0] will refer to the length/end of the file.
     // This is used for "linking".
     let positions = Array.create (maxLabel + 1) 0
+    let spaces = Array.create (maxLabel + 1) 0UL
 
     let pLength = List.length prog
     let starts = Array.create pLength 0
@@ -39,10 +42,13 @@ let compose (nops: int -> int8 list) (prog: Intermediate list) : uint8 list * in
                 replies <- replies.Add ((num, i), res)
                 res
 
+            starts.[num] <- position
             match inter with
             | Label i -> positions.[i] <- position
+            | Spacer (i, size) ->
+                if not stable.[num]
+                then spaces.[i] <- uint64 <| size lookup
             | Fragment frag ->
-                starts.[num] <- position
                 if not stable.[num]
                 then let c = frag lookup
                      // Avoid infinite loop by enforcing monotonicity.
@@ -68,7 +74,14 @@ let compose (nops: int -> int8 list) (prog: Intermediate list) : uint8 list * in
 
         attempts <- attempts + 1
 
-    (Seq.concat codes |> Seq.map uint8 |> Seq.toList, positions)
+    let codeList =
+        Seq.concat codes |> Seq.map uint8 |> Seq.toList
+
+    let spaceList =
+        let f i size = if size = 0UL then [] else [(positions.[i], size)]
+        spaces |> Array.toSeq |> Seq.mapi f |> Seq.concat |> Seq.toList
+
+    codeList, positions, spaceList
 
 let assemble program =
     program
@@ -76,3 +89,27 @@ let assemble program =
     |> intermediates
     |> Seq.toList
     |> compose nopsFor
+
+open Ast
+
+let spacerAllocations (spacers: seq<int * uint64>) =
+    let folder (offset: uint64) (pos: int, size: uint64) =
+        let stmts =
+            if size = 0UL then []
+            else
+                [
+                    SPush <| ESum [ELoad8 (EStack <| ENum 0L); ENum <| int64 offset]
+                    SPush <| ESum [ELabel 0; ENum <| int64 pos]
+                    SStore8
+                ]
+        stmts, offset + size
+
+    let (stmtLists, tot) = Seq.mapFold folder 0UL spacers
+    if tot = 0UL then []
+    else
+        let prog =
+            [SPush <| ENum (int64 tot); SAlloc]
+            @ List.concat stmtLists
+            @ [SPush (ELabel 0); SJumpZero] // Pop
+        let bin, _, _ = assemble prog
+        bin

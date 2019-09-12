@@ -17,8 +17,8 @@
 
 ### 1. SPECIAL STATEMENTS
 
-    ## There are five special statements: imports, labels, exports, definitions
-    ## and data.
+    ## There are six special  statements: imports, labels, exports, definitions,
+    ## data and space statements.
 
     ## Import statements can only occur at the  top of the file. It means that a
     ## label  in file  can  be referenced  below (provided  that  the label  was
@@ -66,6 +66,12 @@ my_label:
     ## a bad  idea, as our VM  executes programs from the  top. (Incidentally, 0
     ## means that  the VM  should terminate  immediately. Thus,  the meaningless
     ## statements below do not cause the machine to crash.)
+
+    ## A space statement inserts a 64-bit pointer to memory allocated by the
+    ## program at startup. The argument specifies the number of bytes that will
+    ## be allocated.
+my_1000_byte_array:
+    space 1000
 
     ## The  remaining  statements  correspond to  actual  machine  instructions.
     ## However, there is not a  one-to-one correspondence. The assembly language

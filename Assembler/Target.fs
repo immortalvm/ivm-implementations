@@ -451,10 +451,13 @@ let exprPushCore (lookup: int -> int) =
 
     epc // Return the recursive function
 
-let expressionData n line e lookup =
+let expressionConst line e lookup =
     match exprPushCore lookup 0 0 e with
-    | Const(x) -> bytes n (uint64 x)
+    | Const(x) -> x
     | _ -> failwithf "Non-constant data expression on line %d." line
+
+let expressionData n line e lookup =
+    expressionConst line e lookup |> uint64 |> bytes n
 
 let expressionPush e lookup = exprPushCore lookup 0 0 e |> collapseValue
 
@@ -525,6 +528,7 @@ type FlexCode = (int -> int) -> int8 list
 
 type Intermediate =
     | Label of int
+    | Spacer of int * ((int -> int) -> int64)
     | Fragment of FlexCode
 
 // The added generality is mainly relevant when linking (and even then, it hardly
@@ -566,6 +570,10 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
             | SStore2 :: r -> frag r [STORE2]
             | SStore4 :: r -> frag r [STORE4]
             | SStore8 :: r -> frag r [STORE8]
+
+            | SLabel i :: SSpacer (ln, e) :: r ->
+                rest <- r
+                [Label i; Spacer (i, expressionConst ln e)]
 
             // Avoid optimizing away tight infinite loops.
             | SLabel i :: SPush (ELabel j) :: SJump :: r when i = j ->

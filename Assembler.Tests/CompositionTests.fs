@@ -10,7 +10,7 @@ open Machine.Instructions
 open Assembler.Composition
 
 let compilesTo (program: Statement list) (binary: sbyte list) (positions: int list) =
-    let b, p = assemble program
+    let b, p, _ = assemble program
     Expect.sequenceEqual b (Seq.map uint8 binary) "Unexpected binary"
     Expect.sequenceEqual p (Seq.append [List.length binary ] positions) "Unexpected positions"
 

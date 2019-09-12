@@ -11,6 +11,7 @@ type FlexCode = (int -> int) -> int8 list
 
 type Intermediate =
     | Label of int
+    | Spacer of int * ((int -> int) -> int64)
     | Fragment of FlexCode
 
 val intermediates : Statement list -> seq<Intermediate>

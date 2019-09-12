@@ -5,6 +5,7 @@ type AssemblerOutput = {
     Binary: seq<uint8>;
     Exported: seq<string * int>;
     Labels: seq<string * int>;
+    Spacers: seq<int * uint64>;
 }
 
 val showValue : int64 -> string

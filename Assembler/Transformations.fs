@@ -292,6 +292,8 @@ let pushReduction (prog: Statement seq): Statement seq =
             | SData4 (line, p), _ -> yield! flush [SData4 (line, optimize 0L p)]
             | SData8 (line, p), _ -> yield! flush [SData8 (line, optimize 0L p)]
 
+            | SSpacer (line, p), _ -> yield! flush [SSpacer (line, optimize 0L p)]
+
             | _ -> yield! flush [s]
         // It would be strange to end the program with a push, though.
         yield! flush []

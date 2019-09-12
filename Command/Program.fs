@@ -21,6 +21,9 @@ let RELATIVE_HEADING = "--Relative--"
 [<Literal>]
 let LABELS_HEADING = "--Labels--"
 
+[<Literal>]
+let SPACERS_HEADING = "--Spacers--"
+
 
 // Project file headings
 
@@ -55,12 +58,12 @@ let usage () =
     printfn "  %s build <project> <dest dir>     -  Assemble project" ex
     printfn "  %s make <project> <dest dir>      -  Assemble project incrementally" ex
 
-let writeAssemblerOutput binaryFile symbolsFile bytes exported labels previous =
+let writeAssemblerOutput binaryFile symbolsFile bytes exported labels spacers previous =
     File.WriteAllBytes (binaryFile, bytes |> Seq.toArray)
     printfn "Binary written to: %s" binaryFile
     let mapLines map = seq {
         for name, pos in Seq.sortBy fst map do
-            yield sprintf "%s\t%d" name pos
+            yield sprintf "%O\t%O" name pos
     }
     let lines = seq {
         yield PREVIOUS_HEADING
@@ -71,6 +74,8 @@ let writeAssemblerOutput binaryFile symbolsFile bytes exported labels previous =
         yield! mapLines exported
         yield LABELS_HEADING
         yield! mapLines labels
+        yield SPACERS_HEADING
+        yield! mapLines spacers
     }
     File.WriteAllLines (symbolsFile, lines)
     printfn "Symbols written to: %s" symbolsFile
@@ -98,16 +103,19 @@ let splitFile file keys =
 let parseSymbolsFile file =
     let readLine (line: string) = let arr = line.Split '\t'
                                   arr.[0], int arr.[1]
-    let [prev; size; relative; labels] =
-        splitFile file [PREVIOUS_HEADING; SIZE_HEADING; RELATIVE_HEADING; LABELS_HEADING]
+    let readSpacerLine (line: string) = let arr = line.Split '\t'
+                                        int arr.[0], uint64 arr.[1]
+    let [prev; size; relative; labels; spacers] =
+        splitFile file [PREVIOUS_HEADING; SIZE_HEADING; RELATIVE_HEADING; LABELS_HEADING; SPACERS_HEADING]
     Seq.exactlyOne prev,
     Seq.exactlyOne size |> int,
     Seq.map readLine relative,
-    Seq.map readLine labels
+    Seq.map readLine labels,
+    Seq.map readSpacerLine spacers
 
 let assem source binary symbols =
     let ao = doAssemble source
-    writeAssemblerOutput source binary ao.Binary ao.Exported ao.Labels ""
+    writeAssemblerOutput source binary ao.Binary ao.Exported ao.Labels ao.Spacers ""
 
 let readTraceSyms file =
     let pairs = splitFile file [LABELS_HEADING]
@@ -197,17 +205,18 @@ let build projectFile destinationDir incrementally =
                         if notNewer sourceStamp symbolsStamp
                            && (previous = "" || notNewer prevSymStamp symbolsStamp)
                         then
-                            let oldPrevious, _, exported, labels = parseSymbolsFile symFile
+                            let oldPrevious, _, exported, labels, spacers = parseSymbolsFile symFile
                             if previous = oldPrevious
                             then
                                 let binFile = nodePath destinationDir BINARY_EXTENSION node
                                 if File.Exists binFile
                                 then
                                     printfn "Up-to-date: %s" node
-                                    res <- Some <| {Node=node;
-                                                    Binary=File.ReadAllBytes binFile;
-                                                    Exported=exported;
-                                                    Labels=labels}
+                                    res <- Some { Node=node;
+                                                  Binary=File.ReadAllBytes binFile;
+                                                  Exported=exported;
+                                                  Labels=labels;
+                                                  Spacers=spacers }
                         yield res
                         previous <- node
                         prevSymStamp <- symbolsStamp
@@ -223,7 +232,7 @@ let build projectFile destinationDir incrementally =
 
     let saveLinked rest =
         let ao = Seq.append reused rest |> doCollect
-        write (ao.Node + "$") ao.Binary ao.Exported ao.Labels ""
+        write (ao.Node + "$") ao.Binary ao.Exported ao.Labels ao.Spacers ""
 
     if mustBuild = []
     then
@@ -242,7 +251,7 @@ let build projectFile destinationDir incrementally =
         saveLinked <| seq {
             let mutable previous = Seq.tryLast reused |> Option.map (fun ao -> ao.Node) |> valueOr ""
             for ao in outputs do
-                write ao.Node ao.Binary ao.Exported ao.Labels previous
+                write ao.Node ao.Binary ao.Exported ao.Labels ao.Spacers previous
                 previous <- ao.Node
                 yield ao
         }

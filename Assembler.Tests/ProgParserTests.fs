@@ -80,7 +80,9 @@ let intro1 =
     @ data2 59 [0x1000; 0x2000; 0x3000]
     @ data4 62 [0x40000000]
     @ data8 63 [-0x0123456789abcdefL]
+    @ [ SLabel 2; SLabel 3; SSpacer (74L, ENum 1000L); SData8 (0L, ENum 0L)]
     @ [
+
         SPush <| ENum 13L
         SPush <| ENum -1L
         SPush <| ENum 0L; SPush <| ENum 1L
@@ -103,9 +105,9 @@ let intro1 =
         SJumpNotZero
 
         // Call, ...
-        SPush <| ELabel 2
+        SPush <| ELabel 4
         SPush <| ELabel 1; SJump
-        SLabel 2
+        SLabel 4
         SJump
 
         SLoad1; SLoad2; SLoad4; SLoad8

@@ -20,6 +20,7 @@ type AssemblerOutput = {
     Binary: seq<uint8>;
     Exported: seq<string * int>;
     Labels: seq<string * int>;
+    Spacers: seq<int * uint64>;
 }
 
 let getDependencies (fileName : string) : Set<string> =
@@ -94,10 +95,16 @@ let buildOne rootDir (node: string) (relSymbols: string -> int) =
     use stream = File.OpenRead fileName
     try
         let program, exported, labels = parseProgram (State.Init relSymbols) stream
-        let bytes, symbols = assemble program
+        let bytes, symbols, spacers = assemble program
         let symList (map: Map<string, int>) =
             [for pair in map -> (pair.Key, symbols.[pair.Value])]
-        {Node=node; Binary=bytes; Exported=symList exported; Labels=symList labels}
+        {
+            Node=node;
+            Binary=bytes;
+            Exported=symList exported;
+            Labels=symList labels;
+            Spacers=spacers;
+        }
     with
         ParseException(msg) -> failwith msg
 
@@ -126,9 +133,19 @@ let doBuild (rootDir: string) (reused: seq<AssemblerOutput>) (buildOrder: seq<st
 
 let doCollect (outputs: seq<AssemblerOutput>) : AssemblerOutput =
     let rev = outputs |> Seq.cache |> Seq.rev
-    let binary = rev |> Seq.map (fun ao -> ao.Binary) |> Seq.concat
-    let labels = seq {
+    let spacers = Seq.cache <| seq {
         let mutable offset = 0
+        for ao in rev do
+            for pos, size in ao.Spacers do
+                yield pos + offset, size
+            offset <- offset + Seq.length ao.Binary
+    }
+    let spacerBin = spacerAllocations spacers
+    let binary =
+        Seq.append spacerBin
+                   (rev |> Seq.map (fun ao -> ao.Binary) |> Seq.concat)
+    let labels = seq {
+        let mutable offset = spacerBin.Length
         for ao in rev do
             for label, pos in ao.Labels do
                 yield ao.Node + "." + label, pos + offset
@@ -139,6 +156,7 @@ let doCollect (outputs: seq<AssemblerOutput>) : AssemblerOutput =
         Binary=Seq.cache binary;
         Exported=[];
         Labels=Seq.cache labels;
+        Spacers=[];
     }
 
 let doAssemble (fileName: string) =

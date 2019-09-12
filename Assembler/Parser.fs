@@ -92,6 +92,12 @@ type State = {
             str.UserState <- { s with Count = i }
             Reply [SCall i]
 
+        static member FreshLabel (str: CharStream<State>) =
+            let s = str.UserState
+            let i = s.Count + 1
+            str.UserState <- { s with Count = i }
+            Reply i
+
         static member ObsLabel id (str: CharStream<State>) =
             let s = str.UserState
             match s.Labels.TryFind id with
@@ -200,9 +206,10 @@ let expression: Parser<Expression, State> =
     ]
     expr
 
+let lineNumAndExpr: Parser<int64 * Expression, State> =
+    (fun s -> Reply s.Line) .>>. expression
 
 let data: Parser<(int64 * Expression) list, State> =
-    let lineNumAndExpr = (fun s -> Reply s.Line) .>>. expression
     between (strWs "[") (strWs "]") <| many lineNumAndExpr
 
 let statement: Parser<Statement list, State> =
@@ -231,6 +238,10 @@ let statement: Parser<Statement list, State> =
             else fun _ -> Reply (Error, unexpected "Too many arguments.")
         argList >>= check |>> List.mapi push
 
+    let oneSpacer =
+        lineNumAndExpr .>>. State.FreshLabel
+        |>> fun ((ln, e), i) -> [SLabel i; SSpacer (ln, e); SData8 (0L, ENum 0L)]
+
     let stmt (id, numArgs) =
         if numArgs = labelKey
         then State.ObsLabel id
@@ -239,30 +250,35 @@ let statement: Parser<Statement list, State> =
         then expression >>=
              fun e -> preturn [] .>> State.AddDef id e
         else
-            let pArgs = match numArgs with
-                        | 0 -> pushArgs0
-                        | 1 -> pushArgs1
-                        | 2 -> pushArgs2
-                        | _ -> pushArgs numArgs
+            let pArgs () = match numArgs with
+                           | 0 -> pushArgs0
+                           | 1 -> pushArgs1
+                           | 2 -> pushArgs2
+                           | _ -> pushArgs numArgs
             let nArgs maxArgs ops =
                 if numArgs = listKey then maxPushList maxArgs
-                elif numArgs <= maxArgs then pArgs
+                elif numArgs <= maxArgs then pArgs ()
                 else fun _ -> Reply (Error, unexpected "Too many arguments.")
                 |>> fun a -> a @ ops
 
-            match id with
-            | "EXPORT" ->
+            let numArgsZero =
                 if numArgs <> 0
                 then fun _ ->
                     let c = if numArgs = listKey then "'*'" else "'!'"
                     Reply (Error, unexpected <| c + " does not make sense here.")
-                else identifier >>= State.Export .>> whitespace
-            | "data1" -> data |>> (List.map SData1)
-            | "data2" -> data |>> (List.map SData2)
-            | "data4" -> data |>> (List.map SData4)
-            | "data8" -> data |>> (List.map SData8)
+                else
+                    preturn ()
+
+            match id with
+            | "EXPORT" -> numArgsZero >>. identifier >>= State.Export .>> whitespace
+            | "data1" -> numArgsZero >>. data |>> (List.map SData1)
+            | "data2" -> numArgsZero >>. data |>> (List.map SData2)
+            | "data4" -> numArgsZero >>. data |>> (List.map SData4)
+            | "data8" -> numArgsZero >>. data |>> (List.map SData8)
+            | "space" -> numArgsZero >>. oneSpacer
+
             | "exit" -> nArgs 0 [SExit]
-            | "push" -> if numArgs = listKey then pushList else pArgs
+            | "push" -> if numArgs = listKey then pushList else pArgs ()
             | "set_sp" -> nArgs 1 [SSetSp]
             | "call" -> nArgs 1 [] .>>. State.Call |>> fun (x, y) -> x @ y
             | "return" -> nArgs 0 [SJump]

@@ -110,6 +110,7 @@ statement = identifier ":"               (* label *)
           | "data2" [ expression* ]      (* data segment, 16 bits per value *)
           | "data4" [ expression* ]      (* data segment, 32 bits per value *)
           | "data8" [ expression* ]      (* data segment, 64 bits per value *)
+          | "space" expression           (* pointer static byte array *)
 
           | "exit"
           | "push" | "push!" expression | "push!!" expression expression | ...

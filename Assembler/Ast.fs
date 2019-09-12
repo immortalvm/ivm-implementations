@@ -52,6 +52,7 @@ type Statement =
     | SData2 of int64 * Expression
     | SData4 of int64 * Expression
     | SData8 of int64 * Expression
+    | SSpacer of int64 * Expression
 
     | SPush of Expression
     | SExit | SSetSp
