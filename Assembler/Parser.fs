@@ -318,6 +318,9 @@ let statement: Parser<Statement list, State> =
             | "set_pixel" -> nArgs 5 [SSetPixel]
             | "add_sample" -> nArgs 3 [SAddSample]
 
+            | "read_frame" -> nArgs 0 [SReadFrame]
+            | "read_pixel" -> nArgs 2 [SReadPixel]
+
             // Better error message than simply 'fail'.
             | _ -> fun _ -> Reply (Error, unexpectedString id)
 

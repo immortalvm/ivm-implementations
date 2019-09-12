@@ -163,9 +163,12 @@ statement = identifier ":"               (* label *)
           | "allocate" | "allocate!" expression
           | "deallocate" | "deallocate!" expression
 
-          ... | "new_frame!!!" expression expression expression
-          ... | "set_pixel!!!!!" expression ...
-          ... | "add_sample!!" expression expression;
+          | "read_frame"
+          | "read_pixel" | "read_pixel!" expression | "read_pixel!!" expression expression
+
+          | ... | "new_frame!!!" expression expression expression
+          | ... | "set_pixel!!!!!" expression ...
+          | ... | "add_sample!!" expression expression;
 
 expression = positive_numeral  (* 0 to 2^64-1 *)
            | identifier        (* label or abbreviation *)

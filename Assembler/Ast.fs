@@ -78,4 +78,6 @@ type Statement =
 
     | SNewFrame |SSetPixel | SAddSample
 
+    | SReadFrame | SReadPixel
+
     // TODO: More input and output

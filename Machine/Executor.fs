@@ -17,7 +17,7 @@ let fromBytes : seq<uint8> -> uint64 =
 let toBytes n (x: uint64) : seq<uint8> =
     [| 0 .. n-1 |] |> Seq.map (fun i -> x >>> i*8 |> uint8)
 
-type Machine(initialMemory: seq<uint8>, startLocation: uint64, outputDir: string option, traceSyms: Map<int, string> option) =
+type Machine(initialMemory: seq<uint8>, startLocation: uint64, inputDir: string option, outputDir: string option, traceSyms: Map<int, string> option) =
 
     // Reverse ordering
     let mutable arrays = [ (startLocation, Seq.toArray initialMemory) ]
@@ -43,6 +43,33 @@ type Machine(initialMemory: seq<uint8>, startLocation: uint64, outputDir: string
 
     let store location value =
         let (a, i) = getArray location in a.[i] <- value
+
+    let mutable pendingInputFiles: (string list) option = None
+    let mutable inputBitmap: Bitmap option = None
+    let rec readFrame () : int * int =
+        match pendingInputFiles with
+        | None ->
+            pendingInputFiles <-
+                match inputDir with
+                | None -> Some []
+                | Some dir ->
+                    Directory.GetFiles dir
+                    |> Array.toSeq
+                    |> Seq.map Path.GetFileName
+                    |> Seq.filter (Path.GetExtension >> (=) ".png")
+                    |> Seq.sort
+                    |> Seq.toList
+                    |> Some
+            readFrame()
+        | Some [] -> (0, 0)
+        | Some (next :: rest) ->
+            pendingInputFiles <- Some rest
+            let bitmap = new Bitmap(Image.FromFile next)
+            inputBitmap <- Some bitmap
+            (bitmap.Width, bitmap.Height)
+    let rec readPixel x y : uint8 =
+        let c = inputBitmap.Value.GetPixel (x, y)
+        (c.R + c.G + c.B) / 3uy // Does this make sense?
 
     let mutable outputEncountered = false
     let mutable frameCounter = -1 // Since the first "flush" will be a no-op.
@@ -276,6 +303,15 @@ type Machine(initialMemory: seq<uint8>, startLocation: uint64, outputDir: string
             let left = m.Pop () |> int16
             samples <- (left, right) :: samples
 
+        | READ_FRAME ->
+            let width, height = readFrame ()
+            width |> uint64 |> m.Push
+            height |> uint64 |> m.Push
+        | READ_PIXEL ->
+            let y = m.Pop () |> int
+            let x = m.Pop () |> int
+            readPixel x y |> uint64 |> m.Push
+
         | undefined -> raise (UndefinedException(sprintf "%d" undefined))
 
 
@@ -284,6 +320,6 @@ let random = System.Random ()
 let execute (prog: seq<uint8>) (arg: seq<uint8>) (outputDir: string option) (traceSyms: Map<int, string> option) =
     // Start at 0, 1000, ... or 7000.
     let start = random.Next () % 8 |> (*) 1000 |> uint64
-    let machine = Machine(Seq.concat [prog; arg; Seq.replicate (3 * 8) 0uy], start, outputDir, traceSyms)
+    let machine = Machine(Seq.concat [prog; arg; Seq.replicate (3 * 8) 0uy], start, None, outputDir, traceSyms)
     machine.Run ()
     machine.Stack ()

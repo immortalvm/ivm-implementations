@@ -129,7 +129,14 @@ let SET_PIXEL = 49y
 [<Literal>]
 let ADD_SAMPLE = 50y
 
+// 51-55: Unused
+
+[<Literal>]
+let READ_FRAME = 56y
+
+[<Literal>]
+let READ_PIXEL = 57y
+
 
 // Used by Machine.Disassembler to find the module.
-// type internal ReflectionMarker = interface end
 type ReflectionMarker = interface end
