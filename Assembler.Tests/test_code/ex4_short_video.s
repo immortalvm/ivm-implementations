@@ -2,6 +2,8 @@
 ### rate. Observe that when a pixel is not set, its color is undefined. In
 ### particular, this is the case for the whole bottom left half of each frame.
 
+    IMPORT ex5_write_decimal_number.write_decimal_number
+
     stack_size = 16384
     allocate! stack_size
     add! stack_size
@@ -34,6 +36,11 @@
 
 per_frame:
     new_frame* [width height sample_rate]
+
+    ## Print frame number to terminal
+    push! $i
+    call! write_decimal_number
+    set_sp! &1
 
 ### Image
     store8!! 0 &x

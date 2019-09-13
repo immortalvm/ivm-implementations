@@ -1,5 +1,7 @@
 ### Write number to text channel
 
+    EXPORT write_decimal_number
+
     stack_size = 16384
     allocate! stack_size
     add! stack_size

@@ -289,7 +289,7 @@ type Machine(initialMemory: seq<uint8>, startLocation: uint64, inputDir: string 
             let height = m.Pop () |> int
             let width = m.Pop () |> int
             bitmap <- Some <| new Bitmap (width, height)
-            printf "."
+            System.Console.Error.Write "\r\f" // carriage return + form feed
         | SET_PIXEL ->
             let b = m.Pop () |> int
             let g = m.Pop () |> int
