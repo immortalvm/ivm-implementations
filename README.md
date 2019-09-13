@@ -34,6 +34,13 @@ in particular these files:
     ivm build <project> <dest dir>     -  Assemble project
     ivm make <project> <dest dir>      -  Assemble project incrementally
 
+As of September 2019, you may have to jump though some hoops to get
+image/video output (to file) under Linux and Mac, see
+[https://github.com/dotnet/core/issues/2746]. On Mac with Homebrew it is
+sufficient to do:
+
+    brew install mono-libgdiplus
+
 
 ### Getting started
 
