@@ -115,7 +115,7 @@ let parseSymbolsFile file =
 
 let assem source binary symbols =
     let ao = doAssemble source
-    writeAssemblerOutput source binary ao.Binary ao.Exported ao.Labels ao.Spacers ""
+    writeAssemblerOutput binary symbols ao.Binary ao.Exported ao.Labels ao.Spacers ""
 
 let readTraceSyms file =
     let pairs = splitFile file [LABELS_HEADING]
