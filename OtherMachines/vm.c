@@ -4,6 +4,14 @@
 #include <stdbool.h>
 #include <wchar.h>
 
+#if UINTPTR_MAX != 0xffffffffffffffff
+#error The address space must be 64-bit.
+#endif
+
+#if defined(__BIG_ENDIAN__) || defined(__BYTE_ORDER) && __BYTE_ORDER == __BIG_ENDIAN
+#error The byte ordering must be little-endian.
+#endif
+
 #define WRONG_NUMBER_OF_ARGUMENTS 1
 #define FILE_NOT_FOUND 2
 #define NOT_IMPLEMENTED_YET 3
