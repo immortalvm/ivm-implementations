@@ -4,6 +4,11 @@
 #include <stdbool.h>
 #include <wchar.h>
 
+#define WRONG_NUMBER_OF_ARGUMENTS 1
+#define FILE_NOT_FOUND 2
+#define NOT_IMPLEMENTED_YET 3
+#define UNDEFINED_INSTRUCTION 4
+
 #define EXIT 0
 #define NOP 1
 #define JUMP 2
@@ -62,33 +67,34 @@ uint64_t signExtend2(uint64_t x) { return ((uint64_t)(int64_t)(int16_t)(uint16_t
 uint64_t signExtend4(uint64_t x) { return ((uint64_t)(int64_t)(int32_t)(uint32_t)x); }
 
 /* Based on https://stackoverflow.com/a/22059317. */
-uint8_t* readFile(char* filename, int additonalZeros) {
-  FILE *fileptr;
-  uint8_t *buffer;
-  long filelen;
-
-  fileptr = fopen(filename, "rb");
+int readFile(char* filename, int additonalZeros, void** start) {
+  FILE* fileptr = fopen(filename, "rb");
+  if (fileptr == NULL) {
+    fprintf(stderr, "File not found or not readable: %s\n", filename);
+    exit(FILE_NOT_FOUND);
+  }
   fseek(fileptr, 0, SEEK_END);
-  filelen = ftell(fileptr);
+  long filelen = ftell(fileptr);
   rewind(fileptr);
 
-  buffer = (uint8_t*)calloc(filelen + additonalZeros, 1);
-  fread(buffer, filelen, 1, fileptr);
+  int size = filelen + additonalZeros;
+  *start = calloc(size, 1);
+  fread(*start, filelen, 1, fileptr);
   fclose(fileptr);
-  return buffer;
+  return size;
 }
 
 /* Example: clang vm.c && ./a.out 50 ex3_quick_sort.bin empty */
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   if (argc != 4) {
     fprintf(stderr, "Usage:\n  %s <stack elements> <binary file> <argument file>\n", argv[0]);
-    return 3;
+    return WRONG_NUMBER_OF_ARGUMENTS;
   }
 
   int stackElements = (int) strtol(argv[1], (char**)NULL, 10);
-  pc = readFile(argv[2], 0);
-  uint8_t* argBytes = readFile(argv[3], 3*8);
-  sp = argBytes + sizeof(argBytes);
+  readFile(argv[2], 0, &pc);
+  int argBytes = readFile(argv[3], 3*8, &sp);
+  sp += argBytes;
 
   bool terminated = false;
   uint64_t x, y;
@@ -157,10 +163,14 @@ int main(int argc, char **argv) {
     // TODO:
     case NEW_FRAME:
     case SET_PIXEL:
-    case ADD_SAMPLE: fprintf(stderr, "Not implemented yet\n"); return 2;
+    case ADD_SAMPLE:
+      fprintf(stderr, "Not implemented yet\n");
+      return NOT_IMPLEMENTED_YET;
 
     case PUT_CHAR: printf("%lc", (wchar_t)pop()); break;
-    default: fprintf(stderr, "Undefined instruction\n"); return 1;
+    default:
+      fprintf(stderr, "Undefined instruction\n");
+      return UNDEFINED_INSTRUCTION;
     }
   }
 
