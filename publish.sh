@@ -9,13 +9,9 @@ echo "Publishing $TAG"
 dotnet clean
 
 # See https://docs.microsoft.com/en-us/dotnet/core/tools/dotnet-publish .
-# I'm not sure if '-f netcoreapp2.1' is useful since this is also in the project files.
 
  pub() {
-    dotnet publish Command -c release --self-contained -f netcoreapp2.1 -r $1
-    pushd Command/bin/release/netcoreapp2.1/$1
-    zip -r "$TAG"_$1.zip publish
-    popd
+    dotnet publish Command -c release --self-contained -r $1 /p:PublishSingleFile=true /p:PublishTrimmed=true
 }
 
 pub osx-x64
