@@ -33,7 +33,9 @@
     <None Include="test_code\ex4_short_video.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="test_code\ex5_write_decimal_number.s" />
+    <None Include="test_code\ex5_write_decimal_number.s">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="test_code\test_expressions.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
