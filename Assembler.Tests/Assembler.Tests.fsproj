@@ -56,13 +56,13 @@
     <Compile Include="CompositionTests.fs" />
     <Compile Include="IntegrationTests.fs" />
     <Compile Include="Main.fs" />
-    <PackageReference Include="Expecto" Version="8.11.0" />
+    <PackageReference Include="Expecto" Version="8.12.0" />
     <PackageReference Include="FsCheck" Version="2.14.0" />
     <ProjectReference Include="..\Machine\Machine.fsproj" />
     <PackageReference Include="Unquote" Version="5.0.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.8.0" />
     <ProjectReference Include="..\Assembler\Assembler.fsproj" />
-    <PackageReference Include="Expecto.FsCheck" Version="8.11.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.2.0" />
+    <PackageReference Include="Expecto.FsCheck" Version="8.12.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.3.0" />
   </ItemGroup>
 </Project>
