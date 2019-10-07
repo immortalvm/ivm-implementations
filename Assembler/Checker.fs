@@ -1,12 +1,13 @@
 ﻿module Assembler.Checker
 
 open System.IO
-
+open Machine.Utils
 open Assembler.Parser
 open Assembler.Composition
 open Machine.Executor
 open FParsec
 open System.Text.RegularExpressions
+
 
 // These constants should be annotated [<Literal>], but then they can no longer
 // be made available through the signature file. This is (yet another) reason
@@ -131,16 +132,16 @@ let doBuild (rootDir: string) (reused: seq<AssemblerOutput>) (buildOrder: seq<st
             incorporate ao
     }
 
-let doCollect (outputs: seq<AssemblerOutput>) : AssemblerOutput =
+let doCollect (stackSize: int) (outputs: seq<AssemblerOutput>): AssemblerOutput =
     let rev = outputs |> Seq.cache |> Seq.rev
-    let spacers = Seq.cache <| seq {
+    let spacers = [
         let mutable offset = 0
         for ao in rev do
             for pos, size in ao.Spacers do
                 yield pos + offset, size
             offset <- offset + Seq.length ao.Binary
-    }
-    let spacerBin = spacerAllocations spacers
+    ]
+    let spacerBin = initialization stackSize spacers
     let binary =
         Seq.append spacerBin
                    (rev |> Seq.map (fun ao -> ao.Binary) |> Seq.concat)
@@ -162,7 +163,7 @@ let doCollect (outputs: seq<AssemblerOutput>) : AssemblerOutput =
 let doAssemble (fileName: string) =
     let rootDir = Path.GetDirectoryName fileName
     let buildOrder = getBuildOrder rootDir <| Path.GetFileNameWithoutExtension fileName
-    buildOrder |> doBuild rootDir [] |> doCollect
+    buildOrder |> doBuild rootDir [] |> doCollect (1 <<< 16) // 64 KiB stack
 
 let doRun binary arg outputDir traceSyms =
     try

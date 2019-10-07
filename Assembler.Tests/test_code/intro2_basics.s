@@ -11,19 +11,17 @@
     ## Fresh stack size in bytes, normally a multiple of 8.
     stack_size = 16384
 
-    ## Before  the program  starts, a  segment of  the memory  is allocated  and
-    ## filled with  (1) the binary,  (2) the contents  of the argument  file (if
-    ## provided), and (3)  24 zero bytes (3  * 64 bits). The  program counter is
-    ## set the the start of this segment and the stack pointer to the stop (i.e.
-    ## the  first byte  after the  segment). In  other words,  the argument  and
-    ## binary may become overwritten when push values to the stack. Fortunately,
-    ## the 24 bytes at the end is enough to create a fresh stack:
-    allocate! stack_size
-    add! stack_size
-    set_sp
-
-    ## There is also a way to avoid loosing the old stack pointer. This will be
-    ## explained later.
+    ## When the machine  starts there are two segments of  allocated memory. The
+    ## first segment  contains the program.  The program counter  (PC) initially
+    ## points to  the start  of this  segment. The  second segment  contains the
+    ## contents of the argument file (if provided)  plus 24 bytes (3 * 64 bits).
+    ## The stack  pointer (SP) initially  points to  the the first  byte _after_
+    ## this segment. In other  words, we have an initial stack  size of 3, which
+    ## is just enough for the program itself to create a fresh stack. Since this
+    ## is something  every non-trivial  program must do,  the necessary  code is
+    ## prepended to every  executable binary. The default stack size  is 64 KiB,
+    ## but it can be changed in the project file (.proj). The argument file will
+    ## be discussed later.
 
     ## It is often necessary push a copy of an element in the stack onto the
     ## stack. This can be done as follows:

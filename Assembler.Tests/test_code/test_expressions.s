@@ -1,10 +1,5 @@
 ### Expression checks
 
-    stack_size = 16384
-    allocate! stack_size
-    add! stack_size
-    set_sp
-
     ## Macros (not optimized away)
     x0 = (load1 stuff)
     x10 = (load1 (+ stuff 1))

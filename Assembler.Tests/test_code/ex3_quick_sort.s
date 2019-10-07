@@ -3,11 +3,6 @@
 
     EXPORT sort                 # Make 'sort' as externally visible
 
-    stack_size = 16384
-    allocate! stack_size
-    add! stack_size
-    set_sp
-
     width = 2
     push!! data_start (+ data_stop -width)
     call! sort

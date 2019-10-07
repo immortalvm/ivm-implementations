@@ -27,4 +27,4 @@ val doCheck : string -> string
 
 val doBuild : string -> seq<AssemblerOutput> -> seq<string> -> seq<AssemblerOutput>
 
-val doCollect : seq<AssemblerOutput> -> AssemblerOutput
+val doCollect : int -> seq<AssemblerOutput> -> AssemblerOutput

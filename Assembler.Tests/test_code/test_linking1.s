@@ -4,11 +4,6 @@
     IMPORT test_linking2.label2b
     IMPORT test_linking3.label3b
 
-    stack_size = 1000
-    allocate! stack_size
-    add! stack_size
-    set_sp
-
     push! 3                     # 3
     call! label2a               # 12
     store1! label2b

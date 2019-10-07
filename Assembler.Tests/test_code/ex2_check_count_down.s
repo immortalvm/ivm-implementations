@@ -1,10 +1,5 @@
 ﻿### Push the numbers 10 .. 0 onto the stack.
 
-    stack_size = 200
-    allocate! stack_size
-    add! stack_size
-    set_sp
-
     first_number_pushed = 10
     push! first_number_pushed
 loop:

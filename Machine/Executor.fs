@@ -9,6 +9,8 @@ open System.IO
 exception AccessException of string
 exception UndefinedException of string
 
+let initialStackSize = 3 * 8
+
 // Little-endian encoding
 let fromBytes : seq<uint8> -> uint64 =
     Seq.mapi (fun i x -> uint64 x <<< i*8) >> Seq.sum
@@ -212,11 +214,10 @@ type Machine(initialMemory: seq<uint8>, startLocation: uint64, inputDir: string 
             with
                 | AccessException msg -> None
         let limit = valueOr 1000 max
-        let mutable i = 0
         seq {
+            let mutable i = 0
             while i < limit do
-                let x = safeGet i
-                match x with
+                match safeGet i with
                 | Some xx -> yield xx; i <- i + 1
                 | None -> i <- limit
         }
@@ -326,7 +327,7 @@ let random = System.Random ()
 
 let execute (prog: seq<uint8>) (arg: seq<uint8>) (outputDir: string option) (traceSyms: Map<int, string> option) =
     // Start at 0, 1000, ... or 7000.
-    let start = random.Next () % 8 |> (*) 1000 |> uint64
-    let machine = Machine(Seq.concat [prog; arg; Seq.replicate (3 * 8) 0uy], start, None, outputDir, traceSyms)
+    let start = random.Next () % 8 |> ( * ) 1000 |> uint64
+    let machine = Machine(Seq.concat [prog; arg; Seq.replicate initialStackSize 0uy], start, None, outputDir, traceSyms)
     machine.Run ()
     machine.Stack ()
