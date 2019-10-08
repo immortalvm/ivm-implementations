@@ -34,13 +34,6 @@ in particular these files:
     ivm build <project> <dest dir>     -  Assemble project
     ivm make <project> <dest dir>      -  Assemble project incrementally
 
-As of September 2019, you may have to jump though some hoops to get
-image/video output (to file) under Linux and Mac, see
-[https://github.com/dotnet/core/issues/2746]. On Mac with Homebrew it is
-sufficient to do:
-
-    brew install mono-libgdiplus
-
 
 ### Getting started
 
@@ -68,7 +61,6 @@ before running it. Thus, this is a form of 'command line argument'. If an
 will be written to this directory. At this point, it is recommended to use
 an empty directory (as any contents may get overwritten). If no output dir
 is provided, any output will be discarded.
-
 
 ### Dependencies, projects and builds
 
@@ -223,6 +215,9 @@ is syntactic sugar for:
     push!!..! <e1> <e2> ... <en>        # with n exclamation marks
 
 Similarly for the other statements, e.g. `set_pixel*`.
+
+The arguments to `space` and `data<N>` must be compile time constants,
+except that `data8` also accepts labels.
 
 
 ## Adapting Emacs asm-mode
