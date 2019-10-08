@@ -22,6 +22,7 @@ type AssemblerOutput = {
     Exported: seq<string * int>;
     Labels: seq<string * int>;
     Spacers: seq<int * uint64>;
+    Relatives: seq<int>;
 }
 
 let getDependencies (fileName : string) : Set<string> =
@@ -96,7 +97,7 @@ let buildOne rootDir (node: string) (relSymbols: string -> int) =
     use stream = File.OpenRead fileName
     try
         let program, exported, labels = parseProgram (State.Init relSymbols) stream
-        let bytes, symbols, spacers = assemble program
+        let bytes, symbols, spacers, relatives = assemble program
         let symList (map: Map<string, int>) =
             [for pair in map -> (pair.Key, symbols.[pair.Value])]
         {
@@ -105,6 +106,7 @@ let buildOne rootDir (node: string) (relSymbols: string -> int) =
             Exported=symList exported;
             Labels=symList labels;
             Spacers=spacers;
+            Relatives = relatives;
         }
     with
         ParseException(msg) -> failwith msg
@@ -141,7 +143,14 @@ let doCollect (stackSize: int) (outputs: seq<AssemblerOutput>): AssemblerOutput 
                 yield pos + offset, size
             offset <- offset + Seq.length ao.Binary
     ]
-    let spacerBin = initialization stackSize spacers
+    let relatives = [
+        let mutable offset = 0
+        for ao in rev do
+            for pos in ao.Relatives do
+                yield pos + offset
+            offset <- offset + Seq.length ao.Binary
+    ]
+    let spacerBin = initialization stackSize spacers relatives
     let binary =
         Seq.append spacerBin
                    (rev |> Seq.map (fun ao -> ao.Binary) |> Seq.concat)
@@ -158,6 +167,7 @@ let doCollect (stackSize: int) (outputs: seq<AssemblerOutput>): AssemblerOutput 
         Exported=[];
         Labels=Seq.cache labels;
         Spacers=[];
+        Relatives=[];
     }
 
 let doAssemble (fileName: string) =

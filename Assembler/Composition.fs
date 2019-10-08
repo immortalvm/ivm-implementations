@@ -9,7 +9,7 @@ let private ATTEMPTS_BEFORE_MONOTINICITY = 3;
 // 'nops n' must return a nop sequence of at least n signed bytes.
 let compose
         (nops: int -> int8 list)
-        (prog: Intermediate list) : uint8 list * int[] * ((int * uint64) list) =
+        (prog: Intermediate list) : uint8 list * int[] * ((int * uint64) list) * (int list) =
     let maxLabel = List.max <| 0 :: [
                        for x in prog do
                        match x with
@@ -24,6 +24,8 @@ let compose
     let pLength = List.length prog
     let starts = Array.create pLength 0
     let codes : (int8 list)[] = Array.create pLength []
+
+    let relativize = Array.create pLength false
 
     let stable = Array.create pLength false
     let mutable allStable = false
@@ -45,6 +47,7 @@ let compose
             starts.[num] <- position
             match inter with
             | Label i -> positions.[i] <- position
+            | Relative -> relativize.[num] <- true
             | Spacer (i, size) ->
                 if not stable.[num]
                 then spaces.[i] <- uint64 <| size lookup
@@ -81,7 +84,11 @@ let compose
         let f i size = if size = 0UL then [] else [(positions.[i], size)]
         spaces |> Array.toSeq |> Seq.mapi f |> Seq.concat |> Seq.toList
 
-    codeList, positions, spaceList
+    let relativesList =
+        let f num x = if x then [starts.[num]] else []
+        relativize |> Array.toSeq |> Seq.mapi f |> Seq.concat |> Seq.toList
+
+    codeList, positions, spaceList, relativesList
 
 let assemble program =
     program
@@ -97,12 +104,13 @@ let rec deltas lst =
     | x :: ((y :: _) as rest) -> y - x :: deltas rest
     | _ -> []
 
-let initialization (stackSize: int) (spacers: (int * uint64) list) =
+let initialization (stackSize: int) (spacers: (int * uint64) list) (relatives: int list) =
     // Labels
     let main = 0
     let memoryPointer = 1
     let codePointer = 2
     let spaceLoop = 3
+    let relLoop = 4
 
     let copy = int64 >> ENum >> EStack >> ELoad8 >> SPush
     let sumSpace = Seq.map snd spacers |> Seq.sum |> int64
@@ -129,7 +137,8 @@ let initialization (stackSize: int) (spacers: (int * uint64) list) =
                 SAdd; SSetSp
             ]
 
-            yield SPush <| ENum 0L // Termination
+            yield SPush <| ENum 0L // Marker
+
             if sumSpace <> 0L then
                 for (d, s) in Seq.zip (deltas (0 :: (List.map fst spacers))) (Seq.map snd spacers) |> Seq.rev do
                     yield! [
@@ -153,16 +162,30 @@ let initialization (stackSize: int) (spacers: (int * uint64) list) =
 
                     // Update code
                     SPush <| ELoad8 (ELabel codePointer); SStore8
-
-                    // Possibly loop
-                    copy 0
-                    SPush <| ELabel spaceLoop; SJumpNotZero
-
-                    // Keep 0 on the stack
                 ]
+                if spacers.Length > 1 then
+                    yield! [
+                        copy 0; SPush <| ELabel spaceLoop; SJumpNotZero
+                    ]
+
+            if relatives <> [] then
+                for d in deltas (0 :: relatives) |> Seq.rev do
+                    yield SPush <| ENum (int64 d)
+                yield! [
+                    SPush <| ELabel main
+                    SLabel relLoop
+                    SAdd
+                    copy 0; copy 0; SLoad8; SAdd
+                    copy 1; SStore8
+                    SPush <| EStack (ENum 1L); SSetSp // Pop
+                ]
+                if relatives.Length > 1 then
+                    yield! [
+                        copy 0; SPush <| ELabel relLoop; SJumpNotZero
+                    ]
 
             yield! [
-                // Pop 0 and jump to "main"
+                // Pop 0 marker and jump to "main".
                 ELabel main |> SPush
                 SJumpZero
             ]
@@ -179,5 +202,5 @@ let initialization (stackSize: int) (spacers: (int * uint64) list) =
 
         }
 
-    let bin, _, _ = assemble statements
+    let bin, _, _, _ = assemble statements
     bin

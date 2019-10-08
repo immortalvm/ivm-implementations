@@ -6,6 +6,7 @@ type AssemblerOutput = {
     Exported: seq<string * int>;
     Labels: seq<string * int>;
     Spacers: seq<int * uint64>;
+    Relatives: seq<int>;
 }
 
 val showValue : int64 -> string

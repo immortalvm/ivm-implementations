@@ -185,6 +185,11 @@ let (|NoOff|_|) (v: Value) =
     | Val(c, 0L) -> Some c
     | _ -> None
 
+let (|Rel|_|) (v: Value) =
+    match v with
+    | Val([GET_PC], n) -> Some n
+    | _ -> None
+
 let collapseValue (v: Value) : int8 list =
     match v with
     | NoOff(c) -> c
@@ -459,7 +464,13 @@ let expressionConst line e lookup =
 let expressionData n line e lookup =
     expressionConst line e lookup |> uint64 |> bytes n
 
-let expressionPush e lookup = exprPushCore lookup 0 0 e |> collapseValue
+let expressionDataRelative line e lookup =
+    match exprPushCore lookup 0 0 e with
+    | Rel(x) -> bytes 8 (uint64 x + 1UL)
+    | _ -> failwithf "Something wrong with line %d." line
+
+let expressionPush e lookup =
+    exprPushCore lookup 0 0 e |> collapseValue
 
 let expressionAdd e lookup =
     match exprPushCore lookup 0 0 e with
@@ -528,16 +539,15 @@ type FlexCode = (int -> int) -> int8 list
 
 type Intermediate =
     | Label of int
+    | Relative
     | Spacer of int * ((int -> int) -> int64)
     | Fragment of FlexCode
 
-// The added generality is mainly relevant when linking (and even then, it hardly
-// matters since labels in other files are usually > 128 bytes away.
-let (|PushLabelOffset|_|) (s: Statement) =
-    match s with
-    | SPush (ELabel i) -> Some (i, 0L)
-    | SPush (ESum [ENum o; ELabel i]) -> Some (i, o)
-    | SPush (ESum [ELabel i; ENum o]) -> Some (i, o)
+let (|LabelOffset|_|) (e: Expression) =
+    match e with
+    | ELabel i -> Some (i, 0L)
+    | ESum [ENum o; ELabel i] -> Some (i, o)
+    | ESum [ELabel i; ENum o] -> Some (i, o)
     | _ -> None
 
 let intermediates (prog: Statement list) : seq<Intermediate> =
@@ -581,9 +591,9 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
 
             | SLabel i :: r -> rest <- r; [Label i]
 
-            | PushLabelOffset (i, o) :: SJump :: r -> withDelta i o r deltaJump
-            | PushLabelOffset (i, o) :: SJumpZero :: r -> withDelta i o r deltaJumpZero
-            | PushLabelOffset (i, o) :: SJumpNotZero :: r -> withDelta i o r deltaJumpNotZero
+            | SPush (LabelOffset (i, o)) :: SJump :: r -> withDelta i o r deltaJump
+            | SPush (LabelOffset (i, o)) :: SJumpZero :: r -> withDelta i o r deltaJumpZero
+            | SPush (LabelOffset (i, o)) :: SJumpNotZero :: r -> withDelta i o r deltaJumpNotZero
             | SPush e :: SAdd :: r -> fragment r (expressionAdd e)
             | SPush e :: SMult :: r -> fragment r (expressionMult e)
             | SPush e :: SAnd :: r -> fragment r (expressionAnd e)
@@ -624,6 +634,8 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
                 frag (SLabel j :: r) [GET_PC]
 
             | SPush e :: r -> fragment r (expressionPush e)
+            | SData8 (line, (LabelOffset (i, o) as e)) :: r ->
+                Relative :: (fragment r (expressionDataRelative line e))
             | SData1 (line, e) :: r -> fragment r (expressionData 1 line e)
             | SData2 (line, e) :: r -> fragment r (expressionData 2 line e)
             | SData4 (line, e) :: r -> fragment r (expressionData 4 line e)

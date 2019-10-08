@@ -24,6 +24,9 @@ let LABELS_HEADING = "--Labels--"
 [<Literal>]
 let SPACERS_HEADING = "--Spacers--"
 
+[<Literal>]
+let RELATIVES_HEADING = "--Relatives--"
+
 
 // Project file headings
 
@@ -112,13 +115,14 @@ let parseSymbolsFile file =
                                   arr.[0], int arr.[1]
     let readSpacerLine (line: string) = let arr = line.Split '\t'
                                         int arr.[0], uint64 arr.[1]
-    let [prev; size; relative; labels; spacers] =
-        splitFile file [PREVIOUS_HEADING; SIZE_HEADING; RELATIVE_HEADING; LABELS_HEADING; SPACERS_HEADING]
+    let [prev; size; relative; labels; spacers; relatives] =
+        splitFile file [PREVIOUS_HEADING; SIZE_HEADING; RELATIVE_HEADING; LABELS_HEADING; SPACERS_HEADING; RELATIVES_HEADING]
     Seq.exactlyOne prev,
     Seq.exactlyOne size |> int,
     Seq.map readLine relative,
     Seq.map readLine labels,
-    Seq.map readSpacerLine spacers
+    Seq.map readSpacerLine spacers,
+    Seq.map int relatives
 
 let assem source binary symbols =
     let ao = doAssemble source
@@ -217,7 +221,7 @@ let build projectFile destinationDir incrementally =
                         if notNewer sourceStamp symbolsStamp
                            && (previous = "" || notNewer prevSymStamp symbolsStamp)
                         then
-                            let oldPrevious, _, exported, labels, spacers = parseSymbolsFile symFile
+                            let oldPrevious, _, exported, labels, spacers, relatives = parseSymbolsFile symFile
                             if previous = oldPrevious
                             then
                                 let binFile = nodePath destinationDir BINARY_EXTENSION node
@@ -228,7 +232,8 @@ let build projectFile destinationDir incrementally =
                                                   Binary=File.ReadAllBytes binFile;
                                                   Exported=exported;
                                                   Labels=labels;
-                                                  Spacers=spacers }
+                                                  Spacers=spacers;
+                                                  Relatives = relatives }
                         yield res
                         previous <- node
                         prevSymStamp <- symbolsStamp
