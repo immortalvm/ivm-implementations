@@ -12,6 +12,9 @@ dotnet clean
 
  pub() {
     dotnet publish Command -c release --self-contained -r $1 /p:PublishSingleFile=true /p:PublishTrimmed=true
+    pushd Command/bin/release/netcoreapp3.0/$1
+    zip -r "$TAG"_$1.zip publish
+    popd
 }
 
 pub osx-x64
