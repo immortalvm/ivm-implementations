@@ -14,7 +14,7 @@ pub() {
     rm -rf Command/bin/release/netcoreapp3.0/$1/publish/*
     dotnet publish Command -c release --self-contained -r $1 /p:PublishSingleFile=true /p:PublishTrimmed=true
     pushd Command/bin/release/netcoreapp3.0/$1
-    zip -FSr "$TAG"_$1.zip publish
+    zip -r - publish > "$TAG"_$1.zip
     popd
 }
 
