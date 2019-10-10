@@ -177,12 +177,14 @@ let initialization (stackSize: int) (spacers: (int * uint64) list) (relatives: i
                     SAdd
                     copy 0; copy 0; SLoad8; SAdd
                     copy 1; SStore8
-                    SPush <| EStack (ENum 1L); SSetSp // Pop
                 ]
                 if relatives.Length > 1 then
                     yield! [
-                        copy 0; SPush <| ELabel relLoop; SJumpNotZero
+                        copy 1; SPush <| ELabel relLoop; SJumpNotZero
                     ]
+                yield! [
+                    SPush <| EStack (ENum 1L); SSetSp // Pop
+                ]
 
             yield! [
                 // Pop 0 marker and jump to "main".
