@@ -76,6 +76,7 @@ type Statement =
     | SGtEU | SGtES | SGtU | SGtS
 
     | SAlloc | SDealloc
+    | SGetParameter
 
     | SNewFrame |SSetPixel | SAddSample
     | SPutChar

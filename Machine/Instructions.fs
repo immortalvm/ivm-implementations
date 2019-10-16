@@ -83,8 +83,10 @@ let ALLOCATE = 24y
 [<Literal>]
 let DEALLOCATE = 25y
 
+[<Literal>]
+let GET_PARAMETER = 26y
 
-// 26-31: Unused
+// 27-31: Unused
 
 [<Literal>]
 let ADD = 32y

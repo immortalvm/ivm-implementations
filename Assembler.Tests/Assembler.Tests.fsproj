@@ -54,6 +54,9 @@
     <None Include="test_code\test_labels_in_data8.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="test_code\test_get_parameter.s">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <Compile Include="GenParserTests.fs" />
     <Compile Include="ProgParserTests.fs" />
     <Compile Include="CompositionTests.fs" />

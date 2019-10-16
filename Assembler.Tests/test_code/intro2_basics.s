@@ -10,15 +10,13 @@
 
     ## When the machine  starts there are two segments of  allocated memory. The
     ## first segment  contains the program.  The program counter  (PC) initially
-    ## points to  the start  of this  segment. The  second segment  contains the
-    ## contents of the argument file (if provided)  plus 24 bytes (3 * 64 bits).
-    ## The stack  pointer (SP) initially  points to  the the first  byte _after_
-    ## this segment. In other  words, we have an initial stack  size of 3, which
-    ## is just enough for the program itself to create a fresh stack. Since this
-    ## is something  every non-trivial  program must do,  the necessary  code is
-    ## prepended to every  executable binary. The default stack size  is 64 KiB,
-    ## but it can be changed in the project file (.proj). The argument file will
-    ## be discussed later.
+    ## points to the  start of this segment. The second  segment simply contains
+    ## 24 bytes (3  * 64 bits). The  stack pointer (SP) initially  points to the
+    ## the first byte  _after_ this segment. In other words,  we have an initial
+    ## stack size of 3, which is just  enough for the program itself to create a
+    ## fresh stack. Since  this is something every non-trivial  program must do,
+    ## the necessary code  is prepended to every executable  binary. The default
+    ## stack size is 64 KiB, but it  can be changed in the project file (.proj).
 
     ## It is often necessary push a copy of an element in the stack onto the
     ## stack. This can be done as follows:

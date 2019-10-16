@@ -13,9 +13,7 @@ open Machine.Executor
 let random = System.Random ()
 
 let endStack prog expected () =
-    let stackSpace = Array.create 1000 0uy
-    random.NextBytes (Span stackSpace)
-    let actual = execute (Seq.map uint8 prog) stackSpace None None |> Seq.map int64
+    let actual = execute (Seq.map uint8 prog) [] None None |> Seq.map int64
     Expect.sequenceEqual actual expected "Unexpected end stack"
 
 [<Tests>]

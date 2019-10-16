@@ -5,10 +5,16 @@
 ### This is part 3 of the iVM assembly language introduction.
 
 
-### 1. THE ARGUMENT FILE
+### 1. PARAMETERS AND THE ARGUMENT FILE
 
-    ## How  to deal  with  runtime arguments  has not  yet  been finalized,  but
-    ## currently it  works as  follows: The code  prepended to  every executable
+    ## How to deal with runtime arguments has not yet been finalized, but
+    ## currently it works as follows. The contents of the argument file, if
+    ## provided, is accessible via the get_parameter statement.
+    get_parameter! 3            # Push the third little-endinan 64-bit in the
+                                # arg file, counting from 0, or 0 if arg file is
+                                # too short or not provided.
+
+    ## The code  prepended to  every executable
     ## binary (which  creates a new  stack) stores a  pointer to the  first byte
     ## after the contents of the argument file in the 8 bytes preceding the rest
     ## of the code. Thus, we can reach this data through this pointer.
@@ -42,3 +48,4 @@ after_data:
 ### EXPECTED STACK:
 ###
 ### 408
+### 0

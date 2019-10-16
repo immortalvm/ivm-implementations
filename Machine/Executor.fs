@@ -19,7 +19,13 @@ let fromBytes : seq<uint8> -> uint64 =
 let toBytes n (x: uint64) : seq<uint8> =
     [| 0 .. n-1 |] |> Seq.map (fun i -> x >>> i*8 |> uint8)
 
-type Machine(initialMemory: seq<uint8>, startLocation: uint64, inputDir: string option, outputDir: string option, traceSyms: Map<int, string> option) =
+type Machine(
+            initialMemory: seq<uint8>,
+            startLocation: uint64,
+            parameters: Map<uint64, uint64>,
+            inputDir: string option,
+            outputDir: string option,
+            traceSyms: Map<int, string> option) =
 
     // Reverse ordering
     let mutable arrays = [ (startLocation, Seq.toArray initialMemory) ]
@@ -261,6 +267,8 @@ type Machine(initialMemory: seq<uint8>, startLocation: uint64, inputDir: string 
         | ALLOCATE -> m.Pop () |> m.Allocate |> m.Push
         | DEALLOCATE -> m.Pop () |> m.Deallocate
 
+        | GET_PARAMETER -> m.Pop () |> parameters.TryFind |> valueOr 0UL |> m.Push
+
         | ADD -> m.Pop () + m.Pop () |> m.Push
         | MULT -> m.Pop () * m.Pop () |> m.Push
         | DIV ->
@@ -328,6 +336,13 @@ let random = System.Random ()
 let execute (prog: seq<uint8>) (arg: seq<uint8>) (outputDir: string option) (traceSyms: Map<int, string> option) =
     // Start at 0, 1000, ... or 7000.
     let start = random.Next () % 8 |> ( * ) 1000 |> uint64
-    let machine = Machine(Seq.concat [prog; arg; Seq.replicate initialStackSize 0uy], start, None, outputDir, traceSyms)
+    let machine =
+        Machine(
+            Seq.concat [prog; Seq.replicate initialStackSize 0uy],
+            start,
+            Seq.chunkBySize 8 arg |> Seq.mapi (fun i x -> (uint64 i, fromBytes x)) |> Map.ofSeq,
+            None,
+            outputDir,
+            traceSyms)
     machine.Run ()
     machine.Stack ()

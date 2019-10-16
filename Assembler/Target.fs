@@ -569,6 +569,7 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
             | SSetSp :: r -> frag r [SET_SP]
             | SAlloc :: r -> frag r [ALLOCATE]
             | SDealloc :: r -> frag r [DEALLOCATE]
+            | SGetParameter :: r -> frag r [GET_PARAMETER]
             | SLoad1 :: r -> frag r [LOAD1]
             | SLoad2 :: r -> frag r [LOAD2]
             | SLoad4 :: r -> frag r [LOAD4]
