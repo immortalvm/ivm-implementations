@@ -4,11 +4,6 @@
 
     IMPORT ex5_write_decimal_number.write_decimal_number
 
-    stack_size = 16384
-    allocate! stack_size
-    add! stack_size
-    set_sp
-
     fps = 50
     frames = 256                # 5.12 seconds
 

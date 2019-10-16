@@ -8,9 +8,6 @@
 
 ### 1. THE STACK
 
-    ## Fresh stack size in bytes, normally a multiple of 8.
-    stack_size = 16384
-
     ## When the machine  starts there are two segments of  allocated memory. The
     ## first segment  contains the program.  The program counter  (PC) initially
     ## points to  the start  of this  segment. The  second segment  contains the

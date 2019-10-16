@@ -2,11 +2,6 @@
 
     EXPORT write_decimal_number
 
-    stack_size = 16384
-    allocate! stack_size
-    add! stack_size
-    set_sp
-
     push! 12345678901234567890  # Push argument (64 bits)
     call! write_decimal_number
     set_sp! &1                  # Pop argument

@@ -196,7 +196,7 @@ let parseProjectFile file =
     Seq.toList relativeOrder
 
 let build projectFile destinationDir incrementally =
-    let rootDir, cacheSize, buildOrder = parseProjectFile projectFile
+    let rootDir, stackSize, buildOrder = parseProjectFile projectFile
 
     let timestamp file = if File.Exists file then Some <| File.GetLastWriteTimeUtc file else None
 
@@ -248,7 +248,7 @@ let build projectFile destinationDir incrementally =
         writeAssemblerOutput bFile sFile
 
     let saveLinked rest =
-        let ao = Seq.append reused rest |> doCollect cacheSize
+        let ao = Seq.append reused rest |> doCollect stackSize
         write (ao.Node + "$") ao.Binary ao.Exported ao.Labels ao.Spacers ""
 
     if mustBuild = []

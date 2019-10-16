@@ -124,7 +124,7 @@ let initialization (stackSize: int) (spacers: (int * uint64) list) (relatives: i
                 SStore8
 
                 // Allocate
-                int64 stackSize + sumSpace |> ENum |> SPush
+                SPush <| ENum (int64 stackSize + sumSpace)
                 copy 0; SAlloc
             ]
             if sumSpace <> 0L then
@@ -155,13 +155,14 @@ let initialization (stackSize: int) (spacers: (int * uint64) list) (relatives: i
                     SPush <| ELoad8 (ELabel codePointer); SAdd
                     SPush <| ELabel codePointer; SStore8
 
+                    // Update code
+                    SPush <| ELoad8 (ELabel memoryPointer)
+                    SPush <| ELoad8 (ELabel codePointer)
+                    SStore8
+
                     // Adjust memory pointer (consuming s)
                     SPush <| ELoad8 (ELabel memoryPointer); SAdd
-                    copy 0 // Keep pointer on the stack
                     SPush <| ELabel memoryPointer; SStore8
-
-                    // Update code
-                    SPush <| ELoad8 (ELabel codePointer); SStore8
                 ]
                 if spacers.Length > 1 then
                     yield! [
