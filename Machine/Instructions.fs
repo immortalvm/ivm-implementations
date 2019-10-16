@@ -76,12 +76,7 @@ let STORE4 = 22y
 [<Literal>]
 let STORE8 = 23y
 
-
-[<Literal>]
-let ALLOCATE = 24y
-
-[<Literal>]
-let DEALLOCATE = 25y
+// 24-25: Unused
 
 [<Literal>]
 let GET_PARAMETER = 26y

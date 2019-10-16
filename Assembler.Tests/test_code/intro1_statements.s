@@ -270,29 +270,12 @@ my_1000_byte_array:
     gte_s        # greater than or equal (signed)
 
 
-### 10. ALLOC, DEALLOC
-
-    ## The allocate statement pops x (unsigned) from the stack, allocates a
-    ## range of x consecutive bytes of unused memory, and pushes the address of
-    ## the first byte back onto the stack. Undefined if x is 0.
-    allocate
-
-    allocate! prime_number  # Sugar for 'push! prime_number allocate'.
-
-    ## The deallocate statement pops an address A from the stack. If it is the
-    ## start address of a previously allocated range of memory (which has not in
-    ## the mean time been deallocated), then the whole range is now deallocated.
-    deallocate
-
-    deallocate! $8      # Sugar for 'push! $8 deallocate'.
-
-
-### 11. IO STATEMENTS
+### 10. IO STATEMENTS
 
     ## To be determined later.
 
 
-### 12. SET_SP, EXIT
+### 11. SET_SP, EXIT
 
     xx = 9      # Override previous definition of 9.
 

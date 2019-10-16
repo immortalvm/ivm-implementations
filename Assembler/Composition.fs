@@ -104,10 +104,10 @@ let rec deltas lst =
     | x :: ((y :: _) as rest) -> y - x :: deltas rest
     | _ -> []
 
-let initialization (stackSize: int) (spacers: (int * uint64) list) (relatives: int list) =
+let initialization (binarySize: int) (spacers: (int * uint64) list) (relatives: int list) =
     // Labels
     let main = 0
-    let memoryPointer = 1
+    let heapStart = 1
     let codePointer = 2
     let spaceLoop = 3
     let relLoop = 4
@@ -118,26 +118,11 @@ let initialization (stackSize: int) (spacers: (int * uint64) list) (relatives: i
     let statements =
         seq {
             yield! [
-                // Store current SP - initialStackSize (i.e. end of "argument")
-                SPush <| ESum [ENum 0L |> EStack; int64 -initialStackSize |> ENum]
-                SPush <| ESum [ELabel main; ENum -8L]
+                SPush <| ESum [ELabel main; ENum <| int64 binarySize]
+                SPush <| ELabel heapStart
                 SStore8
-
-                // Allocate
-                SPush <| ENum (int64 stackSize + sumSpace)
-                copy 0; SAlloc
+                SPush <| ENum 0L // Marker
             ]
-            if sumSpace <> 0L then
-                yield! [
-                    copy 0
-                    SPush <| ELabel memoryPointer
-                    SStore8
-                ]
-            yield! [
-                SAdd; SSetSp
-            ]
-
-            yield SPush <| ENum 0L // Marker
 
             if sumSpace <> 0L then
                 for (d, s) in Seq.zip (deltas (0 :: (List.map fst spacers))) (Seq.map snd spacers) |> Seq.rev do
@@ -156,13 +141,13 @@ let initialization (stackSize: int) (spacers: (int * uint64) list) (relatives: i
                     SPush <| ELabel codePointer; SStore8
 
                     // Update code
-                    SPush <| ELoad8 (ELabel memoryPointer)
+                    SPush <| ELoad8 (ELabel heapStart)
                     SPush <| ELoad8 (ELabel codePointer)
                     SStore8
 
-                    // Adjust memory pointer (consuming s)
-                    SPush <| ELoad8 (ELabel memoryPointer); SAdd
-                    SPush <| ELabel memoryPointer; SStore8
+                    // Adjust heap start (consuming s)
+                    SPush <| ELoad8 (ELabel heapStart); SAdd
+                    SPush <| ELabel heapStart; SStore8
                 ]
                 if spacers.Length > 1 then
                     yield! [
@@ -196,11 +181,9 @@ let initialization (stackSize: int) (spacers: (int * uint64) list) (relatives: i
             if sumSpace <> 0L then
                 yield! [
                     SLabel codePointer; SData8 (0L, ENum 0L)
-                    SLabel memoryPointer; SData8 (0L, ENum 0L)]
-
+                ]
             yield! [
-                // ArgStop at main - 8:
-                SData8 (0L, ENum 0L)
+                SLabel heapStart; SData8 (0L, ENum 0L)
             ]
 
         }

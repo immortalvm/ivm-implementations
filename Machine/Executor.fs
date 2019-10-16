@@ -9,8 +9,6 @@ open System.IO
 exception AccessException of string
 exception UndefinedException of string
 
-let initialStackSize = 3 * 8
-
 // Little-endian encoding
 let fromBytes : seq<uint8> -> uint64 =
     Seq.mapi (fun i x -> uint64 x <<< i*8) >> Seq.sum
@@ -20,37 +18,31 @@ let toBytes n (x: uint64) : seq<uint8> =
     [| 0 .. n-1 |] |> Seq.map (fun i -> x >>> i*8 |> uint8)
 
 type Machine(
-            initialMemory: seq<uint8>,
+            memorySize: uint64,
+            initialProgram: seq<uint8>,
             startLocation: uint64,
             parameters: Map<uint64, uint64>,
             inputDir: string option,
             outputDir: string option,
             traceSyms: Map<int, string> option) =
 
-    // Reverse ordering
-    let mutable arrays = [ (startLocation, Seq.toArray initialMemory) ]
+    let memory =
+        let size =
+            if memorySize > uint64 System.Int32.MaxValue
+            then failwithf "Max memory size: %d" System.Int32.MaxValue
+            else int memorySize
+        let mem = Array.create size 0uy
+        Seq.iteri (fun i x -> mem.[i] <- x) initialProgram
+        mem
 
-    // Address of the next unused memory location.
-    let mutable nextUnused =
-        // Initial value
-        let (start, arr) = arrays.[0]
-        start + uint64 (Array.length arr)
+    let memoryIndex location : int =
+        let i = location - startLocation
+        if i < uint64 memory.Length
+        then int i
+        else raise (AccessException (sprintf "%d (%d + %d)" location startLocation i))
 
-    let getArray (location: uint64) =
-        match List.skipWhile
-            (fun (start, _) -> start > location)
-            arrays with
-        | [] -> raise (AccessException(""))
-        | (start, arr) :: _ ->
-            if location < start + uint64 (Array.length arr)
-            then arr, int (location - start)
-            else raise (AccessException(""))
-
-    let load location =
-        let (a, i) = getArray location in a.[i]
-
-    let store location value =
-        let (a, i) = getArray location in a.[i] <- value
+    let load location = memory.[memoryIndex location]
+    let store location value = memory.[memoryIndex location] <- value
 
     let mutable pendingInputFiles: (string list) option = None
     let mutable inputBitmap: Bitmap option = None
@@ -127,33 +119,15 @@ type Machine(
                 for x in data do w.Write(x)
             frameCounter <- frameCounter + 1
 
-    member m.Allocate size =
-        // NB: We leave a gap of 1 unused byte to catch pointer errors.
-        let start = nextUnused + 1UL
-        if size > 0UL then
-            arrays <- (start, Array.zeroCreate (int size)) :: arrays
-            nextUnused <- start + size
-        start
-
-    member m.Deallocate start =
-        let rec de arrs =
-            match arrs with
-            | [] -> arrs
-            | (st, a) :: rest ->
-                if st > start then (st, a) :: de rest
-                elif st.Equals(start) then rest
-                else raise (AccessException(""))
-        arrays <- de arrays
-
     member val Terminated = false with get, set
 
     // Program counter (next location).
     // Initialized to the start of the initial memory contents.
-    member val ProgramCounter = fst arrays.[0] with get, set
+    member val ProgramCounter = startLocation with get, set
 
     // Stack pointer (the current top). The stack grows downwards.
     // Initialized to the end of the initial memory contents.
-    member val StackPointer = nextUnused with get, set
+    member val StackPointer = startLocation + uint64 memory.Length with get, set
 
     // Little-endian, n = 1,2,4,8, not sign-extended
     member m.LoadN n location =
@@ -184,8 +158,8 @@ type Machine(
     member m.Run () =
         if traceSyms.IsSome
         then
-            printfn "\nInitial memory"
-            initialMemory
+            printfn "\nInitial program"
+            initialProgram
             |> Seq.map (sprintf "%3d")
             |> Seq.chunkBySize 5
             |> Seq.map (String.concat " ")
@@ -264,9 +238,6 @@ type Machine(
         | STORE4 -> m.StoreN 4 (m.Pop ()) (m.Pop ())
         | STORE8 -> m.StoreN 8 (m.Pop ()) (m.Pop ())
 
-        | ALLOCATE -> m.Pop () |> m.Allocate |> m.Push
-        | DEALLOCATE -> m.Pop () |> m.Deallocate
-
         | GET_PARAMETER -> m.Pop () |> parameters.TryFind |> valueOr 0UL |> m.Push
 
         | ADD -> m.Pop () + m.Pop () |> m.Push
@@ -333,12 +304,13 @@ type Machine(
 
 let random = System.Random ()
 
-let execute (prog: seq<uint8>) (arg: seq<uint8>) (outputDir: string option) (traceSyms: Map<int, string> option) =
+let execute (memorySize: uint64) (prog: seq<uint8>) (arg: seq<uint8>) (outputDir: string option) (traceSyms: Map<int, string> option) =
     // Start at 0, 1000, ... or 7000.
     let start = random.Next () % 8 |> ( * ) 1000 |> uint64
     let machine =
         Machine(
-            Seq.concat [prog; Seq.replicate initialStackSize 0uy],
+            memorySize,
+            prog,
             start,
             Seq.chunkBySize 8 arg |> Seq.mapi (fun i x -> (uint64 i, fromBytes x)) |> Map.ofSeq,
             None,

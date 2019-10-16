@@ -142,10 +142,6 @@ let intro1 =
         SLtU; SLtS; SLtEU; SLtES
         SGtU; SGtS; SGtEU; SGtES
 
-        SAlloc
-        SPush prime; SAlloc
-        SDealloc
-        SPush <| ELoad8 (EStack (ENum 8L)); SDealloc
         SSetSp
         SPush xx2; SSetSp
         SExit

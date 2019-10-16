@@ -13,7 +13,8 @@ open Machine.Executor
 let random = System.Random ()
 
 let endStack prog expected () =
-    let actual = execute (Seq.map uint8 prog) [] None None |> Seq.map int64
+    // Memory size: 64 KiB
+    let actual = execute (1UL <<< 16) (Seq.map uint8 prog) [] None None |> Seq.map int64
     Expect.sequenceEqual actual expected "Unexpected end stack"
 
 [<Tests>]

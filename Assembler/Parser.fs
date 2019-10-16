@@ -327,8 +327,6 @@ let statement: Parser<Statement list, State> =
             | "gt_u" -> nArgs 2 [SGtU]
             | "gt_s" -> nArgs 2 [SGtS]
 
-            | "allocate" -> nArgs 1 [SAlloc]
-            | "deallocate" -> nArgs 1 [SDealloc]
             | "get_parameter" -> nArgs 1 [SGetParameter]
 
             | "new_frame" -> nArgs 3 [SNewFrame]

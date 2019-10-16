@@ -34,14 +34,7 @@ let RELATIVES_HEADING = "--Relatives--"
 let ROOT_HEADING = "--Root--"
 
 [<Literal>]
-let STACK_HEADING = "--Stack size--"
-
-[<Literal>]
 let RELATIVE_ORDER_HEADING = "--Relative--"
-
-
-[<Literal>]
-let DEFAULT_STACK_SIZE = 0x10000 // 64KiB
 
 
 let usage () =
@@ -179,8 +172,6 @@ let genProj rootDir (goal: string) =
     let lines = seq {
         yield ROOT_HEADING
         yield Path.GetFullPath rootDir
-        yield STACK_HEADING
-        yield DEFAULT_STACK_SIZE |> string
         yield RELATIVE_ORDER_HEADING
         yield! getBuildOrder rootDir goal
     }
@@ -189,14 +180,13 @@ let genProj rootDir (goal: string) =
 
 #nowarn "0025"
 let parseProjectFile file =
-    let [rootDir; stackSize; relativeOrder] =
-        splitFile file [ROOT_HEADING; STACK_HEADING; RELATIVE_ORDER_HEADING]
+    let [rootDir; relativeOrder] =
+        splitFile file [ROOT_HEADING; RELATIVE_ORDER_HEADING]
     Seq.exactlyOne rootDir,
-    Seq.exactlyOne stackSize |> int,
     Seq.toList relativeOrder
 
 let build projectFile destinationDir incrementally =
-    let rootDir, stackSize, buildOrder = parseProjectFile projectFile
+    let rootDir, buildOrder = parseProjectFile projectFile
 
     let timestamp file = if File.Exists file then Some <| File.GetLastWriteTimeUtc file else None
 
@@ -248,7 +238,7 @@ let build projectFile destinationDir incrementally =
         writeAssemblerOutput bFile sFile
 
     let saveLinked rest =
-        let ao = Seq.append reused rest |> doCollect stackSize
+        let ao = Seq.append reused rest |> doCollect
         write (ao.Node + "$") ao.Binary ao.Exported ao.Labels ao.Spacers ""
 
     if mustBuild = []

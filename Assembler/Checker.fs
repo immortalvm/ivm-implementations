@@ -134,7 +134,7 @@ let doBuild (rootDir: string) (reused: seq<AssemblerOutput>) (buildOrder: seq<st
             incorporate ao
     }
 
-let doCollect (stackSize: int) (outputs: seq<AssemblerOutput>): AssemblerOutput =
+let doCollect (outputs: seq<AssemblerOutput>): AssemblerOutput =
     let rev = outputs |> Seq.cache |> Seq.rev
     let spacers = [
         let mutable offset = 0
@@ -143,19 +143,19 @@ let doCollect (stackSize: int) (outputs: seq<AssemblerOutput>): AssemblerOutput 
                 yield pos + offset, size
             offset <- offset + Seq.length ao.Binary
     ]
+    let mutable offset = 0
     let relatives = [
-        let mutable offset = 0
         for ao in rev do
             for pos in ao.Relatives do
                 yield pos + offset
             offset <- offset + Seq.length ao.Binary
     ]
-    let spacerBin = initialization stackSize spacers relatives
+    let initBin = initialization offset spacers relatives
     let binary =
-        Seq.append spacerBin
+        Seq.append initBin
                    (rev |> Seq.map (fun ao -> ao.Binary) |> Seq.concat)
     let labels = seq {
-        let mutable offset = spacerBin.Length
+        let mutable offset = initBin.Length
         for ao in rev do
             for label, pos in ao.Labels do
                 yield ao.Node + "." + label, pos + offset
@@ -173,11 +173,12 @@ let doCollect (stackSize: int) (outputs: seq<AssemblerOutput>): AssemblerOutput 
 let doAssemble (fileName: string) =
     let rootDir = Path.GetDirectoryName fileName
     let buildOrder = getBuildOrder rootDir <| Path.GetFileNameWithoutExtension fileName
-    buildOrder |> doBuild rootDir [] |> doCollect (1 <<< 16) // 64 KiB stack
+    buildOrder |> doBuild rootDir [] |> doCollect // 64 KiB stack
 
 let doRun binary arg outputDir traceSyms =
     try
-        execute binary arg outputDir traceSyms |> Seq.map int64
+        // Memory size: 16 MiB (for now)
+        execute (1UL <<< 24) binary arg outputDir traceSyms |> Seq.map int64
     with
         | AccessException msg -> failwith "Access exception!"
         | UndefinedException msg -> failwith "Undefined instruction!"

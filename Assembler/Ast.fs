@@ -75,12 +75,9 @@ type Statement =
     | SEq
     | SGtEU | SGtES | SGtU | SGtS
 
-    | SAlloc | SDealloc
     | SGetParameter
 
     | SNewFrame |SSetPixel | SAddSample
     | SPutChar
 
     | SReadFrame | SReadPixel
-
-    // TODO: More input and output
