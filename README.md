@@ -55,12 +55,11 @@ similar, but prints out lots of debug information on the way. Finally,
 `check` works as `as-run`, except that the final stack is compared to an
 expected list of numbers written in the file itself.
 
-If an "arg file" is specified, its contents is considered a list of
-(little-endian) 64-bit integers, accessible via the get_parameter
-statement. Thus, this is a form of 'command line argument'. If an "output
-dir" is also specified, then any output (image and sound files) will be
-written to this directory. For now, it is recommended to use an empty
-directory (as any contents may get overwritten). If no output dir is
+If an "arg file" is specified, its contents is appended to the binary
+before execution. Thus, this is a form of 'command line argument'. If an
+"output dir" is also specified, then any output (image and sound files)
+will be written to this directory. For now, it is recommended to use an
+empty directory (as any contents may get overwritten). If no output dir is
 provided, any output will be discarded.
 
 ### Dependencies, projects and builds
@@ -161,7 +160,6 @@ statement = identifier ":"               (* label *)
           | "gt_u" | "gt_u!" expression | "gt_u!!" expression expression
           | "gt_s" | "gt_s!" expression | "gt_s!!" expression expression
 
-          | "get_parameter" | "get_parameter!" expression
           | "read_frame"
           | ... | "read_pixel!!" expression expression
 

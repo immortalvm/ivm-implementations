@@ -21,7 +21,6 @@ type Machine(
             memorySize: uint64,
             initialProgram: seq<uint8>,
             startLocation: uint64,
-            parameters: Map<uint64, uint64>,
             inputDir: string option,
             outputDir: string option,
             traceSyms: Map<int, string> option) =
@@ -238,8 +237,6 @@ type Machine(
         | STORE4 -> m.StoreN 4 (m.Pop ()) (m.Pop ())
         | STORE8 -> m.StoreN 8 (m.Pop ()) (m.Pop ())
 
-        | GET_PARAMETER -> m.Pop () |> parameters.TryFind |> valueOr 0UL |> m.Push
-
         | ADD -> m.Pop () + m.Pop () |> m.Push
         | MULT -> m.Pop () * m.Pop () |> m.Push
         | DIV ->
@@ -310,9 +307,8 @@ let execute (memorySize: uint64) (prog: seq<uint8>) (arg: seq<uint8>) (outputDir
     let machine =
         Machine(
             memorySize,
-            prog,
+            Seq.append prog arg,
             start,
-            Seq.chunkBySize 8 arg |> Seq.mapi (fun i x -> (uint64 i, fromBytes x)) |> Map.ofSeq,
             None,
             outputDir,
             traceSyms)

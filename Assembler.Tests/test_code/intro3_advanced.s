@@ -5,25 +5,24 @@
 ### This is part 3 of the iVM assembly language introduction.
 
 
-### 1. PARAMETERS AND THE ARGUMENT FILE
+### 1. THE HEAP
 
-    ## How to deal with runtime arguments has not yet been finalized, but
-    ## currently it works as follows. The contents of the argument file, if
-    ## provided, is accessible via the get_parameter statement.
-    get_parameter! 3            # Push the third little-endinan 64-bit in the
-                                # arg file, counting from 0, or 0 if arg file is
-                                # too short or not provided.
-
-    ## The code  prepended to  every executable
-    ## binary (which  creates a new  stack) stores a  pointer to the  first byte
-    ## after the contents of the argument file in the 8 bytes preceding the rest
-    ## of the code. Thus, we can reach this data through this pointer.
+    ## The code prepended to every executable stores a pointer to the start of
+    ## the heap in the 8 bytes preceding the rest of the code:
 main:
-    argument_stop = (load8 (+ main -8))
+    heap_start = (load8 (+ main -8))
 
-    ## Beware that if the argument file is empty (or not provided),
-    ## argument_stop will probably be an unallocated memory address.
+    ## Compiled C programs should only access the heap through libc.
 
+
+### 2. ARGUMENT FILES
+
+    ## As of October  2019 how to deal  with runtime argument files  is still in
+    ## flux. In particular, the result of providing a non-empty argument file is
+    ## unpredictable if  the program  uses 'space'.  Otherwise, the  contents of
+    ## the argument file is initially found at 'head_start'.
+
+    argument_start = heap_start
 
 ### 2. COMPLEX DATA STATEMENTS
 
@@ -48,4 +47,3 @@ after_data:
 ### EXPECTED STACK:
 ###
 ### 408
-### 0

@@ -76,12 +76,7 @@ let STORE4 = 22y
 [<Literal>]
 let STORE8 = 23y
 
-// 24-25: Unused
-
-[<Literal>]
-let GET_PARAMETER = 26y
-
-// 27-31: Unused
+// 24-31: Unused
 
 [<Literal>]
 let ADD = 32y

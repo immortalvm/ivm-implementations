@@ -124,6 +124,8 @@ let initialization (binarySize: int) (spacers: (int * uint64) list) (relatives: 
                 SPush <| ENum 0L // Marker
             ]
 
+            // TODO: Handle argument file at 'heapStart'.
+
             if sumSpace <> 0L then
                 for (d, s) in Seq.zip (deltas (0 :: (List.map fst spacers))) (Seq.map snd spacers) |> Seq.rev do
                     yield! [
