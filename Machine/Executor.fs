@@ -304,10 +304,11 @@ let random = System.Random ()
 let execute (memorySize: uint64) (prog: seq<uint8>) (arg: seq<uint8>) (outputDir: string option) (traceSyms: Map<int, string> option) =
     // Start at 0, 1000, ... or 7000.
     let start = random.Next () % 8 |> ( * ) 1000 |> uint64
+    let cachedArg = Seq.cache arg
     let machine =
         Machine(
             memorySize,
-            Seq.append prog arg,
+            Seq.concat [prog; Seq.length cachedArg |> uint64 |> toBytes 8; cachedArg],
             start,
             None,
             outputDir,

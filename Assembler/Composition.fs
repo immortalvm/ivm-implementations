@@ -108,23 +108,24 @@ let initialization (binarySize: int) (spacers: (int * uint64) list) (relatives: 
     // Labels
     let main = 0
     let heapStart = 1
-    let codePointer = 2
-    let spaceLoop = 3
-    let relLoop = 4
+    let argLocation = 2
+    let codePointer = 3
+    let spaceLoop = 4
+    let relLoop = 5
 
     let copy = int64 >> ENum >> EStack >> ELoad8 >> SPush
     let sumSpace = Seq.map snd spacers |> Seq.sum |> int64
+    let push (x: int) = int64 x |> ENum |> SPush
 
     let statements =
         seq {
             yield! [
                 SPush <| ESum [ELabel main; ENum <| int64 binarySize]
-                SPush <| ELabel heapStart
-                SStore8
+                copy 0; copy 0; SLoad8; SAdd; push 8; SAdd
+                SPush <| ELabel heapStart; SStore8
+                SPush <| ELabel argLocation; SStore8
                 SPush <| ENum 0L // Marker
             ]
-
-            // TODO: Handle argument file at 'heapStart'.
 
             if sumSpace <> 0L then
                 for (d, s) in Seq.zip (deltas (0 :: (List.map fst spacers))) (Seq.map snd spacers) |> Seq.rev do
@@ -185,6 +186,7 @@ let initialization (binarySize: int) (spacers: (int * uint64) list) (relatives: 
                     SLabel codePointer; SData8 (0L, ENum 0L)
                 ]
             yield! [
+                SLabel argLocation; SData8 (0L, ENum 0L)
                 SLabel heapStart; SData8 (0L, ENum 0L)
             ]
 

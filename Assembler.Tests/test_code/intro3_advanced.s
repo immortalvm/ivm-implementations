@@ -15,14 +15,21 @@ main:
     ## Compiled C programs should only access the heap through libc.
 
 
-### 2. ARGUMENT FILES
+### 2. ARGUMENT FILE
 
-    ## As of October  2019 how to deal  with runtime argument files  is still in
-    ## flux. In particular, the result of providing a non-empty argument file is
-    ## unpredictable if  the program  uses 'space'.  Otherwise, the  contents of
-    ## the argument file is initially found at 'head_start'.
+    ## Similarly, we also have a pointer to the argument file:
 
-    argument_start = heap_start
+    arg_location = (load8 (+ main -16))
+
+    ## More precisely, arg_location is the address of a memory location holding
+    ## the length of the argument file. The file contents follows.
+
+    arg_length = (load8 arg_location)
+    arg_start = (+ arg_location 8)
+    arg_stop = (+ arg_start arg_length)
+
+    push! arg_length            # Push 0 if there is no argument file.
+
 
 ### 2. COMPLEX DATA STATEMENTS
 
@@ -47,3 +54,4 @@ after_data:
 ### EXPECTED STACK:
 ###
 ### 408
+### 0
