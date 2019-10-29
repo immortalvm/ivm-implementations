@@ -259,6 +259,14 @@ type Machine(
             if n <= 63UL then 1UL <<< int n else 0UL
             |> m.Push
 
+        | READ_FRAME ->
+            let width, height = readFrame ()
+            width |> uint64 |> m.Push
+            height |> uint64 |> m.Push
+        | READ_PIXEL ->
+            let y = m.Pop () |> int
+            let x = m.Pop () |> int
+            readPixel x y |> uint64 |> m.Push
         | NEW_FRAME ->
             flushFrame ()
             sampleRate <- m.Pop () |> uint32
@@ -286,15 +294,6 @@ type Machine(
             |> System.Text.Encoding.UTF32.GetChars
             |> if traceSyms.IsNone then id else fun c -> Array.append c [|'\n'|]
             |> System.Console.Error.Write
-
-        | READ_FRAME ->
-            let width, height = readFrame ()
-            width |> uint64 |> m.Push
-            height |> uint64 |> m.Push
-        | READ_PIXEL ->
-            let y = m.Pop () |> int
-            let x = m.Pop () |> int
-            readPixel x y |> uint64 |> m.Push
 
         | undefined -> raise (UndefinedException(sprintf "%d" undefined))
 

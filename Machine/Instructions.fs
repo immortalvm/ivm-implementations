@@ -37,7 +37,6 @@ let PUSH4 = 10y
 [<Literal>]
 let PUSH8 = 11y
 
-
 // Sign extension
 [<Literal>]
 let SIGX1 = 12y // From 8 to 64 bits
@@ -47,7 +46,6 @@ let SIGX2 = 13y // From 16 to 64 bits
 
 [<Literal>]
 let SIGX4 = 14y // From 32 to 64 bits
-
 
 // 15: Unused
 
@@ -62,7 +60,6 @@ let LOAD4 = 18y
 
 [<Literal>]
 let LOAD8 = 19y
-
 
 [<Literal>]
 let STORE1 = 20y
@@ -110,30 +107,25 @@ let XOR = 43y
 [<Literal>]
 let POW2 = 44y
 
-// 45-47: Unused
+// 45-127: Unused
 
 [<Literal>]
-let NEW_FRAME = 48y
+let READ_FRAME = -1y  // 255
 
 [<Literal>]
-let SET_PIXEL = 49y
+let READ_PIXEL = -2y  // 254
 
 [<Literal>]
-let ADD_SAMPLE = 50y
-
-// 51: Unused
+let NEW_FRAME = -3y   // 253
 
 [<Literal>]
-let PUT_CHAR = 52y
-
-// 53-55: Unused
+let SET_PIXEL = -4y   // 252
 
 [<Literal>]
-let READ_FRAME = 56y
+let ADD_SAMPLE = -5y  // 251
 
 [<Literal>]
-let READ_PIXEL = 57y
-
+let PUT_CHAR = -6y    // 250
 
 // Used by Machine.Disassembler to find the module.
 type ReflectionMarker = interface end
