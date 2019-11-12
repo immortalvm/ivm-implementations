@@ -16,8 +16,8 @@ let whitespace = fun str -> skipSepBy spaces comment str
 
 // Based on http://www.quanttec.com/fparsec/tutorial.html#parsing-string-data.
 let identifierNoWhitespace: Parser<string, _> = fun str ->
-    let first c = isLetter c || c = '_'
-    let rest c = isLetter c || isDigit c || c = '_'
+    let first c = isLetter c || c = '_' || c = '.'
+    let rest c = isLetter c || isDigit c || c = '_' || c = '.'
     many1Satisfy2L first rest "identifier" str
 
 let importBase : Parser<string list, _> = fun str ->
