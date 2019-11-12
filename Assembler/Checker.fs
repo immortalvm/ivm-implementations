@@ -32,7 +32,7 @@ let getDependencies (fileName : string) : Set<string> =
     with ParseException(msg) -> failwith msg
 
 let nodePath rootDir extension (node: string) =
-    (Array.append [|rootDir|] (node.Split '.') |> Path.Combine) + extension
+    (Array.append [|rootDir|] (node.Split NODE_SEP) |> Path.Combine) + extension
 
 // Depth first topological sorting
 let getBuildOrder (rootDir: string) (goal : string) : seq<string> =
@@ -119,7 +119,7 @@ let doBuild (rootDir: string) (reused: seq<AssemblerOutput>) (buildOrder: seq<st
     let incorporate (ao: AssemblerOutput) =
         currentSize <- currentSize + Seq.length ao.Binary
         for label, pos in ao.Exported do
-            allSymbols <- allSymbols.Add (ao.Node + "." + label, currentSize - pos)
+            allSymbols <- allSymbols.Add (ao.Node + NODE_SEP + label, currentSize - pos)
 
     for ao in reused do
         incorporate ao
@@ -158,7 +158,7 @@ let doCollect (outputs: seq<AssemblerOutput>): AssemblerOutput =
         let mutable offset = initBin.Length
         for ao in rev do
             for label, pos in ao.Labels do
-                yield ao.Node + "." + label, pos + offset
+                yield ao.Node + NODE_SEP + label, pos + offset
             offset <- offset + Seq.length ao.Binary
     }
     {

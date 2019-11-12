@@ -1,10 +1,10 @@
 ### Check that splitting code across multiple files works as expected.
 
-    IMPORT test_linking2.label2a
-    IMPORT test_linking2.label2b
-    IMPORT test_linking2.label2c
-    IMPORT test_linking3.label3b
-    IMPORT test_linking3.array_pointers
+    IMPORT test_linking2/label2a
+    IMPORT test_linking2/label2b
+    IMPORT test_linking2/label2c
+    IMPORT test_linking3/label3b
+    IMPORT test_linking3/array_pointers
 
     push! 3                     # 3
     call! label2a               # 12

@@ -1,5 +1,5 @@
-    IMPORT test_linking3.label3a
-    IMPORT test_linking3.label3c
+    IMPORT test_linking3/label3a
+    IMPORT test_linking3/label3c
     EXPORT label2a
     EXPORT label2b
     EXPORT label2c

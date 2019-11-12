@@ -2,7 +2,7 @@
 ### rate. Observe that when a pixel is not set, its color is undefined. In
 ### particular, this is the case for the whole bottom left half of each frame.
 
-    IMPORT ex5_write_decimal_number.write_decimal_number
+    IMPORT ex5_write_decimal_number/write_decimal_number
 
     fps = 50
     frames = 256                # 5.12 seconds

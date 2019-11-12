@@ -3,6 +3,8 @@ open FParsec
 open Assembler.Ast
 open Assembler.Transformations
 
+[<Literal>]
+let NODE_SEP = "/"
 
 exception ParseException of string
 
@@ -21,10 +23,10 @@ let identifierNoWhitespace: Parser<string, _> = fun str ->
 let importBase : Parser<string list, _> = fun str ->
     (skipString "IMPORT"
      >>? whitespace
-     >>. (sepBy1 identifierNoWhitespace <| skipChar '.')) str
+     >>. (sepBy1 identifierNoWhitespace <| skipChar '/')) str
 
 let importsOnly : Parser<string list, unit> =
-    let node ids = System.String.Join('.', Seq.take (List.length ids - 1) ids)
+    let node ids = System.String.Join('/', Seq.take (List.length ids - 1) ids)
     whitespace >>. many (importBase |>> node .>> whitespace)
 
 let parseDependencies (stream: System.IO.Stream): Set<string> =
@@ -60,7 +62,7 @@ type State = {
                 let s = str.UserState
                 let node = System.String.Join ('.', Seq.take (n - 1) ids)
                 let id = List.last ids
-                let qualifiedName = node + "." + id
+                let qualifiedName = node + NODE_SEP + id
                 let offset = s.ExtSymbols qualifiedName
                 if offset < 0
                 then Reply (FatalError, messageError <| "Not found: " + qualifiedName)

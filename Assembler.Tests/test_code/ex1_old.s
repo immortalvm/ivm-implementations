@@ -1,4 +1,4 @@
-﻿    IMPORT intro1_statements.my_label
+﻿    IMPORT intro1_statements/my_label
 
     exit                        # Make sure the program can be run without
                                 # crashing.
