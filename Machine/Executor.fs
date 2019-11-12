@@ -177,11 +177,15 @@ type Machine(
                 | None -> ()
                 let op = m.LoadN 1 pc
                 let name = Machine.Disassembler.instructionNames.[int op]
-                printfn
-                    "%4d :%3d  %-12s %s" pc op name
-                    <| System.String.Join(" ", m.Stack 50 |> Seq.rev |> Seq.map int64)
+                printf "%4d: %-12s" pc name
 
             m.Step ()
+
+            if traceSyms.IsSome
+            then
+                printfn " %4d: %s" m.StackPointer
+                <| System.String.Join(" ", m.Stack 50 |> Seq.rev |> Seq.map int64)
+
         flushFrame ()
         printfn ""
 
@@ -292,7 +296,6 @@ type Machine(
             |> toBytes 4
             |> Seq.toArray
             |> System.Text.Encoding.UTF32.GetChars
-            |> if traceSyms.IsNone then id else fun c -> Array.append c [|'\n'|]
             |> System.Console.Error.Write
 
         | undefined -> raise (UndefinedException(sprintf "%d" undefined))
