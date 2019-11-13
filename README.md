@@ -100,7 +100,7 @@ Observe that:
 ```ebnf
 program = import* statement*;
 
-import = "IMPORT" (identifier ".")+ identifier
+import = "IMPORT" (identifier "/")+ identifier
 
 statement = identifier ":"               (* label *)
           | "EXPORT" identifier          (* export declaration *)
@@ -200,7 +200,7 @@ expression = positive_numeral  (* 0 to 2^64-1 *)
            | "(" "sigx2" expression ")"
            | "(" "sigx4" expression ")"
 
-identifier = (letter | "_") (letter | "_" | digit)*;
+identifier = (letter | "_" | "." ) (letter | "_" | "." | digit)*;
 ```
 
 In v0.8 we added an alternative notation for "immediate arguments":
