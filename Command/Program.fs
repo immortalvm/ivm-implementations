@@ -4,7 +4,7 @@ open Machine.Utils
 open Assembler.Checker
 
 [<Literal>]
-let VERSION = "0.9" // How can we automatically get this from Git?
+let VERSION = "0.16" // How can we automatically get this from Git?
 
 
 // Symbols file headings
