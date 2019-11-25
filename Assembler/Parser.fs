@@ -102,21 +102,23 @@ type State = {
 
         static member ObsLabel id (str: CharStream<State>) =
             let s = str.UserState
+            let ok = SLabel >> List.singleton >> Reply
             match s.Labels.TryFind id with
             | Some i -> if i < 0 then str.UserState <- {
                                         s with Labels = s.Labels.Add (id, abs i)
                                       }
-                                      -i
-                        else i
-            | None -> let i = s.Count + 1
-                      str.UserState <- {
-                        s with
-                            Defs = s.Defs.Remove id
-                            Labels = s.Labels.Add (id, i)
-                            Count = i
-                      }
-                      i
-            |> SLabel |> List.singleton |> Reply
+                                      ok -i
+                        else Reply (Error, unexpected (sprintf "Label '%s' is defined twice." id))
+            | None -> if s.Defs.ContainsKey id
+                      then Reply (Error, unexpected (sprintf "Label '%s' is also an abbreviation." id))
+                      else
+                          let i = s.Count + 1
+                          str.UserState <- {
+                            s with
+                                Labels = s.Labels.Add (id, i)
+                                Count = i
+                          }
+                          ok i
 
         static member Export id (str: CharStream<State>) =
             match (State.TryExpand id str).Result with
