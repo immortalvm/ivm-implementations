@@ -405,6 +405,7 @@ let exprPushCore (lookup: int -> int) =
             let mutable value = zeroValue
             let multN n s = optM multValue 1L s <| constant (int64 n)
             value <- addValue value <| multN nPc (noOffset [GET_PC])
+            let pcPos = position + if nPc = 0 then 0 else 1
             value <- addValue value <| multN nSp (Val([GET_SP], depth * 8 |> int64))
 
             for ex in lst do
@@ -413,8 +414,8 @@ let exprPushCore (lookup: int -> int) =
                            | Val(code, _) -> position + opLen code, depth + 1
                 let inner = epc p d
                 let s = match ex with
-                        | ELabel i -> constant (int64 (lookup i - p))
-                        | ENeg (ELabel i) -> constant (int64 (p - lookup i))
+                        | ELabel i -> constant (int64 (lookup i - pcPos))
+                        | ENeg (ELabel i) -> constant (int64 (pcPos - lookup i))
                         | EStack e -> inner e |> multN 8
                         | ENeg (EStack e) -> inner e |> multN -8
                         | e -> inner e
