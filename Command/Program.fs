@@ -1,5 +1,10 @@
 ﻿open System.IO
 
+open System
+open System.CommandLine
+open System.CommandLine.Invocation
+open System.CommandLine.Builder
+
 open Machine.Utils
 open Assembler.Checker
 
@@ -119,7 +124,13 @@ let parseSymbolsFile file =
 
 let assem source binary symbols =
     let ao = doAssemble source
-    writeAssemblerOutput binary symbols ao.Binary ao.Exported ao.Labels ao.Spacers ""
+    let b = match binary with
+            | None -> Path.ChangeExtension(source, "b")
+            | Some x -> x
+    let s = match symbols with
+            | None -> Path.ChangeExtension(source, "sym")
+            | Some x -> x
+    writeAssemblerOutput b s ao.Binary ao.Exported ao.Labels ao.Spacers ""
 
 let readTraceSyms file =
     let pairs = splitFile file [LABELS_HEADING]
@@ -133,24 +144,23 @@ let writeStack (endStack: seq<int64>) =
     for x in endStack do
         printfn "0x..%05X %7d" (uint64 x &&& 0xfffffUL) x
 
-let run binary (argFile: string option) (outputDir: string option) (symbolsIfShouldTrace: string option) =
+let run binary (argFile: string option) (outputDir: string option) shouldTrace =
     let bytes = File.ReadAllBytes binary
     let arg = match argFile with
               | Some name -> File.ReadAllBytes name
               | None -> Array.empty
     let traceSyms =
-        match symbolsIfShouldTrace with
-        | Some name -> Some <| readTraceSyms name
-        | None -> None
+        if shouldTrace
+        then Path.ChangeExtension(binary, "sym") |> readTraceSyms |> Some
+        else None
     let stack = doRun bytes arg outputDir traceSyms
-    if symbolsIfShouldTrace.IsNone then writeStack stack
+    if traceSyms.IsNone then writeStack stack
 
 let asRun source argFile outputDir shouldTrace =
     let ao = doAssemble source
     if shouldTrace then
         for name, pos in Seq.sortBy fst ao.Exported do
             printfn "%20s %6d" name pos
-
     let traceSyms =
         if not shouldTrace then None
         else let flip (x, y) = (y, x)
@@ -161,9 +171,6 @@ let asRun source argFile outputDir shouldTrace =
               | None -> Array.empty
     let stack = doRun ao.Binary arg outputDir traceSyms
     if not shouldTrace then writeStack stack
-
-let check source =
-    printfn "%s" <| doCheck source
 
 let genProj rootDir (goal: string) =
     let projectFile = goal + ".proj"
@@ -263,33 +270,86 @@ let build projectFile destinationDir incrementally =
                 yield ao
         }
 
+let _assemblyVersion =
+    let assembly = System.Reflection.Assembly.GetExecutingAssembly() // ?? Assembly.GetExecutingAssembly();
+    assembly.GetName().FullName //  .Version.ToString()
+
+
 [<EntryPoint>]
 let main argv =
+    let extend (c: Command) (sl: Symbol List) : Command =
+        for x in sl do c.Add(x)
+        c
+
+    let com (name: string) (descr: string) (sl: Symbol List) (handler: ICommandHandler) : Command =
+        extend (Command(name, Description=descr, Handler=handler)) sl
+
+    let strArg (name: string) (descr: string) = Argument<string>(name, Description=descr)
+    let fileArg (name: string) (descr: string) = Argument<FileInfo>(name, Description=descr)
+    let dirArg (name: string) (descr: string) = Argument<DirectoryInfo>(name, Description=descr)
+
+    let opt (name: string) (descr: string) : Option =
+        Option(name, Description=descr)
+
+    let argOpt (name: string) (descr: string) (a: Argument<'t>): Option<'t> =
+        assert name.StartsWith "--"
+        Option<'t>(name, Argument=a, Description=descr)
+
+    let alias(name: string) (opt: Option) =
+        assert (name.StartsWith "-" && not(name.StartsWith "--"))
+        opt.AddAlias(name)
+        opt
+
+    let source = (fileArg "source file" "Name of source file (<name>.s)").ExistingOnly()
+    let trace = opt "--trace" "Turn on trace output" |> alias "-t"
+    let arg = argOpt "--arg" "Specify argument file (default: none)" <| (fileArg "argument file" null).ExistingOnly()
+    let out = argOpt "--out" "Specify output directory (default: none)" <| dirArg "output directory" null
+
+    let fName (fsi: FileSystemInfo) : string = fsi.FullName
+    let oName (fsi: FileSystemInfo) : string option =
+        if fsi = null then None else Some fsi.FullName
+
+    let root =
+        extend (RootCommand("ivm", Description="iVM Assembler and VM")) [
+
+            com "as" "Assemble source file" [
+                (argOpt "--bin" "Specify output binary file (default: <name>.b)" <| fileArg "binary file" null)
+                (argOpt "--sym" "Specify output symbol file (default: <name>.sym)" <| fileArg "symbol file" null)
+                source
+            ] <| CommandHandler.Create(fun bin sym ``source file`` ->
+                    assem (fName ``source file``) (oName bin) (oName sym))
+
+            com "run" "Execute binary" [
+                trace; arg; out
+                (fileArg "binary file" "Name of binary file").ExistingOnly()
+            ] <| CommandHandler.Create(fun trace arg out ``binary file`` ->
+                    run (fName ``binary file``) (oName arg) (oName out) trace)
+
+            com "as-run" "Assemble and run" [
+                trace; arg; out
+                source
+            ] <| CommandHandler.Create(fun trace arg out ``source file`` ->
+                    asRun (fName ``source file``) (oName arg) (oName out) trace)
+
+            com "check" "Assemble, run and check final stack" [
+                source
+            ] <| CommandHandler.Create(fun ``source file`` ->
+                    fName ``source file`` |> doCheck |> printfn "%s")
+
+            com "gen" "Generate project file" [
+                (dirArg "root dir" "Source root directory").ExistingOnly()
+                strArg "goal" "The goal (relative filename without suffix)"
+            ] <| CommandHandler.Create(fun ``root dir`` goal ->
+                genProj (fName ``root dir``) goal)
+
+            com "build" "Build a project" [
+                opt "--incrementally" "Only rebuild if necessary" |> alias "-i"
+                (fileArg "project" "Project file").ExistingOnly()
+                dirArg "dest dir" "Destination directory"
+            ] <| CommandHandler.Create(fun incrementally project ``dest dir`` ->
+                build (fName project) (fName ``dest dir``) incrementally)
+        ]
     try
-        printfn "iVM Assembler and VM, version %s" VERSION
-        let n = Array.length argv
-        if n = 0 then usage (); 0
-        else
-            match argv.[0] with
-            | "as" when n = 4 -> assem argv.[1] argv.[2] argv.[3]; 0
-            | "run" when n = 2 -> run argv.[1] None None None; 0
-            | "run" when n = 3 -> run argv.[1] (Some argv.[2]) None None; 0
-            | "run" when n = 4 -> run argv.[1] (Some argv.[2]) (Some argv.[3]) None; 0
-            | "trace" when n = 3 -> run argv.[1] None None (Some argv.[2]); 0
-            | "trace" when n = 4 -> run argv.[1] (Some argv.[2]) None (Some argv.[3]); 0
-            | "trace" when n = 5 -> run argv.[1] (Some argv.[2]) (Some argv.[4]) (Some argv.[3]); 0
-
-            | "as-run" when n = 2 -> asRun argv.[1] None None false; 0
-            | "as-run" when n = 3 -> asRun argv.[1] (Some argv.[2]) None false; 0
-            | "as-run" when n = 4 -> asRun argv.[1] (Some argv.[2]) (Some argv.[3]) false; 0
-            | "as-trace" when n = 2 -> asRun argv.[1] None None true; 0
-            | "as-trace" when n = 3 -> asRun argv.[1] (Some argv.[2]) None true; 0
-            | "as-trace" when n = 4 -> asRun argv.[1] (Some argv.[2]) (Some argv.[3]) true; 0
-
-            | "check" when n = 2 -> check argv.[1]; 0
-            | "gen-proj" when n = 3 -> genProj argv.[1] argv.[2]; 0
-            | "build" when n = 3 -> build argv.[1] argv.[2] false; 0
-            | "make" when n = 3 -> build argv.[1] argv.[2] true; 0
-            | _ -> usage (); 1
+        root.Invoke(argv)
     with
         Failure msg -> printfn "%s" msg; 1
