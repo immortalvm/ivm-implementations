@@ -13,44 +13,24 @@ in particular these files:
 
 ## Usage
 
-    ivm                                                  -  Show this text
-    ivm as <source> <binary> <symbols>                   -  Assemble
-    ivm run <binary>                                     -  Run binary and print final stack
-    ivm run <binary> <arg file>                          -  Run binary and print final stack
-    ivm run <binary> <arg file> <output dir>             -  Run binary and print final stack
-    ivm trace <binary> <symbols>                         -  Trace binary
-    ivm trace <binary> <symbols> <arg file>              -  Trace binary
-    ivm trace <binary> <symbols> <arg file> <output dir> -  Trace binary
-
-    ivm as-run <source>                                  -  Assemble and run
-    ivm as-run <source> <arg file>                       -  Assemble and run
-    ivm as-run <source> <arg file> <output dir>          -  Assemble and run
-    ivm as-trace <source>                                -  Assemble and trace
-    ivm as-trace <source> <arg file>                     -  Assemble and trace
-    ivm as-trace <source> <arg file> <output dir>        -  Assemble and trace
-    ivm check <source>                                   -  Assemble, run, and check final stack
-
-    ivm gen-proj <root dir> <goal>     -  Create prototype project (<goal>.proj)
-    ivm build <project> <dest dir>     -  Assemble project
-    ivm make <project> <dest dir>      -  Assemble project incrementally
-
+See `ivm --help`.
 
 ### Getting started
 
 When getting started with the assembly language, the most convenient
-commands are `as-run`, `as-trace` and `check` with a single source file as
+commands are `as-run`, `as-run -t` and `check` with a single source file as
 argument:
 
     cd Assembler.Tests/test_code
 
     ivm as-run ex2_check_count_down.s
 
-    ivm as-trace test_linking1.s
+    ivm as-run -t test_linking1.s
 
     ivm check ex3_quick_sort.s
 
 The `as-run` command assembles a source file, executes the resulting
-binary and prints out the final contents of the stack. `as-trace` is
+binary and prints out the final contents of the stack. `as-run -t` is
 similar, but prints out lots of debug information on the way. Finally,
 `check` works as `as-run`, except that the final stack is compared to an
 expected list of numbers written in the file itself.
@@ -69,30 +49,31 @@ using EXPORT and IMPORT statements. Currently, all imports are resolved
 relative to the "root" directory from where `ivm` was called. Use dots to
 refer to subdirectories (cf. Java packages).
 
-When calling `as`, `as-run`, `as-trace` and `check`, the assembler first
+When calling `as`, `as-run`, `as-run -t` and `check`, the assembler first
 builds a graph of references and attempts a topological sort. Circular
 dependencies are not allowed. Next, all the source files get assembled
 into one binary file. This is not ideal when we have a large tree of
 dependencies. In this situation, we split the process in two:
 
-* First, we generate a "project file" using `gen-proj` containing the
+* First, we generate a "project file" using `gen` containing the
   result of the topological sort.
 * Then we build this project using the `build` command.
-* If instead we use the `make` command, we attempt to re-build only what
-  has changed "incrementally".
+* If instead we use the `build -i` command, we attempt to re-build only
+  what has changed "incrementally".
 
 Observe that:
 
-1. The goal passed to `gen-proj` is the file where the execution should
-   start, but referred to as in import statements, i.e. with . instead of
-   / and without the file suffix (.s).
+1. The goal passed to `gen` is the file where the execution should start,
+   but referred to as in import statements, i.e. with . instead of / and
+   without the file suffix (.s).
 
 2. Whereas `as` only outputs the "linked" binary and symbols files (i.e.
    for all the code) and lets you choose the names of these files, `build`
-   and `make` also produce binary and symbol files for each source file
-   and puts them in the directory tree under "dest dir". The file suffixes
-   are `.b` and `.sym`, respectively. These commands also produce "linked"
-   binary and symbol files. They have `$` in the name before the suffix.
+   and `build -i` also produce binary and symbol files for each source
+   file and puts them in the directory tree under "dest dir". The file
+   suffixes are `.b` and `.sym`, respectively. These commands also produce
+   "linked" binary and symbol files. They have `$` in the name before the
+   suffix.
 
 
 ## Semi-formal EBNF, ignoring whitespace and comments
