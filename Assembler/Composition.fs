@@ -9,17 +9,18 @@ let private ATTEMPTS_BEFORE_MONOTINICITY = 3;
 // 'nops n' must return a nop sequence of at least n signed bytes.
 let compose
         (nops: int -> int8 list)
-        (prog: Intermediate list) : uint8 list * int[] * ((int * uint64) list) * (int list) =
-    let maxLabel = List.max <| 0 :: [
+        (prog: Intermediate list) : uint8 list * int[] * ((int * int64) list) * (int list) * (bool * int64)[] =
+    let numLabels = 1 + (List.max <| 0 :: [
                        for x in prog do
                        match x with
                        | Label i -> yield i
                        | _ -> ()
-                   ]
+                   ])
     // positions[0] will refer to the length/end of the file.
     // This is used for "linking".
-    let positions = Array.create (maxLabel + 1) 0
-    let spaces = Array.create (maxLabel + 1) 0UL
+    let positions = Array.create numLabels -1 // -1 = abbreviation
+    let spaces = Array.create numLabels 0L
+    let exports = Array.create numLabels (false, 0L)
 
     let pLength = List.length prog
     let starts = Array.create pLength 0
@@ -50,7 +51,7 @@ let compose
             | Relative -> relativize.[num] <- true
             | Spacer (i, size) ->
                 if not stable.[num]
-                then spaces.[i] <- uint64 <| size lookup
+                then spaces.[i] <- int64 <| size lookup
             | Fragment frag ->
                 if not stable.[num]
                 then let c = frag lookup
@@ -62,6 +63,10 @@ let compose
                                          if l1 >= l0 then c
                                          else c @ nops (l0 - l1)
                 position <- position + opLen codes.[num]
+            | Export exp ->
+                if not stable.[num]
+                then let (i, rel, x) = exp lookup
+                     exports.[i] <- (rel, x)
 
         List.iteri updateIfNecessary prog
         positions.[0] <- position // End of file
@@ -81,18 +86,17 @@ let compose
         Seq.concat codes |> Seq.map uint8 |> Seq.toList
 
     let spaceList =
-        let f i size = if size = 0UL then [] else [(positions.[i], size)]
+        let f i size = if size = 0L then [] else [(positions.[i], size)]
         spaces |> Array.toSeq |> Seq.mapi f |> Seq.concat |> Seq.toList
 
     let relativesList =
         let f num x = if x then [starts.[num]] else []
         relativize |> Array.toSeq |> Seq.mapi f |> Seq.concat |> Seq.toList
 
-    codeList, positions, spaceList, relativesList
+    codeList, positions, spaceList, relativesList, exports
 
 let assemble program =
     program
-    |> Seq.toList
     |> intermediates
     |> Seq.toList
     |> compose nopsFor
@@ -104,7 +108,7 @@ let rec deltas lst =
     | x :: ((y :: _) as rest) -> y - x :: deltas rest
     | _ -> []
 
-let initialization (binarySize: int) (spacers: (int * uint64) list) (relatives: int list) =
+let initialization (binarySize: int) (spacers: (int * int64) list) (relatives: int list) =
     // Labels
     let main = 0
     let heapStart = 1
@@ -118,7 +122,7 @@ let initialization (binarySize: int) (spacers: (int * uint64) list) (relatives: 
     let push (x: int) = int64 x |> ENum |> SPush
 
     let statements =
-        seq {
+        [
             yield! [
                 SPush <| ESum [ELabel main; ENum <| int64 binarySize]
                 copy 0; copy 0; SLoad8; SAdd; push 8; SAdd
@@ -190,7 +194,7 @@ let initialization (binarySize: int) (spacers: (int * uint64) list) (relatives: 
                 SLabel heapStart; SData8 (0L, ENum 0L)
             ]
 
-        }
+        ]
 
-    let bin, _, _, _ = assemble statements
+    let bin, _, _, _, _ = assemble statements
     bin

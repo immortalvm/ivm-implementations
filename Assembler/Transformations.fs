@@ -4,14 +4,29 @@ open Assembler.Ast
 open Machine.Utils
 
 
-let signExtend n x =
+let moveExportsFirst (prog: Statement seq): Statement seq =
+    let mutable exported: Set<int> = set []
+    let mutable nonExports: Statement list = []
+    seq {
+        for stmt in prog do
+            match stmt with
+            | SExport (line, i, e) ->
+                // Ignore duplicate export statements
+                if not (exported.Contains i) then
+                    exported <- exported.Add i
+                yield stmt
+            | _ -> nonExports <- stmt :: nonExports
+        yield! Seq.rev nonExports
+    }
+
+let private signExtend n x =
     match n with
     | 1 -> uint64 x |> signExtend1 |> int64
     | 2 -> uint64 x |> signExtend2 |> int64
     | 4 -> uint64 x |> signExtend4 |> int64
     | _ -> failwithf "No such byte-width: %d" n
 
-let combineLists f x y =
+let private combineLists f x y =
     match x, y with
     | ENum m::xs, ENum n::ys -> f m n <| xs @ ys
     // Move constants to the front
@@ -21,7 +36,7 @@ let combineLists f x y =
 
 // More optimizations are certainly possible.
 // We eliminate all occurrences of EOffset, but others may get introduced later.
-let rec optimize (offset: int64) (e: Expression): Expression =
+let rec private optimize (offset: int64) (e: Expression): Expression =
     let o = offset // For brevity
     match e with
     | ENum _ -> e
@@ -278,6 +293,7 @@ let pushReduction (prog: Statement seq): Statement seq =
             | SGtU, y::x::r when safe1 y -> pending <- EGtU (x, offset1 y) :: r
             | SGtS, y::x::r when safe1 y -> pending <- EGtS (x, offset1 y) :: r
 
+            // This eliminates all instances of SCall.
             | SCall i, x::r ->
                 pending <- EOffset (1, x) :: ELabel i :: r
                 yield! flush [SJump; SLabel i]
@@ -291,8 +307,10 @@ let pushReduction (prog: Statement seq): Statement seq =
             | SData2 (line, p), _ -> yield! flush [SData2 (line, optimize 0L p)]
             | SData4 (line, p), _ -> yield! flush [SData4 (line, optimize 0L p)]
             | SData8 (line, p), _ -> yield! flush [SData8 (line, optimize 0L p)]
-
             | SSpacer (line, p), _ -> yield! flush [SSpacer (line, optimize 0L p)]
+
+            // Not necessary to flush first.
+            | SExport (line, i, x), r -> yield SExport(line, i, optimize 0L x)
 
             | _ -> yield! flush [s]
         // It would be strange to end the program with a push, though.

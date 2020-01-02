@@ -3,6 +3,7 @@
     EXPORT label2a
     EXPORT label2b
     EXPORT label2c
+    EXPORT constant2a
 
 label2a:
     call! label3a
@@ -14,3 +15,5 @@ label2b:
 
 label2c:
     data8 [label3c]
+
+    constant2a = 1001

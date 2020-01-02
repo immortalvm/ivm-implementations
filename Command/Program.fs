@@ -24,6 +24,9 @@ let SIZE_HEADING = "--Size--"
 let RELATIVE_HEADING = "--Relative--"
 
 [<Literal>]
+let CONSTANT_HEADING = "--Constant--"
+
+[<Literal>]
 let LABELS_HEADING = "--Labels--"
 
 [<Literal>]
@@ -66,7 +69,7 @@ let usage () =
     printfn "  %s build <project> <dest dir>     -  Assemble project" ex
     printfn "  %s make <project> <dest dir>      -  Assemble project incrementally" ex
 
-let writeAssemblerOutput binaryFile symbolsFile bytes exported labels spacers previous =
+let writeAssemblerOutput binaryFile symbolsFile bytes exported constant labels spacers previous =
     File.WriteAllBytes (binaryFile, bytes |> Seq.toArray)
     printfn "Binary written to: %s" binaryFile
     let mapLines map = seq {
@@ -80,6 +83,8 @@ let writeAssemblerOutput binaryFile symbolsFile bytes exported labels spacers pr
         yield Seq.length bytes |> string
         yield RELATIVE_HEADING
         yield! mapLines exported
+        yield CONSTANT_HEADING
+        yield! mapLines constant
         yield LABELS_HEADING
         yield! mapLines labels
         yield SPACERS_HEADING
@@ -110,16 +115,15 @@ let splitFile file keys =
 #nowarn "0025"
 let parseSymbolsFile file =
     let readLine (line: string) = let arr = line.Split '\t'
-                                  arr.[0], int arr.[1]
-    let readSpacerLine (line: string) = let arr = line.Split '\t'
-                                        int arr.[0], uint64 arr.[1]
-    let [prev; size; relative; labels; spacers; relatives] =
-        splitFile file [PREVIOUS_HEADING; SIZE_HEADING; RELATIVE_HEADING; LABELS_HEADING; SPACERS_HEADING; RELATIVES_HEADING]
+                                  arr.[0], int64 arr.[1]
+    let [prev; size; relative; constant; labels; spacers; relatives] =
+        splitFile file [PREVIOUS_HEADING; SIZE_HEADING; RELATIVE_HEADING; CONSTANT_HEADING; LABELS_HEADING; SPACERS_HEADING; RELATIVES_HEADING]
     Seq.exactlyOne prev,
     Seq.exactlyOne size |> int,
     Seq.map readLine relative,
+    Seq.map readLine constant,
     Seq.map readLine labels,
-    Seq.map readSpacerLine spacers,
+    Seq.map readLine spacers |> Seq.map (fun (x, y) -> int x, y),
     Seq.map int relatives
 
 let assem source binary symbols =
@@ -130,7 +134,7 @@ let assem source binary symbols =
     let s = match symbols with
             | None -> Path.ChangeExtension(source, "sym")
             | Some x -> x
-    writeAssemblerOutput b s ao.Binary ao.Exported ao.Labels ao.Spacers ""
+    writeAssemblerOutput b s ao.Binary ao.Exported ao.Constants ao.Labels ao.Spacers ""
 
 let readTraceSyms file =
     let pairs = splitFile file [LABELS_HEADING]
@@ -163,7 +167,7 @@ let asRun source argFile outputDir shouldTrace =
             printfn "%20s %6d" name pos
     let traceSyms =
         if not shouldTrace then None
-        else let flip (x, y) = (y, x)
+        else let flip (x, y) = (int y, x)
              Some <| new Map<int, string> (Seq.map flip ao.Labels)
 
     let arg = match argFile with
@@ -180,7 +184,7 @@ let genProj rootDir (goal: string) =
         yield ROOT_HEADING
         yield Path.GetFullPath rootDir
         yield RELATIVE_ORDER_HEADING
-        yield! getBuildOrder rootDir goal
+        yield! getBuildOrder rootDir goal |> Seq.map (fun c -> System.String.Join('\t', c))
     }
     File.WriteAllLines (projectFile, lines)
     printfn "Project file created: %s" projectFile
@@ -190,7 +194,7 @@ let parseProjectFile file =
     let [rootDir; relativeOrder] =
         splitFile file [ROOT_HEADING; RELATIVE_ORDER_HEADING]
     Seq.exactlyOne rootDir,
-    Seq.toList relativeOrder
+    relativeOrder |> Seq.map (fun line -> line.Split('\t') |> Seq.toList) |> Seq.toList
 
 let build projectFile destinationDir incrementally =
     let rootDir, buildOrder = parseProjectFile projectFile
@@ -210,15 +214,16 @@ let build projectFile destinationDir incrementally =
             seq {
                     let mutable previous = ""
                     let mutable prevSymStamp : System.DateTime option = None
-                    for node in buildOrder do
-                        let sourceStamp = nodePath rootDir SOURCE_EXTENSION node |> timestamp
+                    for nodes in buildOrder do
+                        let sourceStamp = nodes |> Seq.map (nodePath rootDir SOURCE_EXTENSION >> timestamp) |> Seq.max
+                        let node = nodes.[0]
                         let symFile = nodePath destinationDir SYMBOLS_EXTENSION node
                         let symbolsStamp = timestamp symFile
                         let mutable res : AssemblerOutput option = None
                         if notNewer sourceStamp symbolsStamp
                            && (previous = "" || notNewer prevSymStamp symbolsStamp)
                         then
-                            let oldPrevious, _, exported, labels, spacers, relatives = parseSymbolsFile symFile
+                            let oldPrevious, _, exported, constants, labels, spacers, relatives = parseSymbolsFile symFile
                             if previous = oldPrevious
                             then
                                 let binFile = nodePath destinationDir BINARY_EXTENSION node
@@ -228,6 +233,7 @@ let build projectFile destinationDir incrementally =
                                     res <- Some { Node=node;
                                                   Binary=File.ReadAllBytes binFile;
                                                   Exported=exported;
+                                                  Constants=constants
                                                   Labels=labels;
                                                   Spacers=spacers;
                                                   Relatives = relatives }
@@ -246,11 +252,11 @@ let build projectFile destinationDir incrementally =
 
     let saveLinked rest =
         let ao = Seq.append reused rest |> doCollect
-        write (ao.Node + "$") ao.Binary ao.Exported ao.Labels ao.Spacers ""
+        write (ao.Node + "$") ao.Binary ao.Exported ao.Constants ao.Labels ao.Spacers ""
 
     if mustBuild = []
     then
-        let node = Seq.last buildOrder
+        let node = (Seq.last buildOrder).[0]
         let sFile = nodePath destinationDir SYMBOLS_EXTENSION node
         let lFile = nodePath destinationDir SYMBOLS_EXTENSION <| node + "$"
         if notNewer (timestamp sFile) (timestamp lFile)
@@ -265,7 +271,7 @@ let build projectFile destinationDir incrementally =
         saveLinked <| seq {
             let mutable previous = Seq.tryLast reused |> Option.map (fun ao -> ao.Node) |> valueOr ""
             for ao in outputs do
-                write ao.Node ao.Binary ao.Exported ao.Labels ao.Spacers previous
+                write ao.Node ao.Binary ao.Exported ao.Constants ao.Labels ao.Spacers previous
                 previous <- ao.Node
                 yield ao
         }

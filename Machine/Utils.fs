@@ -9,3 +9,6 @@ let valueOr<'a> (def: 'a) (x: 'a option) = match x with Some z -> z | _ -> def
 
 let mapGet<'a, 'b when 'a: comparison> (m: Map<'a,'b>) (x: 'a) (def: 'b) =
     m.TryFind x |> valueOr def
+
+let reverseMap<'a, 'b when 'a: comparison and 'b: comparison> (m: Map<'a,'b>) : Map<'b,'a> =
+    new Map<'b, 'a>(seq { for pair in m -> (pair.Value, pair.Key) })

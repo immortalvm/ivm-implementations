@@ -277,10 +277,8 @@ my_1000_byte_array:
 
 ### 11. SET_SP, EXIT
 
-    xx = 9      # Override previous definition of 9.
-
     set_sp      # Pop A from the stack, and set the stack pointer to A.
-    set_sp! xx  # Sugar for 'push! xx set_sp'.
+    set_sp! 9   # Sugar for 'push! 9 set_sp'.
 
     exit        # Terminate the machine.
 

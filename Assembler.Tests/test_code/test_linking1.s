@@ -3,6 +3,7 @@
     IMPORT test_linking2/label2a
     IMPORT test_linking2/label2b
     IMPORT test_linking2/label2c
+    IMPORT test_linking2/constant2a
     IMPORT test_linking3/label3b
     IMPORT test_linking3/array_pointers
 
@@ -18,7 +19,9 @@
     store1! a1
     store8!! -1 a8
     push! (+ (load1 a1) (load8 a8)) # 30 - 1
+
+    add! constant2a # + 1001
     exit
 
 ### EXPECTED STACK:
-### 29
+### 1030

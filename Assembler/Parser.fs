@@ -1,12 +1,10 @@
 ﻿module Assembler.Parser
 open FParsec
+open Machine.Utils
 open Assembler.Ast
+open Assembler.Abbreviations
 open Assembler.Transformations
-
-[<Literal>]
-let NODE_SEP = "/"
-
-exception ParseException of string
+open Assembler.Namespace
 
 // Observe that we must use "eta expansion" (fun str -> ... str) for F# to
 // define generic parsers. We need this so that we can reuse the same parsers
@@ -23,11 +21,10 @@ let identifierNoWhitespace: Parser<string, _> = fun str ->
 let importBase : Parser<string list, _> = fun str ->
     (skipString "IMPORT"
      >>? whitespace
-     >>. (sepBy1 identifierNoWhitespace <| skipChar '/')) str
+     >>. (sepBy1 identifierNoWhitespace <| skipChar NODE_SEPARATOR)) str
 
 let importsOnly : Parser<string list, unit> =
-    let node ids = System.String.Join('/', Seq.take (List.length ids - 1) ids)
-    whitespace >>. many (importBase |>> node .>> whitespace)
+    whitespace >>. many (importBase |>> nodeString .>> whitespace)
 
 let parseDependencies (stream: System.IO.Stream): Set<string> =
     match runParserOnStream importsOnly () "" stream System.Text.Encoding.UTF8 with
@@ -36,57 +33,57 @@ let parseDependencies (stream: System.IO.Stream): Set<string> =
 
 
 type State = {
-        ExtSymbols: string -> int     // Positions after end of this file.
-        Defs: Map<string, Expression> // Definitions
+        ExtSymbols: string -> (bool * int64) option // Positions after end of this file.
+        Defs: Map<int, Expression>    // Abbreviations
         Labels: Map<string, int>      // Label numbers
         Count: int                    // Labels defined/referenced so far
-        Exported: Map<string, int>    // Label numbers of exported names
+        Exported: Set<int>            // Label numbers of exported names
         // Label 0 will refer to the end/length of this (sub)binary.
         // Count other labels from 1 so that we can use negative numbers for
         // referenced but not yet defined labels.
+
+        Nodes: string list            // Nodes being processed as one
+        NodeIndex: int                // Index of the current node
+        ExportAwaited: Set<int>       // For imports within Nodes
     }
     with
-        static member Init externalSymbols = {
+        member s.Qualified id: string =
+            nodeJoin [s.Nodes.[s.NodeIndex]; id]
+
+        static member Init externalSymbols nodes nodeIndex: State = {
             ExtSymbols = externalSymbols
             Defs = Map.empty
             Labels = Map.empty
             Count = 0
-            Exported = Map.empty
+            Exported = set []
+            Nodes = nodes
+            NodeIndex = nodeIndex
+            ExportAwaited = set []
         }
 
-        static member ObsImport (ids: string list) (str: CharStream<State>) =
-            let n = ids.Length
-            if n < 2
-            then Reply (Error, expected "Too few!")
-            else
-                let s = str.UserState
-                let node = System.String.Join ('.', Seq.take (n - 1) ids)
-                let id = List.last ids
-                let qualifiedName = node + NODE_SEP + id
-                let offset = s.ExtSymbols qualifiedName
-                if offset < 0
-                then Reply (FatalError, messageError <| "Not found: " + qualifiedName)
-                else
-                    let e = ESum [ENum <| int64 offset; ELabel 0]
-                    str.UserState <- { s with Defs = s.Defs.Add (id, e) }
-                    Reply (())
-
-        static member TryExpand id (str: CharStream<State>) =
+        static member private GetQnIx qn (str: CharStream<State>) =
             let s = str.UserState
-            match s.Defs.TryFind id with
-            | Some e -> e
-            | None ->
-                match s.Labels.TryFind id with
-                | Some i -> abs i
-                | None -> let i = s.Count + 1
-                          str.UserState <- {
-                            s with
-                                Labels = s.Labels.Add (id, -i)
-                                Count = i
-                          }
-                          i
-                |> ELabel
-            |> Reply
+            match s.Labels.TryFind qn with
+            | Some i -> abs i
+            | None -> let i = s.Count + 1
+                      str.UserState <- {
+                        s with
+                            Labels = s.Labels.Add (qn, -i)
+                            Count = i
+                      }
+                      i
+
+        static member private GetLabelIx id (str: CharStream<State>) =
+            State.GetQnIx (str.UserState.Qualified id) str
+
+        static member UseLabel (id: string) (str: CharStream<State>) =
+            State.GetLabelIx id str |> ELabel |> Reply
+
+        static member Export id (str: CharStream<State>) =
+            let i = State.GetLabelIx id str // modifies str.UserState
+            let s = str.UserState
+            str.UserState <- { s with Exported = s.Exported.Add i }
+            Reply [SExport(str.Line, i, ELabel i)]
 
         static member Call (str: CharStream<State>) =
             let s = str.UserState
@@ -94,43 +91,63 @@ type State = {
             str.UserState <- { s with Count = i }
             Reply [SCall i]
 
-        static member FreshLabel (str: CharStream<State>) =
+        static member AnonymousLabel (str: CharStream<State>) =
             let s = str.UserState
             let i = s.Count + 1
             str.UserState <- { s with Count = i }
             Reply i
 
-        static member ObsLabel id (str: CharStream<State>) =
+        static member DefLabel id (str: CharStream<State>) =
             let s = str.UserState
-            let ok = SLabel >> List.singleton >> Reply
-            match s.Labels.TryFind id with
-            | Some i -> if i < 0 then str.UserState <- {
-                                        s with Labels = s.Labels.Add (id, abs i)
-                                      }
-                                      ok -i
-                        else Reply (Error, unexpected (sprintf "Label '%s' is defined twice." id))
-            | None -> if s.Defs.ContainsKey id
-                      then Reply (Error, unexpected (sprintf "Label '%s' is also an abbreviation." id))
-                      else
-                          let i = s.Count + 1
-                          str.UserState <- {
-                            s with
-                                Labels = s.Labels.Add (id, i)
-                                Count = i
-                          }
-                          ok i
+            let qn = s.Qualified id
+            match s.Labels.TryFind qn with
+            | Some i -> if i > 0 then Reply (Error, unexpected (sprintf "'%s' is already defined." id))
+                        else
+                            str.UserState <- {
+                                s with Labels = s.Labels.Add (qn, abs i)
+                            }
+                            Reply -i
+            | None -> let i = s.Count + 1
+                      str.UserState <- {
+                        s with
+                            Labels = s.Labels.Add (qn, i)
+                            Count = i
+                      }
+                      Reply i
 
-        static member Export id (str: CharStream<State>) =
-            match (State.TryExpand id str).Result with
-            | ELabel i ->
-                let s = str.UserState
-                str.UserState <- { s with Exported = s.Exported.Add (id, i) }
-                Reply ([] : Statement list)
-            | _ -> Reply (Error, unexpected "Not a label")
+        static member private RegisterImport ids i (str: CharStream<State>) =
+            let node, id = nodeId ids
+            let mutable s = str.UserState
+            if List.contains node s.Nodes
+            then
+                let j = State.GetQnIx (nodeJoin ids) str
+                s <- str.UserState
+                str.UserState <- {
+                    s with
+                        Defs = s.Defs.Add (i, ELabel j)
+                        ExportAwaited = s.ExportAwaited.Add j
+                }
+                Reply (())
+            else
+                let qualifiedName = nodeJoin [node; id]
+                match s.ExtSymbols qualifiedName with
+                | None -> Reply (FatalError, messageError <| "Not exported: " + qualifiedName)
+                | Some (rel, x) ->
+                    let e = if rel
+                            then ESum [ENum <| int64 x; ELabel 0]
+                            else ENum x
+                    str.UserState <- { s with Defs = s.Defs.Add (i, e) }
+                    Reply (())
 
-        static member AddDef id e =
-            updateUserState<State> <|
-            fun s -> { s with Defs = s.Defs.Add (id, e) }
+        static member ObsImport (ids: string list) =
+            if ids.Length < 2
+            then fun _ -> Reply (Error, expected "Imports must be qualified.")
+            else State.DefLabel (Seq.last ids) >>= State.RegisterImport ids
+
+        static member Abbrev (i, e) (str: CharStream<State>) =
+            let s = str.UserState
+            str.UserState <- { s with Defs = s.Defs.Add (i, e) }
+            Reply ([] : Statement list)
 
 let identifier: Parser<string, State> = identifierNoWhitespace .>> whitespace
 
@@ -200,7 +217,7 @@ let expression: Parser<Expression, State> =
 
     // Why do we need 'do' here?
     do exprRef := choice [
-        identifier >>= State.TryExpand
+        identifier >>= State.UseLabel
         positiveNumeral |>> ENum
         skipChar '-' >>. expr |>> ENeg
         skipChar '~' >>. expr |>> ENot
@@ -243,16 +260,15 @@ let statement: Parser<Statement list, State> =
         argList >>= check |>> List.mapi push
 
     let oneSpacer =
-        lineNumAndExpr .>>. State.FreshLabel
+        lineNumAndExpr .>>. State.AnonymousLabel
         |>> fun ((ln, e), i) -> [SLabel i; SSpacer (ln, e); SData8 (0L, ENum 0L)]
 
     let stmt (id, numArgs) =
         if numArgs = labelKey
-        then State.ObsLabel id
+        then State.DefLabel id |>> (SLabel >> List.singleton)
 
         else if numArgs = defKey
-        then expression >>=
-             fun e -> preturn [] .>> State.AddDef id e
+        then State.DefLabel id .>>. expression >>= State.Abbrev
         else
             let pArgs () = match numArgs with
                            | 0 -> pushArgs0
@@ -352,18 +368,48 @@ let program : Parser<Statement list, State> =
     |>> List.concat
     .>> eof
 
-let parseProgram (initState: State) (stream: System.IO.Stream)
-    : seq<Statement> * Map<string, int> * Map<string, int> =
-    match runParserOnStream program initState "" stream System.Text.Encoding.UTF8 with
-    | Success(result, s, _) ->
-        let missing = [
-            for pair in s.Labels do
+
+let parseProgram
+    (comp: (string * (unit -> System.IO.Stream)) list)
+    (extSymbols: string -> (bool * int64) option) : Statement list * Set<int> * Map<int, string> =
+    let mutable state = State.Init extSymbols (List.map fst comp) 0
+
+    let parse streamFun =
+        use stream = streamFun ()
+        match runParserOnStream program state "" stream System.Text.Encoding.UTF8 with
+        | Success(result, s, _) ->
+            state <- { s with NodeIndex = s.NodeIndex + 1 }
+            result
+        | Failure(errorMsg, _, _) -> errorMsg |> ParseException |> raise
+    let result = comp |> Seq.map (snd >> parse) |> Seq.concat |> Seq.toList
+
+    let missing = [
+        for pair in state.Labels do
             if pair.Value < 0
-            then yield pair.Key]
-        if missing.IsEmpty
-        then result |> pushReduction, s.Exported, s.Labels
-        else sprintf "Label%s not found: %s"
+            then yield pair.Key
+    ]
+    if not missing.IsEmpty then
+        sprintf "Label%s not found: %s"
                  (if missing.Length > 1 then "s" else "")
                  (System.String.Join(", ", missing))
              |> ParseException |> raise
-    | Failure(errorMsg, _, _) -> errorMsg |> ParseException |> raise
+
+    let revLabels = reverseMap state.Labels
+    let notExported = [
+        for i in state.ExportAwaited do
+            if not (state.Exported.Contains i)
+            then yield revLabels.[i]
+    ]
+    if not notExported.IsEmpty then
+        sprintf "Label%s not exported: %s"
+                (if notExported.Length > 1 then "s" else "")
+                (System.String.Join(", ", notExported))
+             |> ParseException |> raise
+
+    let prog = result
+               |> unfold state.Defs revLabels
+               |> moveExportsFirst
+               |> pushReduction
+               |> Seq.toList
+    prog, state.Exported, revLabels
+

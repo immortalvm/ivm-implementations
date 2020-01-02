@@ -2,6 +2,6 @@
 
 open Assembler.Ast
 
-val assemble : seq<Statement> -> uint8 list * int[] * ((int * uint64) list) * (int list)
+val assemble : Statement list -> uint8 list * int[] * ((int * int64) list) * (int list) * (bool * int64)[]
 
-val initialization : int -> (int * uint64) list -> int list -> uint8 list
+val initialization : int -> (int * int64) list -> int list -> uint8 list

@@ -10,7 +10,7 @@ open FParsec
 open Assembler.Ast
 open Assembler.Parser
 
-let stateNoImports = State.Init <| fun _ -> -1
+let stateNoImports = State.Init (fun _ -> None) [""] 0
 
 // Opposite order of Expect.* (for convenience).
 let success expected parser input () =

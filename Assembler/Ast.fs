@@ -1,5 +1,7 @@
 ﻿module Assembler.Ast
 
+exception ParseException of string
+
 type Expression =
     | ENum of int64
     | ELabel of int
@@ -53,6 +55,7 @@ type Statement =
     | SData4 of int64 * Expression
     | SData8 of int64 * Expression
     | SSpacer of int64 * Expression
+    | SExport of int64 * int * Expression
 
     | SPush of Expression
     | SExit | SSetSp

@@ -467,11 +467,17 @@ let expressionData n line e lookup =
 
 let expressionDataRelative line e lookup =
     match exprPushCore lookup 0 0 e with
-    | Rel(x) -> bytes 8 (uint64 x + 1UL)
+    | Rel(x) -> bytes 8 (uint64 x + 1UL) // cf. export
     | _ -> failwithf "Something wrong with line %d." line
 
 let expressionPush e lookup =
     exprPushCore lookup 0 0 e |> collapseValue
+
+let export line i e lookup =
+    match exprPushCore lookup 0 0 e with
+    | Const(x) -> i, false, x
+    | Rel(x) -> i, true, x + 1L // cf. expressionDataRelative
+    | _ -> failwithf "Illegal export on line: %d" line
 
 let expressionAdd e lookup =
     match exprPushCore lookup 0 0 e with
@@ -536,13 +542,12 @@ let expressionDivSU e lookup =
     | One -> []
     | v -> collapseValue v @ divSU
 
-type FlexCode = (int -> int) -> int8 list
-
 type Intermediate =
     | Label of int
     | Relative
     | Spacer of int * ((int -> int) -> int64)
-    | Fragment of FlexCode
+    | Fragment of ((int -> int) -> int8 list)
+    | Export of ((int -> int) -> int * bool * int64)
 
 let (|LabelOffset|_|) (e: Expression) =
     match e with
@@ -562,6 +567,8 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
         while not rest.IsEmpty do
         yield!
             match rest with
+            | SExport (line, i, e) :: r -> rest <- r; [Export (export line i e)]
+
             | SExit :: r -> frag r [EXIT]
             | SNot :: r -> frag r [NOT]
             | SNeg :: r -> frag r changeSign

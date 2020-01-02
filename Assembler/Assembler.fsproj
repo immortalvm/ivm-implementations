@@ -5,12 +5,15 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Ast.fs" />
+    <Compile Include="Namespace.fs" />
+    <Compile Include="Abbreviations.fs" />
     <Compile Include="Transformations.fs" />
     <Compile Include="Parser.fs" />
     <Compile Include="Target.fsi" />
     <Compile Include="Target.fs" />
     <Compile Include="Composition.fsi" />
     <Compile Include="Composition.fs" />
+    <Compile Include="FullyConnectedComponents.fs" />
     <Compile Include="Checker.fsi" />
     <Compile Include="Checker.fs" />
   </ItemGroup>
