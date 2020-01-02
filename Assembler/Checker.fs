@@ -1,7 +1,6 @@
 ﻿module Assembler.Checker
 
 open System.IO
-open Machine.Utils
 open Assembler.Parser
 open Assembler.Composition
 open Machine.Executor

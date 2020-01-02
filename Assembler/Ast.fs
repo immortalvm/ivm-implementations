@@ -75,7 +75,7 @@ type Statement =
     | SEq
     | SGtEU | SGtES | SGtU | SGtS
 
-    | SNewFrame |SSetPixel | SAddSample
+    | SNewFrame | SSetPixel | SAddSample
     | SPutChar
 
     | SReadFrame | SReadPixel
