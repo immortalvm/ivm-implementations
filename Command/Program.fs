@@ -45,30 +45,6 @@ let ROOT_HEADING = "--Root--"
 let RELATIVE_ORDER_HEADING = "--Relative--"
 
 
-let usage () =
-    let ex = System.AppDomain.CurrentDomain.FriendlyName
-    printfn "Usage:"
-    printfn "  %s                                                  -  Show this text" ex
-    printfn "  %s as <source> <binary> <symbols>                   -  Assemble" ex
-    printfn "  %s run <binary>                                     -  Run binary and print final stack" ex
-    printfn "  %s run <binary> <arg file>                          -  Run binary and print final stack" ex
-    printfn "  %s run <binary> <arg file> <output dir>             -  Run binary and print final stack" ex
-    printfn "  %s trace <binary> <symbols>                         -  Trace binary" ex
-    printfn "  %s trace <binary> <symbols> <arg file>              -  Trace binary" ex
-    printfn "  %s trace <binary> <symbols> <arg file> <output dir> -  Trace binary" ex
-    printfn ""
-    printfn "  %s as-run <source>                                  -  Assemble and run" ex
-    printfn "  %s as-run <source> <arg file>                       -  Assemble and run" ex
-    printfn "  %s as-run <source> <arg file> <output dir>          -  Assemble and run" ex
-    printfn "  %s as-trace <source>                                -  Assemble and trace" ex
-    printfn "  %s as-trace <source> <arg file>                     -  Assemble and trace" ex
-    printfn "  %s as-trace <source> <arg file> <output dir>        -  Assemble and trace" ex
-    printfn "  %s check <source>                                   -  Assemble, run, and check final stack" ex
-    printfn ""
-    printfn "  %s gen-proj <root dir> <goal>     -  Create prototype project (<goal>.proj)" ex
-    printfn "  %s build <project> <dest dir>     -  Assemble project" ex
-    printfn "  %s make <project> <dest dir>      -  Assemble project incrementally" ex
-
 let writeAssemblerOutput binaryFile symbolsFile bytes exported constant labels spacers previous =
     File.WriteAllBytes (binaryFile, bytes |> Seq.toArray)
     printfn "Binary written to: %s" binaryFile
