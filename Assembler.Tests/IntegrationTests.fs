@@ -6,7 +6,7 @@ open Expecto.Impl
 open FsCheck
 open Swensen.Unquote
 
-open Assembler.Checker
+open Assembler.Checks
 
 
 [<Literal>]

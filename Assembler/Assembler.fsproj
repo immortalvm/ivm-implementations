@@ -4,6 +4,9 @@
     <RuntimeFrameworkVersion>3.0.0</RuntimeFrameworkVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="Composition.fsi" />
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="Ast.fs" />
     <Compile Include="Namespace.fs" />
     <Compile Include="Abbreviations.fs" />
@@ -11,11 +14,11 @@
     <Compile Include="Parser.fs" />
     <Compile Include="Target.fsi" />
     <Compile Include="Target.fs" />
-    <Compile Include="Composition.fsi" />
     <Compile Include="Composition.fs" />
-    <Compile Include="FullyConnectedComponents.fs" />
-    <Compile Include="Checker.fsi" />
-    <Compile Include="Checker.fs" />
+    <Compile Include="ConnectedComponents.fs" />
+    <Compile Include="Integration.fs" />
+    <Compile Include="Checks.fs" />
+    <Compile Include="Interface.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="FSharp.Core" Version="4.7.0" />

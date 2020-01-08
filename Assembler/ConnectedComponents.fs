@@ -1,4 +1,4 @@
-﻿module Assembler.FullyConnectedComponents
+﻿module Assembler.ConnectedComponents
 
 // Loosely based on Tarjan's algorithm
 // The list of components is topologically sorted;

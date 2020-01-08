@@ -7,7 +7,7 @@ open Machine.Executor
 let private ATTEMPTS_BEFORE_MONOTINICITY = 3;
 
 // 'nops n' must return a nop sequence of at least n signed bytes.
-let compose
+let private compose
         (nops: int -> int8 list)
         (prog: Intermediate list) : uint8 list * int[] * ((int * int64) list) * (int list) * (bool * int64)[] =
     let numLabels = 1 + (List.max <| 0 :: [
@@ -103,7 +103,7 @@ let assemble program =
 
 open Ast
 
-let rec deltas lst =
+let rec private deltas lst =
     match lst with
     | x :: ((y :: _) as rest) -> y - x :: deltas rest
     | _ -> []
