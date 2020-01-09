@@ -4,11 +4,8 @@ open System.CommandLine
 open System.CommandLine.Invocation
 open System.CommandLine.Builder
 
-open Assembler.Checks
-open Assembler.Interface
-
-[<Literal>]
-let VERSION = "0.17" // How can we automatically get this from Git?
+open Tools.Interface
+open Tools.Checks
 
 [<EntryPoint>]
 let main argv =
@@ -85,7 +82,11 @@ let main argv =
                 build (fName project) (fName ``dest dir``) incrementally)
         ]
     try
-        printfn "iVM Assembler and VM, version %s" VERSION
+        let version =
+            let assembly = System.Reflection.Assembly.GetExecutingAssembly()
+            let v = assembly.GetName().Version
+            sprintf "v%d.%d" v.Major v.Minor
+        printfn "iVM Assembler and VM, %s" version
         root.Invoke(argv)
     with
         Failure msg -> printfn "%s" msg; 1

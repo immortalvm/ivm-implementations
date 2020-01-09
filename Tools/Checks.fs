@@ -1,7 +1,7 @@
-﻿module Assembler.Checks
+﻿module Tools.Checks
 
 open System.IO
-open Integration
+open Assembler.Integration
 
 open FParsec
 

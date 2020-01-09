@@ -76,5 +76,6 @@
     <ProjectReference Include="..\Assembler\Assembler.fsproj" />
     <PackageReference Include="Expecto.FsCheck" Version="8.12.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.3.0" />
+    <ProjectReference Include="..\Tools\Tools.fsproj" />
   </ItemGroup>
 </Project>

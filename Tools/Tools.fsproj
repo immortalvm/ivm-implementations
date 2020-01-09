@@ -4,13 +4,12 @@
     <RuntimeFrameworkVersion>3.0.0</RuntimeFrameworkVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Instructions.fs" />
-    <Compile Include="Disassembler.fs" />
-    <Compile Include="Utils.fs" />
-    <Compile Include="Executor.fs" />
+    <Compile Include="Checks.fs" />
+    <Compile Include="Interface.fs" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="System.Drawing.Common" Version="4.6.0" />
+    <ProjectReference Include="..\Assembler\Assembler.fsproj" />
+    <ProjectReference Include="..\Machine\Machine.fsproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="FSharp.Core" Version="4.7.0" />

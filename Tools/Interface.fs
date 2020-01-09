@@ -1,4 +1,4 @@
-﻿module Assembler.Interface
+﻿module Tools.Interface
 
 open System.IO
 open Machine.Utils

@@ -10,20 +10,21 @@ exception AccessException of string
 exception UndefinedException of string
 
 // Little-endian encoding
-let fromBytes : seq<uint8> -> uint64 =
+let private fromBytes : seq<uint8> -> uint64 =
     Seq.mapi (fun i x -> uint64 x <<< i*8) >> Seq.sum
 
 // n = 1,2,4,8
-let toBytes n (x: uint64) : seq<uint8> =
+let private toBytes n (x: uint64) : seq<uint8> =
     [| 0 .. n-1 |] |> Seq.map (fun i -> x >>> i*8 |> uint8)
 
-type Machine(
-            memorySize: uint64,
-            initialProgram: seq<uint8>,
-            startLocation: uint64,
-            inputDir: string option,
-            outputDir: string option,
-            traceSyms: Map<int, string> option) =
+type private Machine
+    (
+        memorySize: uint64,
+        initialProgram: seq<uint8>,
+        startLocation: uint64,
+        inputDir: string option,
+        outputDir: string option,
+        traceSyms: Map<int, string> option) =
 
     let memory =
         let size =
@@ -301,8 +302,11 @@ type Machine(
         | undefined -> raise (UndefinedException(sprintf "%d" undefined))
 
 
-let random = System.Random ()
+let private random = System.Random ()
 
+// Execute at random location (multiple of 1000) and return terminal stack.
+// Trace execution if symbol mapping is provided.
+// This method is likely to change...
 let execute (memorySize: uint64) (prog: seq<uint8>) (arg: seq<uint8>) (outputDir: string option) (traceSyms: Map<int, string> option) =
     // Start at 0, 1000, ... or 7000.
     let start = random.Next () % 8 |> ( * ) 1000 |> uint64

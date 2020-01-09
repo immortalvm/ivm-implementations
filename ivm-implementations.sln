@@ -12,6 +12,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Command", "Command\Command.
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Machine.Tests", "Machine.Tests\Machine.Tests.fsproj", "{1FD02A3F-4275-472D-8698-C2C8C70AD2A0}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Tools", "Tools\Tools.fsproj", "{BB80B104-0B3A-495C-AF42-8D42B74FCDBE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -25,7 +27,6 @@ Global
 		{1D4FED7E-D917-434A-8378-91C5C2BA396D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{1D4FED7E-D917-434A-8378-91C5C2BA396D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1D4FED7E-D917-434A-8378-91C5C2BA396D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1D4FED7E-D917-434A-8378-91C5C2BA396D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{46503609-F075-431B-8AD1-2E8E77664F86}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{46503609-F075-431B-8AD1-2E8E77664F86}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{46503609-F075-431B-8AD1-2E8E77664F86}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -37,12 +38,20 @@ Global
 		{1FD02A3F-4275-472D-8698-C2C8C70AD2A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{1FD02A3F-4275-472D-8698-C2C8C70AD2A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1FD02A3F-4275-472D-8698-C2C8C70AD2A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1FD02A3F-4275-472D-8698-C2C8C70AD2A0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BB80B104-0B3A-495C-AF42-8D42B74FCDBE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BB80B104-0B3A-495C-AF42-8D42B74FCDBE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BB80B104-0B3A-495C-AF42-8D42B74FCDBE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BB80B104-0B3A-495C-AF42-8D42B74FCDBE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F94916FF-EBB6-47B4-9F0D-BEDA482C2733}
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		Policies = $0
+		$0.StandardHeader = $1
+		$0.VersionControlPolicy = $2
 	EndGlobalSection
 EndGlobal

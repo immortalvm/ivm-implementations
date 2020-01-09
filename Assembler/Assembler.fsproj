@@ -14,8 +14,6 @@
     <Compile Include="Composition.fs" />
     <Compile Include="ConnectedComponents.fs" />
     <Compile Include="Integration.fs" />
-    <Compile Include="Checks.fs" />
-    <Compile Include="Interface.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="FSharp.Core" Version="4.7.0" />
