@@ -4,9 +4,6 @@
     <RuntimeFrameworkVersion>3.0.0</RuntimeFrameworkVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Remove="Composition.fsi" />
-  </ItemGroup>
-  <ItemGroup>
     <Compile Include="Ast.fs" />
     <Compile Include="Namespace.fs" />
     <Compile Include="Abbreviations.fs" />
