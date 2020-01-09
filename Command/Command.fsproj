@@ -13,7 +13,7 @@
     <ProjectReference Include="..\Tools\Tools.fsproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="System.CommandLine.Experimental" Version="0.3.0-alpha.19573.2" />
+    <PackageReference Include="System.CommandLine.Experimental" Version="0.3.0-alpha.19577.1" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="FSharp.Core" Version="4.7.0" />
