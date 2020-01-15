@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # See https://stackoverflow.com/a/3355423
 cd "$(dirname "$0")"
