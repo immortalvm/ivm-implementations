@@ -232,6 +232,8 @@ let lineNumAndExpr: Parser<int64 * Expression, State> =
 
 let data: Parser<(int64 * Expression) list, State> =
     between (strWs "[") (strWs "]") <| many lineNumAndExpr
+    .>>. (strWs "*" >>. positiveNumeral <|> preturn 1L)
+    |>> fun (list, n) -> Seq.replicate (int n) list |> Seq.concat |> Seq.toList
 
 let statement: Parser<Statement list, State> =
     let labelKey = -1

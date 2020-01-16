@@ -83,14 +83,14 @@ program = import* statement*;
 
 import = "IMPORT" (identifier "/")+ identifier
 
-statement = identifier ":"               (* label *)
-          | "EXPORT" identifier          (* export declaration *)
-          | identifier "=" expression    (* abbreviation *)
-          | "data1" [ expression* ]      (* data segment,  8 bits per value *)
-          | "data2" [ expression* ]      (* data segment, 16 bits per value *)
-          | "data4" [ expression* ]      (* data segment, 32 bits per value *)
-          | "data8" [ expression* ]      (* data segment, 64 bits per value *)
-          | "space" expression           (* pointer static byte array *)
+statement = identifier ":"                                         (* label *)
+          | "EXPORT" identifier                                    (* export declaration *)
+          | identifier "=" expression                              (* abbreviation *)
+          | "data1" "[" expression* "]" ("*" positive_numeral)?    (* data segment,  8 bits per value *)
+          | "data2" "[" expression* "]" ("*" positive_numeral)?    (* data segment, 16 bits per value *)
+          | "data4" "[" expression* "]" ("*" positive_numeral)?    (* data segment, 32 bits per value *)
+          | "data8" "[" expression* "]" ("*" positive_numeral)?    (* data segment, 64 bits per value *)
+          | "space" expression                                     (* pointer static byte array *)
 
           | "exit"
           | "push" | "push!" expression | "push!!" expression expression | ...
@@ -99,7 +99,7 @@ statement = identifier ":"               (* label *)
           | "jump_zero" | "jump_zero!" expression | "jump_zero!!" expression expression
           | "jump_not_zero" | "jump_not_zero!" expression | "jump_not_zero!!" expression expression
           | "call" | "call!" expression
-          | "return"                     (* alias for "jump" *)
+          | "return"                                               (* alias for "jump" *)
 
           | "load1" | "load1!" expression
           | "load2" | "load2!" expression
