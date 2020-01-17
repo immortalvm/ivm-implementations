@@ -149,6 +149,18 @@ type State = {
             str.UserState <- { s with Defs = s.Defs.Add (i, e) }
             Reply ([] : Statement list)
 
+        // Used after the parsing is done
+
+        member s.ReverseLabels (): Map<int, string> =
+            reverseMap s.Labels
+
+        // Qualified names
+        member s.Undefined = seq {
+            for pair in s.Labels do
+                if pair.Value < 0 then
+                    yield pair.Key
+        }
+
 let identifier: Parser<string, State> = identifierNoWhitespace .>> whitespace
 
 let positiveNumeral: Parser<int64, State> = puint64 .>> whitespace |>> int64
@@ -370,6 +382,30 @@ let program : Parser<Statement list, State> =
     |>> List.concat
     .>> eof
 
+type AnalysisResult = {
+    ImportsFrom: string list // nodes
+    Exported: string list    // identifiers
+    Undefined: string list   // identifiers (implicit imports)
+}
+
+let analyze (node: string) (streamFun: unit -> System.IO.Stream): AnalysisResult =
+    let mutable imported : Set<string> = set []
+    let extSym qn =
+        imported <- imported.Add qn
+        Some (true, 0L)
+    let state = State.Init extSym [node] 0
+    use stream = streamFun ()
+    match runParserOnStream program state "" stream System.Text.Encoding.UTF8 with
+    | Failure(errorMsg, _, _) -> errorMsg |> ParseException |> raise
+    | Success(_, s, _) ->
+        let revLabels = state.ReverseLabels ()
+        let lab i = unqualify revLabels.[i]
+        {
+            Node = node
+            ImportsFrom = imported |> Seq.map qnNode |> Seq.toList
+            Exported = s.Exported |> Seq.map lab |> Seq.toList
+            Undefined = state.Undefined |> Seq.map unqualify |> Seq.toList
+        }
 
 let parseProgram
     (comp: (string * (unit -> System.IO.Stream)) list)
@@ -385,18 +421,14 @@ let parseProgram
         | Failure(errorMsg, _, _) -> errorMsg |> ParseException |> raise
     let result = comp |> Seq.map (snd >> parse) |> Seq.concat |> Seq.toList
 
-    let missing = [
-        for pair in state.Labels do
-            if pair.Value < 0
-            then yield pair.Key
-    ]
+    let missing = Seq.toList state.Undefined
     if not missing.IsEmpty then
         sprintf "Label%s not found: %s"
                  (if missing.Length > 1 then "s" else "")
                  (System.String.Join(", ", missing))
              |> ParseException |> raise
 
-    let revLabels = reverseMap state.Labels
+    let revLabels = state.ReverseLabels ()
     let notExported = [
         for i in state.ExportAwaited do
             if not (state.Exported.Contains i)

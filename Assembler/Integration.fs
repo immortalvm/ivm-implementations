@@ -1,15 +1,13 @@
 ﻿module Assembler.Integration
 
 open System.IO
+open System.Text.RegularExpressions
 open Assembler.Ast
 open Assembler.Parser
+open Assembler.ConnectedComponents
 open Assembler.Composition
 open Assembler.Namespace
 open Machine.Executor
-open FParsec
-open System.Text.RegularExpressions
-
-open Assembler.ConnectedComponents
 
 // These constants should be annotated [<Literal>], but then they can no longer
 // be made available through the signature file. This is (yet another) reason
@@ -39,7 +37,7 @@ let nodePath rootDir extension (node: string) =
 
 let getBuildOrder (rootDir: string) (goal : string) : seq<string list> =
     let edges node = getDependencies <| nodePath rootDir SOURCE_EXTENSION node
-    findComponents(goal, edges >> seq) |> Seq.rev |> Seq.map (Seq.rev >> Seq.toList)
+    findComponents (goal, edges >> seq) |> Seq.rev |> Seq.map (Seq.rev >> Seq.toList)
 
 let showValue (x: int64) =
     let mutable hex = sprintf "%016X" x
@@ -155,3 +153,35 @@ let doRun binary arg outputDir traceSyms =
     with
         | AccessException msg -> failwith "Access exception!"
         | UndefinedException msg -> failwith "Undefined instruction!"
+
+
+// TODO
+let analyze (files: (string * (unit -> System.IO.Stream)) list) = //: string list * string list * string list =
+    let analyses = [for node, streamFun in files -> node, analyze node streamFun]
+    let mutable exported = Map.empty
+    for node, a in Seq.rev analyses do
+        for e in a.Exported do
+            exported <- exported.Add (e, node)
+    let implicitImports = [
+        for node, a in analyses -> [
+            for u in a.Undefined ->
+                match exported.TryFind u with
+                | None -> sprintf "Not resolved: %s in %s" u node |> ParseException |> raise
+                | Some other -> other, u
+        ]
+    ]
+    let allImports = Map <| seq {
+        for (node, a), ii in Seq.zip analyses implicitImports ->
+            node, set (ii |> Seq.map fst |> Seq.append a.ImportsFrom)
+    }
+
+    let map = Map analyses
+    let goal = ""
+    let edges node =
+        if node = goal then Seq.map fst files
+        else allImports.[node] |> seq
+    let buildOrder = findComponents (goal, edges >> seq) |> Seq.rev |> Seq.map (Seq.rev >> Seq.toList)
+
+
+    // TODO: Include libraries "on demand" (as in old GetBuildOrder).
+    ()
