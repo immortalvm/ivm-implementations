@@ -3,7 +3,7 @@
 // Loosely based on Tarjan's algorithm
 // The list of components is topologically sorted;
 // and each component is ordered according to a depth first search.
-let findComponents(start: string, next: string -> seq<string>): string list list =
+let findComponents (start: string) (next: string -> seq<string>): string list list =
     let mutable indexAndLowLink = new Map<string, int * int>([])
     let mutable indexCounter = 0
 

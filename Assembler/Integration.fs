@@ -26,18 +26,101 @@ type AssemblerOutput = {
     Relatives: seq<int>
 }
 
-let private getDependencies (fileName : string) : Set<string> =
-    printfn "Analyzing dependencies in %s..." fileName
-    use stream = File.OpenRead fileName
-    try parseDependencies stream
-    with ParseException(msg) -> failwith msg
+
+type Library = {
+    Nodes: string list
+    Exported: Map<string, string>            // symbol -> node
+    Dependencies: Map<string, string list>   // node -> nodes
+    Getter: string -> (string list) * Stream // node -> implicit imports, source
+}
+
+// This could be avoided if ConnectedComponents were generalized.
+let findComp (start: seq<int option * string>) (next: int option * string -> seq<int option * string>) =
+    let toStr (num: int option, node: string) =
+        let prefix = match num with
+                     | None -> ""
+                     | Some n -> n.ToString ()
+        prefix + "#" + node
+    let fromStr (str: string) =
+        let i = str.IndexOf("#")
+        let num = if i = 0 then None else str.[0..i-1] |> int |> Some
+        num, str.[i+1..]
+    let goal = ""
+    let edges str = Seq.map toStr <| if str = goal then start else next (fromStr str)
+    findComponents goal edges |> Seq.map (Seq.map fromStr)
+
+type Chunk = string * (unit -> string list * Stream)
+
+let private prepareBuild
+    (files: (string * (unit -> Stream)) list) // node -> source
+    (libraries: Library list) : seq<seq<Chunk>> =
+
+    let fileNodes = List.map fst files
+    let analyses = [for node, streamFun in files -> node, analyze streamFun]
+
+    let explicitImports = [
+        for node, a in analyses -> [
+            for other in a.ImportsFrom ->
+                if List.contains other fileNodes then
+                    None, other
+                else
+                    match Seq.tryFindIndex (fun lib -> List.contains other lib.Nodes) libraries with
+                    | Some libNum -> Some libNum, other
+                    | _ -> sprintf "Not resolved node: %s in %s" other node |> ParseException |> raise
+        ]
+    ]
+
+    let mutable exported = Map.empty
+    for node, a in Seq.rev analyses do
+        for e in a.Exported do
+            exported <- exported.Add (e, node)
+    let implicitImports = [
+        for node, a in analyses -> [
+            for u in a.Undefined ->
+                match exported.TryFind u with
+                | Some other -> (None, other), u
+                | None ->
+                    // Try libraries in order
+                    let look (libNum: int, lib: Library) =
+                        match lib.Exported.TryFind u with
+                        | Some other -> Some (libNum, other)
+                        | None -> None
+                    match Seq.indexed libraries |> Seq.map look |> Seq.tryFind Option.isSome with
+                    | Some (Some (libNum, other)) -> (Some libNum, other), u
+                    | _ -> sprintf "Not resolved: %s in %s" u node |> ParseException |> raise
+        ]
+    ]
+
+    let allFileImports =
+        seq {
+            for ei, ii in Seq.zip explicitImports implicitImports ->
+                set (Seq.append ei <| Seq.map fst ii)
+        } |> Seq.zip fileNodes |> Map
+
+    let withNum num nodes = Seq.map (fun node -> num, node) nodes
+    let next (num, node) = 
+        match num with
+        | None -> allFileImports.[node] |> seq
+        | Some n -> withNum num libraries.[n].Dependencies.[node] 
+
+    let get (num: int option, node: string) =
+        match num with
+        | None ->
+            let imp ((_, other), sym) = other + "." + sym
+            let ((_, str), ii) =
+                Seq.zip files implicitImports
+                |> Seq.find (fst >> fst >> (=) node)
+            node, fun () -> (List.map imp ii, str ())
+        | Some n ->
+            let lib = libraries.[n]
+            node, fun () -> lib.Getter node
+
+    findComp (withNum None fileNodes) next
+    |> Seq.rev
+    |> Seq.map (Seq.rev >> Seq.map get)
 
 let nodePath rootDir extension (node: string) =
     (Array.append [|rootDir|] (splitNodeString node) |> Path.Combine) + extension
-
-let getBuildOrder (rootDir: string) (goal : string) : seq<string list> =
-    let edges node = getDependencies <| nodePath rootDir SOURCE_EXTENSION node
-    findComponents (goal, edges >> seq) |> Seq.rev |> Seq.map (Seq.rev >> Seq.toList)
 
 let showValue (x: int64) =
     let mutable hex = sprintf "%016X" x
@@ -46,20 +129,15 @@ let showValue (x: int64) =
     sprintf "%d (0x%s)" x hex
 
 // Build one (mutually dependent) component.
-let private buildOne rootDir (nodes: string list) (extSymbols: string -> (bool * int64) option) =
+let private buildOne (comp: Chunk list) (extSymbols: string -> (bool * int64) option) =
     try
-        let pair node =
-            let fileName = nodePath rootDir SOURCE_EXTENSION node
-            printfn "Parsing %s..." fileName
-            let f () : System.IO.Stream = upcast (File.OpenRead fileName)
-            node, f
-        let program, exported, labels = parseProgram (List.map pair nodes) extSymbols
+        let program, exported, labels = parseProgram comp extSymbols
         //for line in program do printfn "%O" line
 
         let bytes, symbols, spacers, relatives, exports = assemble program
         let exp = [ for i in exported -> labels.[i], exports.[i] ]
         {
-            Node = nodes.[0]
+            Node = fst comp.[0]
             Binary = bytes
             Exported = [ for (l, (r, v)) in exp do if r then yield l, v ]
             Constants = [ for (l, (r, v)) in exp do if not r then yield l, v ]
@@ -77,7 +155,7 @@ let private buildOne rootDir (nodes: string list) (extSymbols: string -> (bool *
     with
         ParseException(msg) -> failwith msg
 
-let doBuild (rootDir: string) (reused: seq<AssemblerOutput>) (buildOrder: seq<string list>) : seq<AssemblerOutput> =
+let doBuild (reused: seq<AssemblerOutput>) (buildOrder: seq<seq<Chunk>>) : seq<AssemblerOutput> =
     let mutable currentSize : int64 = 0L
     // Maps each qualified names to its distance from the end [0, currentSize].
     let mutable allSymbols : Map<string, bool * int64> = Map.empty
@@ -98,8 +176,8 @@ let doBuild (rootDir: string) (reused: seq<AssemblerOutput>) (buildOrder: seq<st
                     | Some (true, dist) -> Some (true, currentSize - dist)
                     | Some (false, value) -> Some (false, value)
     seq {
-        for nodes in buildOrder do
-            let ao = buildOne rootDir (Seq.toList nodes) lookup
+        for comp in buildOrder do
+            let ao = buildOne (Seq.toList comp) lookup
             yield ao
             incorporate ao
     }
@@ -141,10 +219,9 @@ let doCollect (outputs: seq<AssemblerOutput>): AssemblerOutput =
         Relatives=[]
     }
 
-let doAssemble (fileName: string) =
-    let rootDir = Path.GetDirectoryName fileName
-    let buildOrder = getBuildOrder rootDir <| Path.GetFileNameWithoutExtension fileName
-    buildOrder |> doBuild rootDir [] |> doCollect // 64 KiB stack
+let doAssemble files libraries =
+    let buildOrder = prepareBuild files libraries
+    buildOrder |> doBuild [] |> doCollect // 64 KiB stack
 
 let doRun binary arg outputDir traceSyms =
     try
@@ -154,34 +231,3 @@ let doRun binary arg outputDir traceSyms =
         | AccessException msg -> failwith "Access exception!"
         | UndefinedException msg -> failwith "Undefined instruction!"
 
-
-// TODO
-let analyze (files: (string * (unit -> System.IO.Stream)) list) = //: string list * string list * string list =
-    let analyses = [for node, streamFun in files -> node, analyze node streamFun]
-    let mutable exported = Map.empty
-    for node, a in Seq.rev analyses do
-        for e in a.Exported do
-            exported <- exported.Add (e, node)
-    let implicitImports = [
-        for node, a in analyses -> [
-            for u in a.Undefined ->
-                match exported.TryFind u with
-                | None -> sprintf "Not resolved: %s in %s" u node |> ParseException |> raise
-                | Some other -> other, u
-        ]
-    ]
-    let allImports = Map <| seq {
-        for (node, a), ii in Seq.zip analyses implicitImports ->
-            node, set (ii |> Seq.map fst |> Seq.append a.ImportsFrom)
-    }
-
-    let map = Map analyses
-    let goal = ""
-    let edges node =
-        if node = goal then Seq.map fst files
-        else allImports.[node] |> seq
-    let buildOrder = findComponents (goal, edges >> seq) |> Seq.rev |> Seq.map (Seq.rev >> Seq.toList)
-
-
-    // TODO: Include libraries "on demand" (as in old GetBuildOrder).
-    ()

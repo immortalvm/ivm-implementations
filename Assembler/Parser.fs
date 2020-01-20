@@ -144,6 +144,11 @@ type State = {
             then fun _ -> Reply (Error, expected "Imports must be qualified.")
             else State.DefLabel (Seq.last ids) >>= State.RegisterImport ids
 
+        static member ImplicitImports (imports: string list) =
+            match imports with
+            | [] -> preturn ()
+            | imp::rest -> State.ObsImport (splitNodeString imp |> Array.toList) >>. State.ImplicitImports rest
+
         static member Abbrev (i, e) (str: CharStream<State>) =
             let s = str.UserState
             str.UserState <- { s with Defs = s.Defs.Add (i, e) }
@@ -388,12 +393,14 @@ type AnalysisResult = {
     Undefined: string list   // identifiers (implicit imports)
 }
 
-let analyze (node: string) (streamFun: unit -> System.IO.Stream): AnalysisResult =
+open System.IO
+
+let analyze (streamFun: unit -> Stream): AnalysisResult =
     let mutable imported : Set<string> = set []
     let extSym qn =
         imported <- imported.Add qn
         Some (true, 0L)
-    let state = State.Init extSym [node] 0
+    let state = State.Init extSym ["#"] 0
     use stream = streamFun ()
     match runParserOnStream program state "" stream System.Text.Encoding.UTF8 with
     | Failure(errorMsg, _, _) -> errorMsg |> ParseException |> raise
@@ -401,20 +408,21 @@ let analyze (node: string) (streamFun: unit -> System.IO.Stream): AnalysisResult
         let revLabels = state.ReverseLabels ()
         let lab i = unqualify revLabels.[i]
         {
-            Node = node
             ImportsFrom = imported |> Seq.map qnNode |> Seq.toList
             Exported = s.Exported |> Seq.map lab |> Seq.toList
             Undefined = state.Undefined |> Seq.map unqualify |> Seq.toList
         }
 
 let parseProgram
-    (comp: (string * (unit -> System.IO.Stream)) list)
+    (comp: (string * (unit -> string list * Stream)) list)
     (extSymbols: string -> (bool * int64) option) : Statement list * Set<int> * Map<int, string> =
     let mutable state = State.Init extSymbols (List.map fst comp) 0
 
-    let parse streamFun =
-        use stream = streamFun ()
-        match runParserOnStream program state "" stream System.Text.Encoding.UTF8 with
+    let parse pairFun =
+        let pair = pairFun ()
+        use stream = snd pair
+        let parser = State.ImplicitImports (fst pair) >>. program
+        match runParserOnStream parser state "" stream System.Text.Encoding.UTF8 with
         | Success(result, s, _) ->
             state <- { s with NodeIndex = s.NodeIndex + 1 }
             result
@@ -446,4 +454,3 @@ let parseProgram
                |> pushReduction
                |> Seq.toList
     prog, state.Exported, revLabels
-

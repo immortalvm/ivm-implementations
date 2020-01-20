@@ -94,8 +94,12 @@ let parseSymbolsFile file =
     Seq.map readLine spacers |> Seq.map (fun (x, y) -> int x, y),
     Seq.map int relatives
 
+let private src (filename: string) =
+    let str () : Stream = upcast File.OpenRead filename
+    Path.GetFileNameWithoutExtension filename, str
+
 let assem source binary symbols =
-    let ao = doAssemble source
+    let ao = doAssemble [src source] [] // TODO
     let b = match binary with
             | None -> Path.ChangeExtension(source, "b")
             | Some x -> x
@@ -129,7 +133,7 @@ let run binary (argFile: string option) (outputDir: string option) shouldTrace =
     if traceSyms.IsNone then writeStack stack
 
 let asRun source argFile outputDir shouldTrace =
-    let ao = doAssemble source
+    let ao = doAssemble [src source] []
     if shouldTrace then
         for name, pos in Seq.sortBy fst ao.Exported do
             printfn "%20s %6d" name pos
