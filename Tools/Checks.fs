@@ -2,8 +2,33 @@
 
 open System.IO
 open Assembler.Integration
+open Tools.Helpers
+
+open Assembler.Ast
+open Assembler.Parser
 
 open FParsec
+
+
+// We only support explicit imports with checks for now.
+let private dirLib (directory: string): Library =
+    let path node = nodePath directory SOURCE_EXTENSION node
+    let contains (node: string) = File.Exists <| path node
+    let exportedBy (_: string): string option = None
+    let dependencies (node: string) : Set<string> =
+        let filename = path node
+        printfn "Analyzing dependencies in %s..." filename
+        use stream = File.OpenRead filename
+        try parseDependencies stream
+        with ParseException(msg) -> failwith msg
+    let get (node: string) : string list * Stream =
+        [], upcast (path node |> File.OpenRead)
+    {
+        Contains = contains
+        ExportedBy = exportedBy
+        Dependencies = dependencies
+        Get = get
+    }
 
 let private expectationHeading : Parser<unit, unit> =
     spaces >>. many1 (skipChar '#')
@@ -38,10 +63,10 @@ let private firstDiff s1 s2 =
   Seq.mapi2 (fun i s p -> i,s,p) s1 s2
   |> Seq.find (function | _ , Some s, Some p when s = p -> false | _ -> true)
 
-let doCheck fileName =
+let doCheck fileName shouldTrace =
     let mutable revOutput = []
     let output msg = revOutput <- msg :: revOutput
-    let binary = (doAssemble fileName).Binary
+    let binary = (doAssemble (src [fileName]) [dirLib (Path.GetDirectoryName fileName)]).Binary
     output <| sprintf "Binary size: %d" (Seq.length binary)
 
     let expectationsFound = File.ReadLines fileName
@@ -50,7 +75,7 @@ let doCheck fileName =
     if not expectationsFound
     then output "Not executed since no expectations were found."
     else
-        let actual = doRun binary Seq.empty None None
+        let actual = doRun binary Seq.empty None (if shouldTrace then Some Map.empty else None)
 
         let expected =
             File.ReadLines fileName

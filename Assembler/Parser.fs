@@ -400,17 +400,17 @@ let analyze (streamFun: unit -> Stream): AnalysisResult =
     let extSym qn =
         imported <- imported.Add qn
         Some (true, 0L)
-    let state = State.Init extSym ["#"] 0
+    let initState = State.Init extSym ["#"] 0
     use stream = streamFun ()
-    match runParserOnStream program state "" stream System.Text.Encoding.UTF8 with
+    match runParserOnStream program initState "" stream System.Text.Encoding.UTF8 with
     | Failure(errorMsg, _, _) -> errorMsg |> ParseException |> raise
     | Success(_, s, _) ->
-        let revLabels = state.ReverseLabels ()
+        let revLabels = s.ReverseLabels ()
         let lab i = unqualify revLabels.[i]
         {
             ImportsFrom = imported |> Seq.map qnNode |> Seq.toList
             Exported = s.Exported |> Seq.map lab |> Seq.toList
-            Undefined = state.Undefined |> Seq.map unqualify |> Seq.toList
+            Undefined = s.Undefined |> Seq.map unqualify |> Seq.toList
         }
 
 let parseProgram

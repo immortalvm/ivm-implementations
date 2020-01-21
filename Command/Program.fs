@@ -64,22 +64,11 @@ let main argv =
                     asRun (fName ``source file``) (oName arg) (oName out) trace)
 
             com "check" "Assemble, run and check final stack" [
+                trace;
                 source
-            ] <| CommandHandler.Create(fun ``source file`` ->
-                    fName ``source file`` |> doCheck |> printfn "%s")
+            ] <| CommandHandler.Create(fun trace ``source file`` ->
+                    doCheck (fName ``source file``) trace |> printfn "%s")
 
-            com "gen" "Generate project file" [
-                (dirArg "root dir" "Source root directory").ExistingOnly()
-                strArg "goal" "The goal (relative filename without suffix)"
-            ] <| CommandHandler.Create(fun ``root dir`` goal ->
-                genProj (fName ``root dir``) goal)
-
-            com "build" "Build a project" [
-                opt "--incrementally" "Only rebuild if necessary" |> alias "-i"
-                (fileArg "project" "Project file").ExistingOnly()
-                dirArg "dest dir" "Destination directory"
-            ] <| CommandHandler.Create(fun incrementally project ``dest dir`` ->
-                build (fName project) (fName ``dest dir``) incrementally)
         ]
     try
         let version =

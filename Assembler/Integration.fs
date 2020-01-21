@@ -26,15 +26,14 @@ type AssemblerOutput = {
     Relatives: seq<int>
 }
 
-
 type Library = {
-    Nodes: string list
-    Exported: Map<string, string>            // symbol -> node
-    Dependencies: Map<string, string list>   // node -> nodes
-    Getter: string -> (string list) * Stream // node -> implicit imports, source
+    Contains: string -> bool            // node -> exists in library?
+    ExportedBy: string -> string option // symbol -> node
+    Dependencies: string -> Set<string> // node -> nodes
+    Get: string -> string list * Stream // node -> implicit imports, source
 }
 
-// This could be avoided if ConnectedComponents were generalized.
+// This helper method can be avoided if ConnectedComponents is generalized.
 let findComp (start: seq<int option * string>) (next: int option * string -> seq<int option * string>) =
     let toStr (num: int option, node: string) =
         let prefix = match num with
@@ -47,10 +46,13 @@ let findComp (start: seq<int option * string>) (next: int option * string -> seq
         num, str.[i+1..]
     let goal = ""
     let edges str = Seq.map toStr <| if str = goal then start else next (fromStr str)
-    findComponents goal edges |> Seq.map (Seq.map fromStr)
+    findComponents goal edges
+    |> Seq.skip 1 // Skip dummy goal component
+    |> Seq.map (Seq.map fromStr)
 
 type Chunk = string * (unit -> string list * Stream)
 
+// The node names in files must be unique.
 let private prepareBuild
     (files: (string * (unit -> Stream)) list) // node -> source
     (libraries: Library list) : seq<seq<Chunk>> =
@@ -64,7 +66,7 @@ let private prepareBuild
                 if List.contains other fileNodes then
                     None, other
                 else
-                    match Seq.tryFindIndex (fun lib -> List.contains other lib.Nodes) libraries with
+                    match Seq.tryFindIndex (fun lib -> lib.Contains other) libraries with
                     | Some libNum -> Some libNum, other
                     | _ -> sprintf "Not resolved node: %s in %s" other node |> ParseException |> raise
         ]
@@ -82,7 +84,7 @@ let private prepareBuild
                 | None ->
                     // Try libraries in order
                     let look (libNum: int, lib: Library) =
-                        match lib.Exported.TryFind u with
+                        match lib.ExportedBy u with
                         | Some other -> Some (libNum, other)
                         | None -> None
                     match Seq.indexed libraries |> Seq.map look |> Seq.tryFind Option.isSome with
@@ -101,7 +103,7 @@ let private prepareBuild
     let next (num, node) = 
         match num with
         | None -> allFileImports.[node] |> seq
-        | Some n -> withNum num libraries.[n].Dependencies.[node] 
+        | Some n -> withNum num <| libraries.[n].Dependencies node
 
     let get (num: int option, node: string) =
         match num with
@@ -113,14 +115,11 @@ let private prepareBuild
             node, fun () -> (List.map imp ii, str ())
         | Some n ->
             let lib = libraries.[n]
-            node, fun () -> lib.Getter node
+            node, fun () -> lib.Get node
 
     findComp (withNum None fileNodes) next
     |> Seq.rev
     |> Seq.map (Seq.rev >> Seq.map get)
-
-let nodePath rootDir extension (node: string) =
-    (Array.append [|rootDir|] (splitNodeString node) |> Path.Combine) + extension
 
 let showValue (x: int64) =
     let mutable hex = sprintf "%016X" x
@@ -219,6 +218,7 @@ let doCollect (outputs: seq<AssemblerOutput>): AssemblerOutput =
         Relatives=[]
     }
 
+// TODO: Build incrementally if "build directory" specified
 let doAssemble files libraries =
     let buildOrder = prepareBuild files libraries
     buildOrder |> doBuild [] |> doCollect // 64 KiB stack
