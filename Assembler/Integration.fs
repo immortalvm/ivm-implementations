@@ -9,13 +9,6 @@ open Assembler.Composition
 open Assembler.Namespace
 open Machine.Executor
 
-// These constants should be annotated [<Literal>], but then they can no longer
-// be made available through the signature file. This is (yet another) reason
-// to stop using signature files.
-let SOURCE_EXTENSION = ".s"
-let BINARY_EXTENSION = ".b"
-let SYMBOLS_EXTENSION = ".sym"
-
 type AssemblerOutput = {
     Node: string
     Binary: seq<uint8>
@@ -117,7 +110,7 @@ let private prepareBuild
     let get (num: int option, node: string) =
         match num with
         | None ->
-            let imp ((_, other), sym) = other + "." + sym
+            let imp ((_, other), sym) = nodeJoin [other; sym]
             let ((_, str), ii) =
                 Seq.zip files implicitImports
                 |> Seq.find (fst >> fst >> (=) node)

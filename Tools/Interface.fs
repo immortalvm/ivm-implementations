@@ -92,14 +92,14 @@ let parseSymbolsFile file =
     Seq.map readLine spacers |> Seq.map (fun (x, y) -> int x, y),
     Seq.map int relatives
 
-let assem sources sourceRoot binary symbols =
-    let ao = doAssemble (src sources sourceRoot) (libraries sourceRoot)
+let assem sources sourceRoot libs binary symbols =
+    let ao = doAssemble (src sources sourceRoot) (libraries sourceRoot libs)
     let primary = List.head sources
     let b = match binary with
-            | None -> Path.ChangeExtension(primary, "b")
+            | None -> Path.ChangeExtension(primary, BINARY_EXTENSION)
             | Some x -> x
     let s = match symbols with
-            | None -> Path.ChangeExtension(primary, "sym")
+            | None -> Path.ChangeExtension(primary, SYMBOLS_EXTENSION)
             | Some x -> x
     writeAssemblerOutput b s ao.Binary ao.Exported ao.Constants ao.Labels ao.Spacers ""
 
@@ -122,13 +122,13 @@ let run binary (argFile: string option) (outputDir: string option) shouldTrace =
               | None -> Array.empty
     let traceSyms =
         if shouldTrace
-        then Path.ChangeExtension(binary, "sym") |> readTraceSyms |> Some
+        then Path.ChangeExtension(binary, SYMBOLS_EXTENSION) |> readTraceSyms |> Some
         else None
     let stack = doRun bytes arg outputDir traceSyms
     if traceSyms.IsNone then writeStack stack
 
-let asRun sources sourceRoot argFile outputDir shouldTrace =
-    let ao = doAssemble (src sources sourceRoot) (libraries sourceRoot)
+let asRun sources sourceRoot libs argFile outputDir shouldTrace =
+    let ao = doAssemble (src sources sourceRoot) (libraries sourceRoot libs)
     if shouldTrace then
         for name, pos in Seq.sortBy fst ao.Exported do
             printfn "%20s %6d" name pos

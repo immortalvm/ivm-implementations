@@ -4,7 +4,6 @@ open System.CommandLine
 open System.CommandLine.Invocation
 open System.CommandLine.Builder
 
-open Assembler.Ast
 open Tools.Interface
 open Tools.Checks
 
@@ -19,8 +18,7 @@ let main argv =
 
     let strArg (name: string) (descr: string) = Argument<string>(name, Description=descr)
     let fileArg (name: string) (descr: string) = Argument<FileInfo>(name, Description=descr)
-    //let fileArgs (name: string) (descr: string) = Argument<FileInfo>(name, Description=descr, Arity=ArgumentArity.OneOrMore)
-    let dirArg (name: string) (descr: string) = Argument<DirectoryInfo>(name, Description=descr)
+    let dirArg (name: string) (descr: string) = Argument<DirectoryInfo>(name, Description=descr, Arity=ArgumentArity.ZeroOrOne)
 
     let opt (name: string) (descr: string) : Option =
         Option(name, Description=descr)
@@ -40,9 +38,13 @@ let main argv =
     let arg = argOpt "--arg" "Specify argument file (default: none)" <| (fileArg "argument file" null).ExistingOnly()
     let out = argOpt "--out" "Specify output directory (default: none)" <| dirArg "output directory" null
 
+    // TODO: Allow multiple libraries.
+    let library = argOpt "--library" "Specify a library" <| (fileArg "library" null).ExistingOnly() |> alias "-l"
+
     let fName (fsi: FileSystemInfo) : string = fsi.FullName
     let fNames (fsis: seq<FileSystemInfo>) : string list =
-        Seq.map (fun (fsi: FileSystemInfo) -> fsi.FullName) fsis |> Seq.toList
+        if fsis = null then []
+        else Seq.map (fun (fsi: FileSystemInfo) -> fsi.FullName) fsis |> Seq.toList
     let oName (fsi: FileSystemInfo) : string option =
         if fsi = null then None else Some fsi.FullName
 
@@ -52,9 +54,9 @@ let main argv =
             com "as" "Assemble source files" [
                 (argOpt "--bin" "Specify output binary file (default: <name>.b)" <| fileArg "binary file" null)
                 (argOpt "--sym" "Specify output symbol file (default: <name>.sym)" <| fileArg "symbol file" null)
-                root; sources
-            ] <| CommandHandler.Create(fun bin sym root ``source files`` ->
-                    assem (fNames ``source files``) (oName root) (oName bin) (oName sym))
+                root; sources; library
+            ] <| CommandHandler.Create(fun bin sym root ``source files`` library ->
+                    assem (fNames ``source files``) (oName root) (Option.toList <| oName library) (oName bin) (oName sym))
 
             com "run" "Execute binary" [
                 trace; arg; out
@@ -64,15 +66,15 @@ let main argv =
 
             com "as-run" "Assemble and run" [
                 trace; arg; out
-                root; sources
-            ] <| CommandHandler.Create(fun trace arg out root ``source files`` ->
-                    asRun (fNames ``source files``) (oName root) (oName arg) (oName out) trace)
+                root; sources; library
+            ] <| CommandHandler.Create(fun trace arg out root ``source files`` library ->
+                    asRun (fNames ``source files``) (oName root) (Option.toList <| oName library) (oName arg) (oName out) trace)
 
             com "check" "Assemble, run and check final stack" [
                 trace;
-                root; sources
-            ] <| CommandHandler.Create(fun trace (root: DirectoryInfo) ``source files`` ->
-                    doCheck (fNames ``source files``) (oName root) trace |> printfn "%s")
+                root; sources; library
+            ] <| CommandHandler.Create(fun trace root ``source files`` library ->
+                    doCheck (fNames ``source files``) (oName root) (Option.toList <| oName library) trace |> printfn "%s")
 
         ]
     try

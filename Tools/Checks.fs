@@ -40,10 +40,10 @@ let private firstDiff s1 s2 =
   Seq.mapi2 (fun i s p -> i,s,p) s1 s2
   |> Seq.find (function | _ , Some s, Some p when s = p -> false | _ -> true)
 
-let doCheck filenames (sourceRoot: string option) shouldTrace =
+let doCheck filenames (sourceRoot: string option) libs shouldTrace =
     let mutable revOutput = []
     let output msg = revOutput <- msg :: revOutput
-    let ao = doAssemble (src filenames sourceRoot) (libraries sourceRoot)
+    let ao = doAssemble (src filenames sourceRoot) (libraries sourceRoot libs)
     let primary = List.head filenames
     let expectationsFound = File.ReadLines primary
                             |> Seq.exists isExpectationHeading

@@ -39,7 +39,7 @@ main:
     some_constant = 17
     jump! after_data
 my_data:
-    data4 [ (* some_constant (+ after_data -initial_stack_pointer)) ]
+    data4 [ (* some_constant (+ after_data -heap_start)) ]
 after_data:
     push! (load4 my_data)       # Push 408 (17*24) onto the stack.
 
