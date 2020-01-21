@@ -82,10 +82,7 @@ let main argv =
             let v = assembly.GetName().Version
             sprintf "v%d.%d" v.Major v.Minor
         printfn "iVM Assembler and VM, %s" version
-        root.Invoke argv
+        CommandLineBuilder(root).Build().Invoke argv
     with
         :? System.Reflection.TargetInvocationException as e ->
-            printfn "%s" e.InnerException.Message; 1
-        //// Failure msg -> printfn "HERE: %s" msg; 1
-    //finally
-        //printfn "HHH"
+            printfn "%O" <| e.InnerException.Message; 1

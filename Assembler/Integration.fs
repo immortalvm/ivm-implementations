@@ -138,30 +138,27 @@ let showValue (x: int64) =
 
 // Build one (mutually dependent) component.
 let private buildOne (comp: Chunk list) (extSymbols: string -> (bool * int64) option) =
-    try
-        let program, exported, labels = parseProgram comp extSymbols
-        //for line in program do printfn "%O" line
+    let program, exported, labels = parseProgram comp extSymbols
+    //for line in program do printfn "%O" line
 
-        let bytes, symbols, spacers, relatives, exports = assemble program
-        let exp = [ for i in exported -> labels.[i], exports.[i] ]
-        {
-            Node = fst comp.[0]
-            Binary = bytes
-            Exported = [ for (l, (r, v)) in exp do if r then yield l, v ]
-            Constants = [ for (l, (r, v)) in exp do if not r then yield l, v ]
-            Labels = [
-                for pair in labels do
-                    let i = pair.Key
-                    if i < symbols.Length then
-                        let pos = symbols.[i]
-                        if pos >= 0 then
-                            yield pair.Value, int64 pos
-            ]
-            Spacers = spacers
-            Relatives = relatives
-        }
-    with
-        ParseException(msg) -> failwith msg
+    let bytes, symbols, spacers, relatives, exports = assemble program
+    let exp = [ for i in exported -> labels.[i], exports.[i] ]
+    {
+        Node = fst comp.[0]
+        Binary = bytes
+        Exported = [ for (l, (r, v)) in exp do if r then yield l, v ]
+        Constants = [ for (l, (r, v)) in exp do if not r then yield l, v ]
+        Labels = [
+            for pair in labels do
+                let i = pair.Key
+                if i < symbols.Length then
+                    let pos = symbols.[i]
+                    if pos >= 0 then
+                        yield pair.Value, int64 pos
+        ]
+        Spacers = spacers
+        Relatives = relatives
+    }
 
 let doBuild (reused: seq<AssemblerOutput>) (buildOrder: seq<seq<Chunk>>) : seq<AssemblerOutput> =
     let mutable currentSize : int64 = 0L
@@ -229,8 +226,11 @@ let doCollect (outputs: seq<AssemblerOutput>): AssemblerOutput =
 
 // TODO: Build incrementally if "build directory" specified
 let doAssemble files libraries =
-    let buildOrder = prepareBuild files libraries
-    buildOrder |> doBuild [] |> doCollect // 64 KiB stack
+    try
+        let buildOrder = prepareBuild files libraries
+        buildOrder |> doBuild [] |> doCollect // 64 KiB stack
+    with
+        ParseException(msg) -> failwith msg
 
 let doRun binary arg outputDir traceSyms =
     try
