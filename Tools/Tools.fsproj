@@ -4,6 +4,7 @@
     <RuntimeFrameworkVersion>3.0.0</RuntimeFrameworkVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Helpers.fs" />
     <Compile Include="Checks.fs" />
     <Compile Include="Interface.fs" />
   </ItemGroup>

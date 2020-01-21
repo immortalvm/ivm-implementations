@@ -2,8 +2,10 @@
 
 open System.IO
 open Assembler.Integration
+open Tools.Helpers
 
 open FParsec
+
 
 let private expectationHeading : Parser<unit, unit> =
     spaces >>. many1 (skipChar '#')
@@ -38,22 +40,24 @@ let private firstDiff s1 s2 =
   Seq.mapi2 (fun i s p -> i,s,p) s1 s2
   |> Seq.find (function | _ , Some s, Some p when s = p -> false | _ -> true)
 
-let doCheck fileName =
+let doCheck filenames (sourceRoot: string option) libs shouldTrace =
     let mutable revOutput = []
     let output msg = revOutput <- msg :: revOutput
-    let binary = (doAssemble fileName).Binary
-    output <| sprintf "Binary size: %d" (Seq.length binary)
-
-    let expectationsFound = File.ReadLines fileName
+    let ao = doAssemble (src filenames sourceRoot) (libraries sourceRoot libs)
+    let primary = List.head filenames
+    let expectationsFound = File.ReadLines primary
                             |> Seq.exists isExpectationHeading
 
     if not expectationsFound
     then output "Not executed since no expectations were found."
     else
-        let actual = doRun binary Seq.empty None None
+        let traceSyms =
+            if not shouldTrace then None
+            else ao.Labels |> Seq.map (fun (sym, pos) -> int pos, sym) |> Map |> Some
 
+        let actual = doRun ao.Binary Seq.empty None traceSyms
         let expected =
-            File.ReadLines fileName
+            File.ReadLines primary
             |> Seq.skipWhile (isExpectationHeading >> not)
             |> Seq.append [""]
             |> Seq.skip 1 // Skip the heading

@@ -1,0 +1,99 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <GenerateProgramFile>false</GenerateProgramFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="4.7.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Assembler.Tests\test_code\test_self_referential_expressions.s">
+      <Link>test_code\test_self_referential_expressions.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Assembler.Tests\test_code\ex1_old.s">
+      <Link>test_code\ex1_old.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Assembler.Tests\test_code\ex4_short_video.s">
+      <Link>test_code\ex4_short_video.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Assembler.Tests\test_code\test_linking3.s">
+      <Link>test_code\test_linking3.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Assembler.Tests\test_code\test_regression_6.s">
+      <Link>test_code\test_regression_6.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Assembler.Tests\test_code\test_labels_in_data8.s">
+      <Link>test_code\test_labels_in_data8.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Assembler.Tests\test_code\ex0_push_zero.s">
+      <Link>test_code\ex0_push_zero.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Assembler.Tests\test_code\test_expressions.s">
+      <Link>test_code\test_expressions.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Assembler.Tests\test_code\intro2_basics.s">
+      <Link>test_code\intro2_basics.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Assembler.Tests\test_code\test_circular1.s">
+      <Link>test_code\test_circular1.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Assembler.Tests\test_code\test_linking2.s">
+      <Link>test_code\test_linking2.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Assembler.Tests\test_code\ex5_write_decimal_number.s">
+      <Link>test_code\ex5_write_decimal_number.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Assembler.Tests\test_code\intro3_advanced.s">
+      <Link>test_code\intro3_advanced.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Assembler.Tests\test_code\ex2_check_count_down.s">
+      <Link>test_code\ex2_check_count_down.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Assembler.Tests\test_code\test_circular2.s">
+      <Link>test_code\test_circular2.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Assembler.Tests\test_code\ex3_quick_sort.s">
+      <Link>test_code\ex3_quick_sort.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Assembler.Tests\test_code\test_data_repetition.s">
+      <Link>test_code\test_data_repetition.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Assembler.Tests\test_code\test_linking1.s">
+      <Link>test_code\test_linking1.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Assembler.Tests\test_code\intro1_statements.s">
+      <Link>test_code\intro1_statements.s</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <PackageReference Include="Expecto" Version="8.13.1" />
+    <PackageReference Include="FsCheck" Version="3.0.0-alpha4" />
+    <ProjectReference Include="..\Machine\Machine.fsproj" />
+    <PackageReference Include="Unquote" Version="5.0.0" />
+    <ProjectReference Include="..\Tools\Tools.fsproj" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0-preview-20200102-01" />
+    <PackageReference Include="Expecto.FsCheck" Version="8.13.1" />
+    <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.8.0" />
+    <ProjectReference Include="..\Assembler\Assembler.fsproj" />
+    <Compile Include="ZipLibraryTests.fs" />
+    <Compile Include="Main.fs" />
+  </ItemGroup>
+</Project>

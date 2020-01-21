@@ -20,7 +20,7 @@ let parse (progString: string) =
                       | "intro2_basics/x" -> Some (true, 999L)
                       | _ -> None
     let bytes = System.Text.Encoding.UTF8.GetBytes progString
-    let bin, _, _ = parseProgram [("source", fun () -> upcast (new MemoryStream(bytes)))] lookup
+    let bin, _, _ = parseProgram [("source", fun () -> [], upcast (new MemoryStream(bytes)))] lookup
     bin
 
 // Opposite order of Expect.* (for convenience).

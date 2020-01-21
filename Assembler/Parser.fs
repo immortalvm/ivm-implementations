@@ -1,4 +1,6 @@
 ﻿module Assembler.Parser
+
+open System.IO
 open FParsec
 open Machine.Utils
 open Assembler.Ast
@@ -144,10 +146,27 @@ type State = {
             then fun _ -> Reply (Error, expected "Imports must be qualified.")
             else State.DefLabel (Seq.last ids) >>= State.RegisterImport ids
 
+        static member ImplicitImports (imports: string list) =
+            match imports with
+            | [] -> preturn ()
+            | imp::rest -> State.ObsImport (splitNodeString imp |> Array.toList) >>. State.ImplicitImports rest
+
         static member Abbrev (i, e) (str: CharStream<State>) =
             let s = str.UserState
             str.UserState <- { s with Defs = s.Defs.Add (i, e) }
             Reply ([] : Statement list)
+
+        // Used after the parsing is done
+
+        member s.ReverseLabels (): Map<int, string> =
+            reverseMap s.Labels
+
+        // Qualified names
+        member s.Undefined = seq {
+            for pair in s.Labels do
+                if pair.Value < 0 then
+                    yield pair.Key
+        }
 
 let identifier: Parser<string, State> = identifierNoWhitespace .>> whitespace
 
@@ -370,33 +389,54 @@ let program : Parser<Statement list, State> =
     |>> List.concat
     .>> eof
 
+type AnalysisResult = {
+    ImportsFrom: string list // nodes
+    Exported: string list    // identifiers
+    Undefined: string list   // identifiers (implicit imports)
+}
+
+let analyze (streamFun: unit -> Stream): AnalysisResult =
+    let mutable imported : Set<string> = set []
+    let extSym qn =
+        imported <- imported.Add qn
+        Some (true, 0L)
+    let initState = State.Init extSym ["#"] 0
+    use stream = streamFun ()
+    match runParserOnStream program initState "" stream System.Text.Encoding.UTF8 with
+    | Failure(errorMsg, _, _) -> errorMsg |> ParseException |> raise
+    | Success(_, s, _) ->
+        let revLabels = s.ReverseLabels ()
+        let lab i = unqualify revLabels.[i]
+        {
+            ImportsFrom = imported |> Seq.map qnNode |> Seq.toList
+            Exported = s.Exported |> Seq.map lab |> Seq.toList
+            Undefined = s.Undefined |> Seq.map unqualify |> Seq.toList
+        }
 
 let parseProgram
-    (comp: (string * (unit -> System.IO.Stream)) list)
+    (comp: (string * (unit -> string list * Stream)) list)
     (extSymbols: string -> (bool * int64) option) : Statement list * Set<int> * Map<int, string> =
     let mutable state = State.Init extSymbols (List.map fst comp) 0
 
-    let parse streamFun =
-        use stream = streamFun ()
-        match runParserOnStream program state "" stream System.Text.Encoding.UTF8 with
+    let parse pairFun =
+        let pair = pairFun ()
+        use stream = snd pair
+        let parser = State.ImplicitImports (fst pair) >>. program
+        match runParserOnStream parser state "" stream System.Text.Encoding.UTF8 with
         | Success(result, s, _) ->
             state <- { s with NodeIndex = s.NodeIndex + 1 }
             result
         | Failure(errorMsg, _, _) -> errorMsg |> ParseException |> raise
     let result = comp |> Seq.map (snd >> parse) |> Seq.concat |> Seq.toList
 
-    let missing = [
-        for pair in state.Labels do
-            if pair.Value < 0
-            then yield pair.Key
-    ]
+    let missing = Seq.toList state.Undefined
     if not missing.IsEmpty then
         sprintf "Label%s not found: %s"
                  (if missing.Length > 1 then "s" else "")
                  (System.String.Join(", ", missing))
              |> ParseException |> raise
 
-    let revLabels = reverseMap state.Labels
+    let revLabels = state.ReverseLabels ()
     let notExported = [
         for i in state.ExportAwaited do
             if not (state.Exported.Contains i)
@@ -414,4 +454,3 @@ let parseProgram
                |> pushReduction
                |> Seq.toList
     prog, state.Exported, revLabels
-

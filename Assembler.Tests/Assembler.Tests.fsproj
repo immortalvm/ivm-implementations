@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="test_code\" />
+    <Folder Include="test_code\implicit_imports\" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="FSharp.Core" Version="4.7.0" />
@@ -17,7 +18,9 @@
     <None Include="test_code\intro2_basics.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="test_code\intro3_advanced.s" />
+    <None Include="test_code\intro3_advanced.s">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="test_code\ex0_push_zero.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -66,19 +69,25 @@
     <None Include="test_code\test_data_repetition.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="test_code\implicit_imports\test_circular1.s">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="test_code\implicit_imports\test_circular2.s">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <Compile Include="GenParserTests.fs" />
     <Compile Include="ProgParserTests.fs" />
     <Compile Include="CompositionTests.fs" />
     <Compile Include="IntegrationTests.fs" />
     <Compile Include="Main.fs" />
-    <PackageReference Include="Expecto" Version="8.13.1" />
-    <PackageReference Include="FsCheck" Version="3.0.0-alpha4" />
-    <ProjectReference Include="..\Machine\Machine.fsproj" />
-    <PackageReference Include="Unquote" Version="5.0.0" />
-    <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.8.0" />
-    <ProjectReference Include="..\Assembler\Assembler.fsproj" />
-    <PackageReference Include="Expecto.FsCheck" Version="8.13.1" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0-preview-20200102-01" />
     <ProjectReference Include="..\Tools\Tools.fsproj" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0-preview-20200102-01" />
+    <PackageReference Include="Expecto.FsCheck" Version="8.13.1" />
+    <PackageReference Include="Expecto" Version="8.13.1" />
+    <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.8.0" />
+    <PackageReference Include="Unquote" Version="5.0.0" />
+    <PackageReference Include="FsCheck" Version="3.0.0-alpha4" />
+    <ProjectReference Include="..\Assembler\Assembler.fsproj" />
+    <ProjectReference Include="..\Machine\Machine.fsproj" />
   </ItemGroup>
 </Project>

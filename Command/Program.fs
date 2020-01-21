@@ -18,7 +18,7 @@ let main argv =
 
     let strArg (name: string) (descr: string) = Argument<string>(name, Description=descr)
     let fileArg (name: string) (descr: string) = Argument<FileInfo>(name, Description=descr)
-    let dirArg (name: string) (descr: string) = Argument<DirectoryInfo>(name, Description=descr)
+    let dirArg (name: string) (descr: string) = Argument<DirectoryInfo>(name, Description=descr, Arity=ArgumentArity.ZeroOrOne)
 
     let opt (name: string) (descr: string) : Option =
         Option(name, Description=descr)
@@ -32,24 +32,32 @@ let main argv =
         opt.AddAlias(name)
         opt
 
-    let source = (fileArg "source file" "Name of source file (<name>.s)").ExistingOnly()
+    let sources = Argument<FileInfo[]>("source files", Description="Names of source files (<name>.s)", Arity=ArgumentArity.OneOrMore).ExistingOnly()
+    let root = argOpt "--root" "Name of source root directory (default: none)" (dirArg "root" null) |> alias "-r"
     let trace = opt "--trace" "Turn on trace output" |> alias "-t"
     let arg = argOpt "--arg" "Specify argument file (default: none)" <| (fileArg "argument file" null).ExistingOnly()
     let out = argOpt "--out" "Specify output directory (default: none)" <| dirArg "output directory" null
 
+    // TODO: Allow multiple libraries.
+    let library = argOpt "--library" "Specify a library" <| (fileArg "library" null).ExistingOnly() |> alias "-l"
+
+    // TODO: Expand ~ in paths
     let fName (fsi: FileSystemInfo) : string = fsi.FullName
+    let fNames (fsis: seq<FileSystemInfo>) : string list =
+        if fsis = null then []
+        else Seq.map (fun (fsi: FileSystemInfo) -> fsi.FullName) fsis |> Seq.toList
     let oName (fsi: FileSystemInfo) : string option =
         if fsi = null then None else Some fsi.FullName
 
-    let root =
+    let rootCommand =
         extend (RootCommand("ivm", Description="iVM Assembler and VM")) [
 
-            com "as" "Assemble source file" [
+            com "as" "Assemble source files" [
                 (argOpt "--bin" "Specify output binary file (default: <name>.b)" <| fileArg "binary file" null)
                 (argOpt "--sym" "Specify output symbol file (default: <name>.sym)" <| fileArg "symbol file" null)
-                source
-            ] <| CommandHandler.Create(fun bin sym ``source file`` ->
-                    assem (fName ``source file``) (oName bin) (oName sym))
+                root; sources; library
+            ] <| CommandHandler.Create(fun bin sym root ``source files`` library ->
+                    assem (fNames ``source files``) (oName root) (Option.toList <| oName library) (oName bin) (oName sym))
 
             com "run" "Execute binary" [
                 trace; arg; out
@@ -59,27 +67,21 @@ let main argv =
 
             com "as-run" "Assemble and run" [
                 trace; arg; out
-                source
-            ] <| CommandHandler.Create(fun trace arg out ``source file`` ->
-                    asRun (fName ``source file``) (oName arg) (oName out) trace)
+                root; sources; library
+            ] <| CommandHandler.Create(fun trace arg out root ``source files`` library ->
+                    asRun (fNames ``source files``) (oName root) (Option.toList <| oName library) (oName arg) (oName out) trace)
 
             com "check" "Assemble, run and check final stack" [
-                source
-            ] <| CommandHandler.Create(fun ``source file`` ->
-                    fName ``source file`` |> doCheck |> printfn "%s")
+                trace;
+                root; sources; library
+            ] <| CommandHandler.Create(fun trace root ``source files`` library ->
+                    doCheck (fNames ``source files``) (oName root) (Option.toList <| oName library) trace |> printfn "%s")
 
-            com "gen" "Generate project file" [
-                (dirArg "root dir" "Source root directory").ExistingOnly()
-                strArg "goal" "The goal (relative filename without suffix)"
-            ] <| CommandHandler.Create(fun ``root dir`` goal ->
-                genProj (fName ``root dir``) goal)
-
-            com "build" "Build a project" [
-                opt "--incrementally" "Only rebuild if necessary" |> alias "-i"
-                (fileArg "project" "Project file").ExistingOnly()
-                dirArg "dest dir" "Destination directory"
-            ] <| CommandHandler.Create(fun incrementally project ``dest dir`` ->
-                build (fName project) (fName ``dest dir``) incrementally)
+            com "lib" "Create library" [
+                Argument<DirectoryInfo>("directory", Description="Root directory of the library files").ExistingOnly()
+                fileArg "library" "Library filename"
+            ] <| CommandHandler.Create(fun directory library ->
+                    createLibrary (fName directory) (fName library))
         ]
     try
         let version =
@@ -87,6 +89,7 @@ let main argv =
             let v = assembly.GetName().Version
             sprintf "v%d.%d" v.Major v.Minor
         printfn "iVM Assembler and VM, %s" version
-        root.Invoke(argv)
+        CommandLineBuilder(rootCommand).Build().Invoke argv
     with
-        Failure msg -> printfn "%s" msg; 1
+        :? System.Reflection.TargetInvocationException as e ->
+            printfn "%O" <| e.InnerException.Message; 1
