@@ -225,7 +225,7 @@ let doCollect (outputs: seq<AssemblerOutput>): AssemblerOutput =
     }
 
 // TODO: Build incrementally if "build directory" specified
-let doAssemble files libraries =
+let doAssemble files libraries : AssemblerOutput =
     try
         let buildOrder = prepareBuild files libraries
         buildOrder |> doBuild [] |> doCollect // 64 KiB stack

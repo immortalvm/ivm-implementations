@@ -14,11 +14,16 @@ let private uniqueFullPaths (filenames: seq<string>) =
                 yield full
     }
 
+let relativePathWithoutExtension relativeTo path =
+    let rel = Path.GetRelativePath (relativeTo, path)
+    let stop = rel.Length - (Path.GetExtension rel).Length
+    rel.[..stop-1]
+
 let private relativeNodes (fullPaths: seq<string>) (sourceRoot: string): seq<string * string> =
     seq {
         for path in fullPaths ->
             // Does this work if path is not below sourceRoot?
-            Path.GetRelativePath (path, sourceRoot), path
+            (relativePathWithoutExtension sourceRoot path), path
     }
 
 let private nonRelativeNodes (fullPaths: seq<string>): seq<string * string> =
@@ -62,7 +67,8 @@ let emptyLibrary = {
 // We only support explicit imports with this library
 let private rootLib (sourceRoot: string): Library =
     let path node = nodePath sourceRoot SOURCE_EXTENSION node
-    let contains (node: string) = File.Exists <| path node
+    let contains (node: string) =
+        File.Exists <| path node
     let exportedBy (_: string): string option = None
     let dependencies (node: string) : Set<string> =
         let filename = path node

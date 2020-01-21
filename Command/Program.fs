@@ -35,8 +35,7 @@ let main argv =
         opt
 
     let sources = Argument<FileInfo[]>("source files", Description="Names of source files (<name>.s)", Arity=ArgumentArity.OneOrMore).ExistingOnly()
-    // (fileArgs "source files" "Names of source files (<name>.s)").ExistingOnly()
-    let root = argOpt "--root" "Name of source root directory (default: none)" <| (dirArg "source root" null)
+    let root = argOpt "--root" "Name of source root directory (default: none)" (dirArg "root" null) |> alias "-r"
     let trace = opt "--trace" "Turn on trace output" |> alias "-t"
     let arg = argOpt "--arg" "Specify argument file (default: none)" <| (fileArg "argument file" null).ExistingOnly()
     let out = argOpt "--out" "Specify output directory (default: none)" <| dirArg "output directory" null
@@ -47,15 +46,15 @@ let main argv =
     let oName (fsi: FileSystemInfo) : string option =
         if fsi = null then None else Some fsi.FullName
 
-    let root =
+    let rootCommand =
         extend (RootCommand("ivm", Description="iVM Assembler and VM")) [
 
             com "as" "Assemble source files" [
                 (argOpt "--bin" "Specify output binary file (default: <name>.b)" <| fileArg "binary file" null)
                 (argOpt "--sym" "Specify output symbol file (default: <name>.sym)" <| fileArg "symbol file" null)
                 root; sources
-            ] <| CommandHandler.Create(fun bin sym ``source root````source files`` ->
-                    assem (fNames ``source files``) ``source root`` (oName bin) (oName sym))
+            ] <| CommandHandler.Create(fun bin sym root ``source files`` ->
+                    assem (fNames ``source files``) (oName root) (oName bin) (oName sym))
 
             com "run" "Execute binary" [
                 trace; arg; out
@@ -66,14 +65,14 @@ let main argv =
             com "as-run" "Assemble and run" [
                 trace; arg; out
                 root; sources
-            ] <| CommandHandler.Create(fun trace arg out ``source root`` ``source files`` ->
-                    asRun (fNames ``source files``) ``source root`` (oName arg) (oName out) trace)
+            ] <| CommandHandler.Create(fun trace arg out root ``source files`` ->
+                    asRun (fNames ``source files``) (oName root) (oName arg) (oName out) trace)
 
             com "check" "Assemble, run and check final stack" [
                 trace;
                 root; sources
-            ] <| CommandHandler.Create(fun trace ``source root`` ``source files`` ->
-                    doCheck (fNames ``source files``) ``source root`` trace |> printfn "%s")
+            ] <| CommandHandler.Create(fun trace (root: DirectoryInfo) ``source files`` ->
+                    doCheck (fNames ``source files``) (oName root) trace |> printfn "%s")
 
         ]
     try
@@ -82,7 +81,7 @@ let main argv =
             let v = assembly.GetName().Version
             sprintf "v%d.%d" v.Major v.Minor
         printfn "iVM Assembler and VM, %s" version
-        CommandLineBuilder(root).Build().Invoke argv
+        CommandLineBuilder(rootCommand).Build().Invoke argv
     with
         :? System.Reflection.TargetInvocationException as e ->
             printfn "%O" <| e.InnerException.Message; 1

@@ -43,9 +43,7 @@ let private firstDiff s1 s2 =
 let doCheck filenames (sourceRoot: string option) shouldTrace =
     let mutable revOutput = []
     let output msg = revOutput <- msg :: revOutput
-    let binary = (doAssemble (src filenames sourceRoot) (libraries sourceRoot)).Binary
-    output <| sprintf "Binary size: %d" (Seq.length binary)
-
+    let ao = doAssemble (src filenames sourceRoot) (libraries sourceRoot)
     let primary = List.head filenames
     let expectationsFound = File.ReadLines primary
                             |> Seq.exists isExpectationHeading
@@ -53,8 +51,11 @@ let doCheck filenames (sourceRoot: string option) shouldTrace =
     if not expectationsFound
     then output "Not executed since no expectations were found."
     else
-        let actual = doRun binary Seq.empty None (if shouldTrace then Some Map.empty else None)
+        let traceSyms = 
+            if not shouldTrace then None
+            else ao.Labels |> Seq.map (fun (sym, pos) -> int pos, sym) |> Map |> Some
 
+        let actual = doRun ao.Binary Seq.empty None traceSyms
         let expected =
             File.ReadLines primary
             |> Seq.skipWhile (isExpectationHeading >> not)
