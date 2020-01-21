@@ -41,6 +41,7 @@ let main argv =
     // TODO: Allow multiple libraries.
     let library = argOpt "--library" "Specify a library" <| (fileArg "library" null).ExistingOnly() |> alias "-l"
 
+    // TODO: Expand ~ in paths
     let fName (fsi: FileSystemInfo) : string = fsi.FullName
     let fNames (fsis: seq<FileSystemInfo>) : string list =
         if fsis = null then []
@@ -77,7 +78,7 @@ let main argv =
                     doCheck (fNames ``source files``) (oName root) (Option.toList <| oName library) trace |> printfn "%s")
 
             com "lib" "Create library" [
-                Argument<DirectoryInfo>("directory", Description="Root directory of the library files")
+                Argument<DirectoryInfo>("directory", Description="Root directory of the library files").ExistingOnly()
                 fileArg "library" "Library filename"
             ] <| CommandHandler.Create(fun directory library ->
                     createLibrary (fName directory) (fName library))

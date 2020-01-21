@@ -145,4 +145,4 @@ let asRun sources sourceRoot libs argFile outputDir shouldTrace =
 
 let createLibrary rootDirectory libraryFileName =
     dirToZipLib rootDirectory libraryFileName
-    printfn "Library created: %s" libraryFileNem
+    printfn "Library created: %s" libraryFileName
