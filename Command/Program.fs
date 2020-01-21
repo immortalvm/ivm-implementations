@@ -4,6 +4,7 @@ open System.CommandLine
 open System.CommandLine.Invocation
 open System.CommandLine.Builder
 
+open Assembler.Ast
 open Tools.Interface
 open Tools.Checks
 
@@ -18,6 +19,7 @@ let main argv =
 
     let strArg (name: string) (descr: string) = Argument<string>(name, Description=descr)
     let fileArg (name: string) (descr: string) = Argument<FileInfo>(name, Description=descr)
+    //let fileArgs (name: string) (descr: string) = Argument<FileInfo>(name, Description=descr, Arity=ArgumentArity.OneOrMore)
     let dirArg (name: string) (descr: string) = Argument<DirectoryInfo>(name, Description=descr)
 
     let opt (name: string) (descr: string) : Option =
@@ -32,24 +34,28 @@ let main argv =
         opt.AddAlias(name)
         opt
 
-    let source = (fileArg "source file" "Name of source file (<name>.s)").ExistingOnly()
+    let sources = Argument<FileInfo[]>("source files", Description="Names of source files (<name>.s)", Arity=ArgumentArity.OneOrMore).ExistingOnly()
+    // (fileArgs "source files" "Names of source files (<name>.s)").ExistingOnly()
+    let root = argOpt "--root" "Name of source root directory (default: none)" <| (dirArg "source root" null)
     let trace = opt "--trace" "Turn on trace output" |> alias "-t"
     let arg = argOpt "--arg" "Specify argument file (default: none)" <| (fileArg "argument file" null).ExistingOnly()
     let out = argOpt "--out" "Specify output directory (default: none)" <| dirArg "output directory" null
 
     let fName (fsi: FileSystemInfo) : string = fsi.FullName
+    let fNames (fsis: seq<FileSystemInfo>) : string list =
+        Seq.map (fun (fsi: FileSystemInfo) -> fsi.FullName) fsis |> Seq.toList
     let oName (fsi: FileSystemInfo) : string option =
         if fsi = null then None else Some fsi.FullName
 
     let root =
         extend (RootCommand("ivm", Description="iVM Assembler and VM")) [
 
-            com "as" "Assemble source file" [
+            com "as" "Assemble source files" [
                 (argOpt "--bin" "Specify output binary file (default: <name>.b)" <| fileArg "binary file" null)
                 (argOpt "--sym" "Specify output symbol file (default: <name>.sym)" <| fileArg "symbol file" null)
-                source
-            ] <| CommandHandler.Create(fun bin sym ``source file`` ->
-                    assem (fName ``source file``) (oName bin) (oName sym))
+                root; sources
+            ] <| CommandHandler.Create(fun bin sym ``source root````source files`` ->
+                    assem (fNames ``source files``) ``source root`` (oName bin) (oName sym))
 
             com "run" "Execute binary" [
                 trace; arg; out
@@ -59,15 +65,15 @@ let main argv =
 
             com "as-run" "Assemble and run" [
                 trace; arg; out
-                source
-            ] <| CommandHandler.Create(fun trace arg out ``source file`` ->
-                    asRun (fName ``source file``) (oName arg) (oName out) trace)
+                root; sources
+            ] <| CommandHandler.Create(fun trace arg out ``source root`` ``source files`` ->
+                    asRun (fNames ``source files``) ``source root`` (oName arg) (oName out) trace)
 
             com "check" "Assemble, run and check final stack" [
                 trace;
-                source
-            ] <| CommandHandler.Create(fun trace ``source file`` ->
-                    doCheck (fName ``source file``) trace |> printfn "%s")
+                root; sources
+            ] <| CommandHandler.Create(fun trace ``source root`` ``source files`` ->
+                    doCheck (fNames ``source files``) ``source root`` trace |> printfn "%s")
 
         ]
     try
@@ -76,6 +82,10 @@ let main argv =
             let v = assembly.GetName().Version
             sprintf "v%d.%d" v.Major v.Minor
         printfn "iVM Assembler and VM, %s" version
-        root.Invoke(argv)
+        root.Invoke argv
     with
-        Failure msg -> printfn "%s" msg; 1
+        :? System.Reflection.TargetInvocationException as e ->
+            printfn "%s" e.InnerException.Message; 1
+        //// Failure msg -> printfn "HERE: %s" msg; 1
+    //finally
+        //printfn "HHH"

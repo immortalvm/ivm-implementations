@@ -14,7 +14,7 @@ let DIRECTORY = "test_code"
 
 let check fileName =
     try
-        let message = doCheck <| fileName
+        let message = doCheck [fileName] (Some <| Path.GetDirectoryName fileName) false
         Expect.isNotMatch message "^Not executed" "Expectations not found"
     with
         | Failure(msg) -> failtest msg

@@ -34,7 +34,7 @@ type Library = {
 }
 
 // This helper method can be avoided if ConnectedComponents is generalized.
-let findComp (start: seq<int option * string>) (next: int option * string -> seq<int option * string>) =
+let private findComp (start: seq<int option * string>) (next: int option * string -> seq<int option * string>) =
     let toStr (num: int option, node: string) =
         let prefix = match num with
                      | None -> ""
@@ -53,18 +53,20 @@ let findComp (start: seq<int option * string>) (next: int option * string -> seq
 type Chunk = string * (unit -> string list * Stream)
 
 // The node names in files must be unique.
+// The first library is the (possibly empty) root library.
 let private prepareBuild
     (files: (string * (unit -> Stream)) list) // node -> source
     (libraries: Library list) : seq<seq<Chunk>> =
 
     let fileNodes = List.map fst files
     let analyses = [for node, streamFun in files -> node, analyze streamFun]
+    let fileNum: int option = None
 
     let explicitImports = [
         for node, a in analyses -> [
             for other in a.ImportsFrom ->
                 if List.contains other fileNodes then
-                    None, other
+                    fileNum, other
                 else
                     match Seq.tryFindIndex (fun lib -> lib.Contains other) libraries with
                     | Some libNum -> Some libNum, other
@@ -80,14 +82,16 @@ let private prepareBuild
         for node, a in analyses -> [
             for u in a.Undefined ->
                 match exported.TryFind u with
-                | Some other -> (None, other), u
+                | Some other -> (fileNum, other), u
                 | None ->
                     // Try libraries in order
                     let look (libNum: int, lib: Library) =
                         match lib.ExportedBy u with
                         | Some other -> Some (libNum, other)
                         | None -> None
-                    match Seq.indexed libraries |> Seq.map look |> Seq.tryFind Option.isSome with
+                    match Seq.indexed libraries
+                          |> Seq.skip 1 // Skip root library, which does not support implicit imports.
+                          |> Seq.map look |> Seq.tryFind Option.isSome with
                     | Some (Some (libNum, other)) -> (Some libNum, other), u
                     | _ -> sprintf "Not resolved: %s in %s" u node |> ParseException |> raise
         ]
@@ -103,6 +107,11 @@ let private prepareBuild
     let next (num, node) = 
         match num with
         | None -> allFileImports.[node] |> seq
+        | Some 0 ->
+            seq { // The root library
+                for other in libraries.[0].Dependencies node ->
+                    (if List.contains other fileNodes then fileNum else num), other
+            }
         | Some n -> withNum num <| libraries.[n].Dependencies node
 
     let get (num: int option, node: string) =
