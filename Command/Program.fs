@@ -76,6 +76,11 @@ let main argv =
             ] <| CommandHandler.Create(fun trace root ``source files`` library ->
                     doCheck (fNames ``source files``) (oName root) (Option.toList <| oName library) trace |> printfn "%s")
 
+            com "lib" "Create library" [
+                Argument<DirectoryInfo>("directory", Description="Root directory of the library files")
+                fileArg "library" "Library filename"
+            ] <| CommandHandler.Create(fun directory library ->
+                    createLibrary (fName directory) (fName library))
         ]
     try
         let version =

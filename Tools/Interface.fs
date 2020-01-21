@@ -142,3 +142,7 @@ let asRun sources sourceRoot libs argFile outputDir shouldTrace =
               | None -> Array.empty
     let stack = doRun ao.Binary arg outputDir traceSyms
     if not shouldTrace then writeStack stack
+
+let createLibrary rootDirectory libraryFileName =
+    dirToZipLib rootDirectory libraryFileName
+    printfn "Library created: %s" libraryFileNem
