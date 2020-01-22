@@ -92,8 +92,8 @@ let parseSymbolsFile file =
     Seq.map readLine spacers |> Seq.map (fun (x, y) -> int x, y),
     Seq.map int relatives
 
-let assem sources sourceRoot libs binary symbols =
-    let ao = doAssemble (src sources sourceRoot) (libraries sourceRoot libs)
+let assem sources sourceRoot libs entry binary symbols =
+    let ao = doAssemble (src entry sources sourceRoot) (libraries sourceRoot libs)
     let primary = List.head sources
     let b = match binary with
             | None -> Path.ChangeExtension(primary, BINARY_EXTENSION)
@@ -127,8 +127,8 @@ let run binary (argFile: string option) (outputDir: string option) shouldTrace =
     let stack = doRun bytes arg outputDir traceSyms
     if traceSyms.IsNone then writeStack stack
 
-let asRun sources sourceRoot libs argFile outputDir shouldTrace =
-    let ao = doAssemble (src sources sourceRoot) (libraries sourceRoot libs)
+let asRun sources sourceRoot libs entry argFile outputDir shouldTrace =
+    let ao = doAssemble (src entry sources sourceRoot) (libraries sourceRoot libs)
     if shouldTrace then
         for name, pos in Seq.sortBy fst ao.Exported do
             printfn "%20s %6d" name pos

@@ -12,7 +12,7 @@ open System.Runtime.CompilerServices
 //[<assembly:AssemblyTrademark("")>]
 
 // This should correspond to the (next) git tag.
-[<assembly:AssemblyVersion("0.18")>]
+[<assembly:AssemblyVersion("0.19")>]
 
 //[<assembly: AssemblyDelaySign(false)>]
 //[<assembly: AssemblyKeyFile("")>]

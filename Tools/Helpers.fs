@@ -52,17 +52,30 @@ let private nonRelativeNodes (fullPaths: seq<string>): seq<string * string> =
             seen <- seen.Add node
     }
 
-let src (filenames: string list) (sourceRoot: string option): (string * (unit -> Stream)) list =
+let PRE_ENTRY_NODE = "/"
+
+let private entryFileRep (entry: string) : FileRep =
+    let import, name =
+        if entry.Contains NODE_SEPARATOR then sprintf "IMPORT %s\n" entry, unqualify entry
+        else "", entry
+    let lab = "." + name // It only has to be different from name.
+    // Push heap start and argument start onto the stack before calling entry point.
+    let s = sprintf "%s%s:\n push! (load8 (+ %s -8))\n push! (load8 (+ %s -16))\n call! %s\nexit\n" import lab lab lab name
+    let bytes = System.Text.Encoding.UTF8.GetBytes s
+    PRE_ENTRY_NODE, fun () -> upcast (new MemoryStream(bytes))
+
+let src (entry: string option) (filenames: string list) (sourceRoot: string option): FileRep list =
     let fullPaths = uniqueFullPaths filenames
     let pairs = match sourceRoot with
                 | Some sr -> relativeNodes sr fullPaths
                 | None -> nonRelativeNodes fullPaths
-    [
+    let core: FileRep list = [
         for node, full in pairs ->
             node, fun () ->
                 printfn "Opening %s..." full
                 upcast File.OpenRead full
     ]
+    match entry with None -> core | Some e -> (entryFileRep e) :: core
 
 let nodePath rootDir extension (node: string) =
     (Array.append [|rootDir|] (splitNodeString node) |> Path.Combine) + extension

@@ -43,12 +43,14 @@ let private findComp (start: seq<int option * string>) (next: int option * strin
     |> Seq.skip 1 // Skip dummy goal component
     |> Seq.map (Seq.map fromStr)
 
+type FileRep = string * (unit -> Stream) // node, source
+
 type Chunk = string * (unit -> string list * Stream)
 
 // The node names in files must be unique.
 // The first library is the (possibly empty) root library.
 let private prepareBuild
-    (files: (string * (unit -> Stream)) list) // node -> source
+    (files: FileRep list)
     (libraries: Library list) : seq<seq<Chunk>> =
 
     let fileNodes = List.map fst files

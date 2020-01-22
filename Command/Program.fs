@@ -34,6 +34,7 @@ let main argv =
 
     let sources = Argument<FileInfo[]>("source files", Description="Names of source files (<name>.s)", Arity=ArgumentArity.OneOrMore).ExistingOnly()
     let root = argOpt "--root" "Name of source root directory (default: none)" (dirArg "root" null) |> alias "-r"
+    let entry = argOpt "--entry" "Name of entry point (default: none, suggestion: main)" (strArg "entry" null) |> alias "-e"
     let trace = opt "--trace" "Turn on trace output" |> alias "-t"
     let arg = argOpt "--arg" "Specify argument file (default: none)" <| (fileArg "argument file" null).ExistingOnly()
     let out = argOpt "--out" "Specify output directory (default: none)" <| dirArg "output directory" null
@@ -55,9 +56,9 @@ let main argv =
             com "as" "Assemble source files" [
                 (argOpt "--bin" "Specify output binary file (default: <name>.b)" <| fileArg "binary file" null)
                 (argOpt "--sym" "Specify output symbol file (default: <name>.sym)" <| fileArg "symbol file" null)
-                root; sources; library
-            ] <| CommandHandler.Create(fun bin sym root ``source files`` library ->
-                    assem (fNames ``source files``) (oName root) (Option.toList <| oName library) (oName bin) (oName sym))
+                entry; root; sources; library
+            ] <| CommandHandler.Create(fun bin sym entry root ``source files`` library ->
+                    assem (fNames ``source files``) (oName root) (Option.toList <| oName library) entry (oName bin) (oName sym))
 
             com "run" "Execute binary" [
                 trace; arg; out
@@ -67,15 +68,15 @@ let main argv =
 
             com "as-run" "Assemble and run" [
                 trace; arg; out
-                root; sources; library
-            ] <| CommandHandler.Create(fun trace arg out root ``source files`` library ->
-                    asRun (fNames ``source files``) (oName root) (Option.toList <| oName library) (oName arg) (oName out) trace)
+                entry; root; sources; library
+            ] <| CommandHandler.Create(fun trace arg out entry root ``source files`` library ->
+                    asRun (fNames ``source files``) (oName root) (Option.toList <| oName library) entry (oName arg) (oName out) trace)
 
             com "check" "Assemble, run and check final stack" [
                 trace;
-                root; sources; library
-            ] <| CommandHandler.Create(fun trace root ``source files`` library ->
-                    doCheck (fNames ``source files``) (oName root) (Option.toList <| oName library) trace |> printfn "%s")
+                entry; root; sources; library
+            ] <| CommandHandler.Create(fun trace entry root ``source files`` library ->
+                    doCheck (fNames ``source files``) (oName root) (Option.toList <| oName library) entry trace |> printfn "%s")
 
             com "lib" "Create library" [
                 Argument<DirectoryInfo>("directory", Description="Root directory of the library files").ExistingOnly()
