@@ -4,7 +4,10 @@
 cd "$(dirname "$0")"
 
 TAG=$(git describe --tags --abbrev=0)
+VERSION=$(echo $TAG | cut -dv -f2 -)
 echo "Publishing $TAG"
+
+perl -pi -e 's/<AssemblyVersion>\$\(VERSION\)/<AssemblyVersion>'"$VERSION/" -- Command/Command.fsproj
 
 dotnet clean
 
@@ -21,3 +24,5 @@ pub() {
 pub osx-x64
 pub linux-x64
 pub win-x64
+
+perl -pi -e 's/<AssemblyVersion>'"$VERSION"'/<AssemblyVersion>\$\(VERSION\)/' -- Command/Command.fsproj
