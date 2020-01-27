@@ -6,6 +6,7 @@ open System.CommandLine.Builder
 
 open Tools.Interface
 open Tools.Checks
+open System.CommandLine.Parsing
 
 [<EntryPoint>]
 let main argv =
@@ -32,7 +33,7 @@ let main argv =
         opt.AddAlias(name)
         opt
 
-    let sources = Argument<FileInfo[]>("source files", Description="Names of source files (<name>.s)", Arity=ArgumentArity.OneOrMore).ExistingOnly()
+    let sources = Argument<FileSystemInfo[]>("source files", Description="Names of source files (<name>.s)", Arity=ArgumentArity.OneOrMore).ExistingOnly()
     let root = argOpt "--root" "Name of source root directory (default: none)" (dirArg "root" null) |> alias "-r"
     let entry = argOpt "--entry" "Name of entry point (default: none, suggestion: main)" (strArg "entry" null) |> alias "-e"
     let trace = opt "--trace" "Turn on trace output" |> alias "-t"
