@@ -8,6 +8,24 @@ open Tools.Interface
 open Tools.Checks
 open System.CommandLine.Parsing
 
+open System.Runtime.CompilerServices
+
+// Based on ExistingOnly extension method in System.CommandLine.ArgumentExtensions.
+// Presumably needed because F# covariance rules are more strict than those of C#.
+[<Extension>]
+type Ext() =
+    [<Extension>]
+    static member inline ExistingOnly(argument: Argument<seq<FileInfo>>) =
+        argument.AddValidator(fun a ->
+            a.Tokens
+            |> Seq.map (fun t -> t.Value)
+            |> Seq.filter (fun filePath -> not <| File.Exists filePath)
+            |> Seq.map (sprintf "File does not exist: %s")
+            |> Seq.tryHead
+            |> Option.toObj)
+        argument
+
+
 [<EntryPoint>]
 let main argv =
     let extend (c: Command) (sl: Symbol List) : Command =
@@ -33,7 +51,7 @@ let main argv =
         opt.AddAlias(name)
         opt
 
-    let sources = Argument<FileSystemInfo[]>("source files", Description="Names of source files (<name>.s)", Arity=ArgumentArity.OneOrMore).ExistingOnly()
+    let sources = Argument<seq<FileInfo>>("source files", Description="Names of source files (<name>.s)", Arity=ArgumentArity.OneOrMore).ExistingOnly()
     let root = argOpt "--root" "Name of source root directory (default: none)" (dirArg "root" null) |> alias "-r"
     let entry = argOpt "--entry" "Name of entry point (default: none, suggestion: main)" (strArg "entry" null) |> alias "-e"
     let trace = opt "--trace" "Turn on trace output" |> alias "-t"
@@ -91,7 +109,7 @@ let main argv =
             let v = assembly.GetName().Version
             sprintf "v%d.%d" v.Major v.Minor
         printfn "iVM Assembler and VM, %s" version
-        CommandLineBuilder(rootCommand).Build().Invoke argv
+        CommandLineBuilder(rootCommand).UseHelp().Build().Invoke argv
     with
         :? System.Reflection.TargetInvocationException as e ->
             printfn "%O" <| e.InnerException.Message; 1
