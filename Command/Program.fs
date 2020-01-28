@@ -61,7 +61,7 @@ let main argv =
     // TODO: Allow multiple libraries.
     let library = argOpt "--library" "Specify a library" <| (fileArg "library" null).ExistingOnly() |> alias "-l"
 
-    // TODO: Expand ~ in paths
+    // Observe that ~ etc. should be expanded by the shell and not here.
     let fName (fsi: FileSystemInfo) : string = fsi.FullName
     let fNames (fsis: seq<FileSystemInfo>) : string list =
         if fsis = null then []
