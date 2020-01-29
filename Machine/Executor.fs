@@ -168,27 +168,31 @@ type private Machine
             |> Seq.iteri (fun i x -> printfn "%4d-..  %s" (i * 20) x)
             printfn ""
 
-        while not m.Terminated do
+        let mutable counter = 0
+        try
+            while not m.Terminated do
 
-            if traceSyms.IsSome
-            then
-                let pc = m.ProgramCounter
-                match traceSyms.Value.TryFind <| int (pc - startLocation) with
-                | Some name -> printfn "-- %s --" name
-                | None -> ()
-                let op = m.LoadN 1 pc
-                let name = Machine.Disassembler.instructionNames.[int op]
-                printf "%4d: %-12s" pc name
+                if traceSyms.IsSome
+                then
+                    let pc = m.ProgramCounter
+                    match traceSyms.Value.TryFind <| int (pc - startLocation) with
+                    | Some name -> printfn "-- %s --" name
+                    | None -> ()
+                    let op = m.LoadN 1 pc
+                    let name = Machine.Disassembler.instructionNames.[int op]
+                    printf "%4d: %-12s" pc name
 
-            m.Step ()
+                m.Step ()
+                counter <- counter + 1
 
-            if traceSyms.IsSome
-            then
-                printfn " %4d: %s" m.StackPointer
-                <| System.String.Join(" ", m.Stack 50 |> Seq.rev |> Seq.map int64)
+                if traceSyms.IsSome
+                then
+                    printfn " %4d: %s" m.StackPointer
+                    <| System.String.Join(" ", m.Stack 50 |> Seq.rev |> Seq.map int64)
 
-        flushFrame ()
-        printfn ""
+            flushFrame ()
+        finally
+            printfn "\nExecution steps: %d\n" counter
 
     // For testing
     member m.Stack ?max : seq<uint64> =
