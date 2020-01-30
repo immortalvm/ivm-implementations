@@ -132,8 +132,8 @@ let showValue (x: int64) =
     sprintf "%d (0x%s)" x hex
 
 // Build one (mutually dependent) component.
-let private buildOne (comp: Chunk list) (extSymbols: string -> (bool * int64) option) =
-    let program, exported, labels = parseProgram comp extSymbols
+let private buildOne (comp: Chunk list) (extSymbols: string -> (bool * int64) option) (noopt: bool) =
+    let program, exported, labels = parseProgram comp extSymbols noopt
     //for line in program do printfn "%O" line
 
     let bytes, symbols, spacers, relatives, exports = assemble program
@@ -155,7 +155,7 @@ let private buildOne (comp: Chunk list) (extSymbols: string -> (bool * int64) op
         Relatives = relatives
     }
 
-let doBuild (reused: seq<AssemblerOutput>) (buildOrder: seq<seq<Chunk>>) : seq<AssemblerOutput> =
+let doBuild (reused: seq<AssemblerOutput>) (noopt: bool) (buildOrder: seq<seq<Chunk>>) : seq<AssemblerOutput> =
     let mutable currentSize : int64 = 0L
     // Maps each qualified names to its distance from the end [0, currentSize].
     let mutable allSymbols : Map<string, bool * int64> = Map.empty
@@ -177,7 +177,7 @@ let doBuild (reused: seq<AssemblerOutput>) (buildOrder: seq<seq<Chunk>>) : seq<A
                     | Some (false, value) -> Some (false, value)
     seq {
         for comp in buildOrder do
-            let ao = buildOne (Seq.toList comp) lookup
+            let ao = buildOne (Seq.toList comp) lookup noopt
             yield ao
             incorporate ao
     }
@@ -220,10 +220,10 @@ let doCollect (outputs: seq<AssemblerOutput>): AssemblerOutput =
     }
 
 // TODO: Build incrementally if "build directory" specified
-let doAssemble files libraries : AssemblerOutput =
+let doAssemble files libraries noopt: AssemblerOutput =
     try
         let buildOrder = prepareBuild files libraries
-        buildOrder |> doBuild [] |> doCollect // 64 KiB stack
+        buildOrder |> doBuild [] noopt |> doCollect // 64 KiB stack
     with
         ParseException(msg) -> failwith msg
 

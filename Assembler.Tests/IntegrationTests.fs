@@ -22,7 +22,7 @@ let noExpectations = [
 
 let check fileNames =
     try
-        let message = doCheck fileNames (Some DIRECTORY) [] None false
+        let message = doCheck fileNames (Some DIRECTORY) [] None false false
         Expect.isNotMatch message "^Not executed" "Expectations not found"
     with
         | Failure(msg) -> failtest msg
@@ -49,7 +49,7 @@ let implicitImportTests =
     testList IMPL_DIRECTORY [
         testCase "circular" <| fun () ->
             try
-                let message = doCheck filenames None [] None false
+                let message = doCheck filenames None [] None false false
                 Expect.isNotMatch message "^Not executed" "Expectations not found"
             with
                 | Failure(msg) -> failtest msg
@@ -64,7 +64,7 @@ let entryPointTests =
     testList IMPL_DIRECTORY [
         testCase "main" <| fun () ->
             try
-                let message = doCheck [filename] None [] (Some "main") false
+                let message = doCheck [filename] None [] (Some "main") false false
                 Expect.isNotMatch message "^Not executed" "Expectations not found"
             with
                 | Failure(msg) -> failtest msg

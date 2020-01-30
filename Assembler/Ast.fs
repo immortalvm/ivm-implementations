@@ -47,6 +47,7 @@ type MaxOneArgument = Expression option
 type MaxTwoArguments = (Expression * Expression option) option
 
 type Statement =
+    | SBoundary // Dummy statement for separating statements (block optimizations)
     | SLabel of int
 
     // Include line number to be used in error message if the expression is not an "assembly time" constant

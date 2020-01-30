@@ -413,9 +413,13 @@ let analyze (streamFun: unit -> Stream): AnalysisResult =
             Undefined = s.Undefined |> Seq.map unqualify |> Seq.toList
         }
 
+let addBoundaries (prog: seq<Statement>): seq<Statement> =
+    seq { for s in prog do yield! [s; SBoundary] }
+
 let parseProgram
     (comp: (string * (unit -> string list * Stream)) list)
-    (extSymbols: string -> (bool * int64) option) : Statement list * Set<int> * Map<int, string> =
+    (extSymbols: string -> (bool * int64) option)
+    (noopt: bool) : Statement list * Set<int> * Map<int, string> =
     let mutable state = State.Init extSymbols (List.map fst comp) 0
 
     let parse pairFun =
@@ -451,6 +455,7 @@ let parseProgram
     let prog = result
                |> unfold state.Defs revLabels
                |> moveExportsFirst
+               |> fun p -> if noopt then addBoundaries p else p
                |> pushReduction
                |> Seq.toList
     prog, state.Exported, revLabels

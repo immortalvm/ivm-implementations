@@ -312,6 +312,7 @@ let pushReduction (prog: Statement seq): Statement seq =
             // Not necessary to flush first.
             | SExport (line, i, x), r -> yield SExport(line, i, optimize 0L x)
 
+            | SBoundary, _ -> yield! flush []
             | _ -> yield! flush [s]
         // It would be strange to end the program with a push, though.
         yield! flush []

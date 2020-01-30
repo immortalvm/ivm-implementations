@@ -7,6 +7,7 @@ open System.CommandLine.Builder
 open Tools.Interface
 open Tools.Checks
 open System.CommandLine.Parsing
+open System.CommandLine.Binding
 
 open System.Runtime.CompilerServices
 
@@ -25,6 +26,8 @@ type Ext() =
             |> Option.toObj)
         argument
 
+// Needed because we Action<...> stops at 7 arguments.
+type AsRunDelegate = delegate of bool * FileInfo * DirectoryInfo * string option * bool * DirectoryInfo * seq<FileSystemInfo> * FileInfo -> unit
 
 [<EntryPoint>]
 let main argv =
@@ -54,6 +57,7 @@ let main argv =
     let sources = Argument<seq<FileInfo>>("source files", Description="Names of source files (<name>.s)", Arity=ArgumentArity.OneOrMore).ExistingOnly()
     let root = argOpt "--root" "Name of source root directory (default: none)" (dirArg "root" null) |> alias "-r"
     let entry = argOpt "--entry" "Name of entry point (default: none, suggestion: main)" (strArg "entry" null) |> alias "-e"
+    let noopt = opt "--noopt" "Do not optimize" |> alias "-n"
     let trace = opt "--trace" "Turn on trace output" |> alias "-t"
     let arg = argOpt "--arg" "Specify argument file (default: none)" <| (fileArg "argument file" null).ExistingOnly()
     let out = argOpt "--out" "Specify output directory (default: none)" <| dirArg "output directory" null
@@ -69,15 +73,18 @@ let main argv =
     let oName (fsi: FileSystemInfo) : string option =
         if fsi = null then None else Some fsi.FullName
 
+    let asrun trace arg out entry noopt root ``source files`` library =
+        asRun (fNames ``source files``) (oName root) (Option.toList <| oName library) entry (oName arg) (oName out) trace noopt
+
     let rootCommand =
         extend (RootCommand("ivm", Description="iVM Assembler and VM")) [
 
             com "as" "Assemble source files" [
                 (argOpt "--bin" "Specify output binary file (default: <name>.b)" <| fileArg "binary file" null)
                 (argOpt "--sym" "Specify output symbol file (default: <name>.sym)" <| fileArg "symbol file" null)
-                entry; root; sources; library
-            ] <| CommandHandler.Create(fun bin sym entry root ``source files`` library ->
-                    assem (fNames ``source files``) (oName root) (Option.toList <| oName library) entry (oName bin) (oName sym))
+                entry; noopt; root; sources; library
+            ] <| CommandHandler.Create(fun bin sym entry noopt root ``source files`` library ->
+                    assem (fNames ``source files``) (oName root) (Option.toList <| oName library) entry (oName bin) (oName sym) noopt)
 
             com "run" "Execute binary" [
                 trace; arg; out
@@ -87,15 +94,15 @@ let main argv =
 
             com "as-run" "Assemble and run" [
                 trace; arg; out
-                entry; root; sources; library
-            ] <| CommandHandler.Create(fun trace arg out entry root ``source files`` library ->
-                    asRun (fNames ``source files``) (oName root) (Option.toList <| oName library) entry (oName arg) (oName out) trace)
+                entry; noopt; root; sources; library
+            ] <| CommandHandler.Create(new AsRunDelegate(fun trace arg out entry noopt root ``source files`` library ->
+                         asRun (fNames ``source files``) (oName root) (Option.toList <| oName library) entry (oName arg) (oName out) trace noopt))
 
             com "check" "Assemble, run and check final stack" [
                 trace;
-                entry; root; sources; library
-            ] <| CommandHandler.Create(fun trace entry root ``source files`` library ->
-                    doCheck (fNames ``source files``) (oName root) (Option.toList <| oName library) entry trace |> printfn "%s")
+                entry; noopt; root; sources; library
+            ] <| CommandHandler.Create(fun trace entry noopt root ``source files`` library ->
+                    doCheck (fNames ``source files``) (oName root) (Option.toList <| oName library) entry trace noopt |> printfn "%s")
 
             com "lib" "Create library" [
                 Argument<DirectoryInfo>("directory", Description="Root directory of the library files").ExistingOnly()
