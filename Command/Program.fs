@@ -63,7 +63,7 @@ let main argv =
     let out = argOpt "--out" "Specify output directory (default: none)" <| dirArg "output directory" null
 
     // NB. Library options must come after source file arguments.
-    let library = argOpt "--library" "Specify a library" <| (Argument<seq<FileInfo>>("library")).ExistingOnly() |> alias "-l"
+    let libraries = argOpt "--library" "Specify one or more libraries" <| (Argument<seq<FileInfo>>("libraries")).ExistingOnly() |> alias "-l"
 
     // Observe that ~ etc. should be expanded by the shell and not here.
     let fName (fsi: FileSystemInfo) : string = fsi.FullName
@@ -82,7 +82,7 @@ let main argv =
             com "as" "Assemble source files" [
                 (argOpt "--bin" "Specify output binary file (default: <name>.b)" <| fileArg "binary file" null)
                 (argOpt "--sym" "Specify output symbol file (default: <name>.sym)" <| fileArg "symbol file" null)
-                entry; noopt; root; sources; library
+                entry; noopt; root; sources; libraries
             ] <| CommandHandler.Create(fun bin sym entry noopt root ``source files`` library ->
                     assem (fNames ``source files``) (oName root) (Option.toList <| oName library) entry (oName bin) (oName sym) noopt)
 
@@ -94,13 +94,13 @@ let main argv =
 
             com "as-run" "Assemble and run" [
                 trace; arg; out
-                entry; noopt; root; sources; library
+                entry; noopt; root; sources; libraries
             ] <| CommandHandler.Create(new AsRunDelegate(fun trace arg out entry noopt root ``source files`` library ->
                          asRun (fNames ``source files``) (oName root) (fNames library) entry (oName arg) (oName out) trace noopt))
 
             com "check" "Assemble, run and check final stack" [
                 trace;
-                entry; noopt; root; sources; library
+                entry; noopt; root; sources; libraries
             ] <| CommandHandler.Create(fun trace entry noopt root ``source files`` library ->
                     doCheck (fNames ``source files``) (oName root) (Option.toList <| oName library) entry trace noopt |> printfn "%s")
 
