@@ -27,7 +27,7 @@ type Ext() =
         argument
 
 // Needed because we Action<...> stops at 7 arguments.
-type AsRunDelegate = delegate of bool * FileInfo * DirectoryInfo * string option * bool * DirectoryInfo * seq<FileSystemInfo> * FileInfo -> unit
+type AsRunDelegate = delegate of bool * FileInfo * DirectoryInfo * string option * bool * DirectoryInfo * seq<FileSystemInfo> * seq<FileSystemInfo> -> unit
 
 [<EntryPoint>]
 let main argv =
@@ -62,8 +62,8 @@ let main argv =
     let arg = argOpt "--arg" "Specify argument file (default: none)" <| (fileArg "argument file" null).ExistingOnly()
     let out = argOpt "--out" "Specify output directory (default: none)" <| dirArg "output directory" null
 
-    // TODO: Allow multiple libraries.
-    let library = argOpt "--library" "Specify a library" <| (fileArg "library" null).ExistingOnly() |> alias "-l"
+    // NB. Library options must come after source file arguments.
+    let library = argOpt "--library" "Specify a library" <| (Argument<seq<FileInfo>>("library")).ExistingOnly() |> alias "-l"
 
     // Observe that ~ etc. should be expanded by the shell and not here.
     let fName (fsi: FileSystemInfo) : string = fsi.FullName
@@ -96,7 +96,7 @@ let main argv =
                 trace; arg; out
                 entry; noopt; root; sources; library
             ] <| CommandHandler.Create(new AsRunDelegate(fun trace arg out entry noopt root ``source files`` library ->
-                         asRun (fNames ``source files``) (oName root) (Option.toList <| oName library) entry (oName arg) (oName out) trace noopt))
+                         asRun (fNames ``source files``) (oName root) (fNames library) entry (oName arg) (oName out) trace noopt))
 
             com "check" "Assemble, run and check final stack" [
                 trace;
