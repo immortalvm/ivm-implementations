@@ -79,6 +79,9 @@
     <None Include="test_code\entry_points\main_entry.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="test_code\test_regression_20.s">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <Compile Include="GenParserTests.fs" />
     <Compile Include="ProgParserTests.fs" />
     <Compile Include="CompositionTests.fs" />

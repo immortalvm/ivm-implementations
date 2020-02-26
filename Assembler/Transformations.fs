@@ -131,7 +131,7 @@ and private prod lst =
     lst |> List.map toList |> List.fold combine [] |> fromList
 
 and private conj lst =
-    let toList x = match x with EConj xs -> xs | ENum 1L -> [] | _ -> [x]
+    let toList x = match x with EConj xs -> xs | ENum -1L -> [] | _ -> [x]
     let fromList xs = match xs with [] -> ENum -1L | [x] -> x | _ -> EConj xs
     let combine = combineLists <| fun m n r -> match m &&& n with
                                                | 0L -> [ENum 0L]
