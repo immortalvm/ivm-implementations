@@ -40,7 +40,7 @@ let private firstDiff s1 s2 =
   Seq.mapi2 (fun i s p -> i,s,p) s1 s2
   |> Seq.find (function | _ , Some s, Some p when s = p -> false | _ -> true)
 
-let doCheck filenames (sourceRoot: string option) libs entry shouldTrace noopt =
+let doCheck filenames (sourceRoot: string option) libs entry memory shouldTrace noopt =
     let mutable revOutput = []
     let output msg = revOutput <- msg :: revOutput
     let ao = doAssemble (src entry filenames sourceRoot) (libraries sourceRoot libs) noopt
@@ -55,7 +55,7 @@ let doCheck filenames (sourceRoot: string option) libs entry shouldTrace noopt =
             if not shouldTrace then None
             else ao.Labels |> Seq.map (fun (sym, pos) -> int pos, sym) |> Map |> Some
 
-        let actual = doRun ao.Binary Seq.empty None traceSyms
+        let actual = doRun memory ao.Binary Seq.empty None traceSyms
         let expected =
             File.ReadLines primary
             |> Seq.skipWhile (isExpectationHeading >> not)

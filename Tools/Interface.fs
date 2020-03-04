@@ -115,7 +115,7 @@ let writeStack (endStack: seq<int64>) =
     for x in endStack do
         printfn "0x..%05X %7d" (uint64 x &&& 0xfffffUL) x
 
-let run binary (argFile: string option) (outputDir: string option) shouldTrace =
+let run memory binary (argFile: string option) (outputDir: string option) shouldTrace =
     let bytes = File.ReadAllBytes binary
     let arg = match argFile with
               | Some name -> File.ReadAllBytes name
@@ -124,10 +124,10 @@ let run binary (argFile: string option) (outputDir: string option) shouldTrace =
         if shouldTrace
         then Path.ChangeExtension(binary, SYMBOLS_EXTENSION) |> readTraceSyms |> Some
         else None
-    let stack = doRun bytes arg outputDir traceSyms
+    let stack = doRun memory bytes arg outputDir traceSyms
     if traceSyms.IsNone then writeStack stack
 
-let asRun sources sourceRoot libs entry argFile outputDir shouldTrace noopt =
+let asRun sources sourceRoot libs entry memory argFile outputDir shouldTrace noopt =
     let ao = doAssemble (src entry sources sourceRoot) (libraries sourceRoot libs) noopt
     if shouldTrace then
         for name, pos in Seq.sortBy fst ao.Exported do
@@ -140,7 +140,7 @@ let asRun sources sourceRoot libs entry argFile outputDir shouldTrace noopt =
     let arg = match argFile with
               | Some name -> File.ReadAllBytes name
               | None -> Array.empty
-    let stack = doRun ao.Binary arg outputDir traceSyms
+    let stack = doRun memory ao.Binary arg outputDir traceSyms
     if not shouldTrace then writeStack stack
 
 let createLibrary rootDirectory libraryFileName =

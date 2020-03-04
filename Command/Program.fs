@@ -27,7 +27,10 @@ type Ext() =
         argument
 
 // Needed because we Action<...> stops at 7 arguments.
-type AsRunDelegate = delegate of bool * FileInfo * DirectoryInfo * string option * bool * DirectoryInfo * seq<FileSystemInfo> * seq<FileSystemInfo> -> unit
+type AsRunDelegate = delegate of string * bool * FileInfo
+                                 * DirectoryInfo * string option * bool
+                                 * DirectoryInfo * seq<FileSystemInfo>
+                                 * seq<FileSystemInfo> -> unit
 
 [<EntryPoint>]
 let main argv =
@@ -38,7 +41,6 @@ let main argv =
     let com (name: string) (descr: string) (sl: Symbol List) (handler: ICommandHandler) : Command =
         extend (Command(name, Description=descr, Handler=handler)) sl
 
-    let strArg (name: string) (descr: string) = Argument<string>(name, Description=descr)
     let fileArg (name: string) (descr: string) = Argument<FileInfo>(name, Description=descr)
     let dirArg (name: string) (descr: string) = Argument<DirectoryInfo>(name, Description=descr, Arity=ArgumentArity.ZeroOrOne)
 
@@ -56,8 +58,9 @@ let main argv =
 
     let sources = Argument<seq<FileInfo>>("source files", Description="Names of source files (<name>.s)", Arity=ArgumentArity.OneOrMore).ExistingOnly()
     let root = argOpt "--root" "Name of source root directory (default: none)" (dirArg "root" null) |> alias "-r"
-    let entry = argOpt "--entry" "Name of entry point (default: none, suggestion: main)" (strArg "entry" null) |> alias "-e"
+    let entry = argOpt "--entry" "Name of entry point (default: none, suggestion: main)" <| Argument<string>("entry") |> alias "-e"
     let noopt = opt "--noopt" "Do not optimize" |> alias "-n"
+    let mem = argOpt "--memory" "Specify the total VM memory in bytes (default: 16Mi)" <| Argument<string>("memory") |> alias "-m"
     let trace = opt "--trace" "Turn on trace output" |> alias "-t"
     let arg = argOpt "--arg" "Specify argument file (default: none)" <| (fileArg "argument file" null).ExistingOnly()
     let out = argOpt "--out" "Specify output directory (default: none)" <| dirArg "output directory" null
@@ -73,8 +76,8 @@ let main argv =
     let oName (fsi: FileSystemInfo) : string option =
         if fsi = null then None else Some fsi.FullName
 
-    let asrun trace arg out entry noopt root ``source files`` library =
-        asRun (fNames ``source files``) (oName root) (Option.toList <| oName library) entry (oName arg) (oName out) trace noopt
+    let oMem (m: string): uint64 option =
+        if m = null then None else System.Decimal.Parse(m) |> uint64 |> Some
 
     let rootCommand =
         extend (RootCommand("ivm", Description="iVM Assembler and VM")) [
@@ -87,22 +90,22 @@ let main argv =
                     assem (fNames ``source files``) (oName root) (Option.toList <| oName library) entry (oName bin) (oName sym) noopt)
 
             com "run" "Execute binary" [
-                trace; arg; out
+                mem; trace; arg; out
                 (fileArg "binary file" "Name of binary file").ExistingOnly()
-            ] <| CommandHandler.Create(fun trace arg out ``binary file`` ->
-                    run (fName ``binary file``) (oName arg) (oName out) trace)
+            ] <| CommandHandler.Create(fun memory trace arg out ``binary file`` ->
+                    run (oMem memory) (fName ``binary file``) (oName arg) (oName out) trace)
 
             com "as-run" "Assemble and run" [
-                trace; arg; out
+                mem; trace; arg; out
                 entry; noopt; root; sources; libraries
-            ] <| CommandHandler.Create(new AsRunDelegate(fun trace arg out entry noopt root ``source files`` library ->
-                         asRun (fNames ``source files``) (oName root) (fNames library) entry (oName arg) (oName out) trace noopt))
+            ] <| CommandHandler.Create(new AsRunDelegate(fun memory trace arg out entry noopt root ``source files`` library ->
+                         asRun (fNames ``source files``) (oName root) (fNames library) entry (oMem memory) (oName arg) (oName out) trace noopt))
 
             com "check" "Assemble, run and check final stack" [
-                trace;
+                mem; trace;
                 entry; noopt; root; sources; libraries
-            ] <| CommandHandler.Create(fun trace entry noopt root ``source files`` library ->
-                    doCheck (fNames ``source files``) (oName root) (Option.toList <| oName library) entry trace noopt |> printfn "%s")
+            ] <| CommandHandler.Create(fun memory trace entry noopt root ``source files`` library ->
+                    doCheck (fNames ``source files``) (oName root) (Option.toList <| oName library) entry (oMem memory) trace noopt |> printfn "%s")
 
             com "lib" "Create library" [
                 Argument<DirectoryInfo>("directory", Description="Root directory of the library files").ExistingOnly()

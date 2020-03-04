@@ -27,13 +27,16 @@ type private Machine
         traceSyms: Map<int, string> option) =
 
     let memory =
-        let size =
-            if memorySize > uint64 System.Int32.MaxValue
-            then failwithf "Max memory size: %d" System.Int32.MaxValue
-            else int memorySize
-        let mem = Array.create size 0uy
-        Seq.iteri (fun i x -> mem.[i] <- x) initialProgram
-        mem
+        try
+            let size =
+                if memorySize > uint64 System.Int32.MaxValue
+                then failwithf "Max memory size: %d" System.Int32.MaxValue
+                else int memorySize
+            let mem = Array.create size 0uy
+            Seq.iteri (fun i x -> mem.[i] <- x) initialProgram
+            mem
+        with
+            :? System.IndexOutOfRangeException -> raise (AccessException "Program too big")
 
     let memoryIndex location : int =
         let i = location - startLocation

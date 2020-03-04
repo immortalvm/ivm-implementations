@@ -8,6 +8,7 @@ open Assembler.ConnectedComponents
 open Assembler.Composition
 open Assembler.Namespace
 open Machine.Executor
+open Machine.Utils
 
 type AssemblerOutput = {
     Node: string
@@ -227,10 +228,10 @@ let doAssemble files libraries noopt: AssemblerOutput =
     with
         ParseException(msg) -> failwith msg
 
-let doRun binary arg outputDir traceSyms =
+let doRun memorySize binary arg outputDir traceSyms =
     try
-        // Memory size: 16 MiB (for now)
-        execute (1UL <<< 24) binary arg outputDir traceSyms |> Seq.map int64
+        // Default memory size: 16 MiB (for now)
+        execute (valueOr (1UL <<< 24) memorySize) binary arg outputDir traceSyms |> Seq.map int64
     with
-        | AccessException msg -> failwith "Access exception!"
-        | UndefinedException msg -> failwith "Undefined instruction!"
+        | AccessException msg -> failwithf "Access exception: %s" msg
+        | UndefinedException msg -> failwithf "Undefined instruction: %s" msg
