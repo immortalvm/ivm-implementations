@@ -30,7 +30,7 @@ type Ext() =
 type AsRunDelegate = delegate of string * bool * FileInfo
                                  * DirectoryInfo * string option * bool
                                  * DirectoryInfo * seq<FileSystemInfo>
-                                 * seq<FileSystemInfo> -> unit
+                                 * seq<FileSystemInfo> -> int
 
 [<EntryPoint>]
 let main argv =

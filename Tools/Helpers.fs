@@ -60,7 +60,13 @@ let private entryFileRep (entry: string) : FileRep =
         else "", entry
     let lab = "." + name // It only has to be different from name.
     // Push heap start and argument start onto the stack before calling entry point.
-    let s = sprintf "%s%s:\n push! (load8 (+ %s -8))\n push! (load8 (+ %s -16))\n call! %s\nexit\n" import lab lab lab name
+    let s = sprintf "%s%s:
+        push! (load8 (+ %s -8))          # Heap start / return value
+        push! (load8 (load8 (+ %s -16))) # Arg length
+        push! (+ (load8 (+ %s -16)) 8)   # Arg start
+        call! %s
+        set_sp! &2
+        exit" import lab lab lab lab name
     let bytes = System.Text.Encoding.UTF8.GetBytes s
     PRE_ENTRY_NODE, fun () -> upcast (new MemoryStream(bytes))
 

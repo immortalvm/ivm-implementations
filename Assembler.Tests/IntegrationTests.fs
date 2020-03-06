@@ -13,7 +13,6 @@ open Tools.Checks
 let DIRECTORY = "test_code"
 
 let noExpectations = [
-    "intro3_advanced.s"
     "ex4_short_video.s"
     "test_linking2.s"
     "test_linking3.s"
