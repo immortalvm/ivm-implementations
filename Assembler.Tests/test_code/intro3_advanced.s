@@ -37,19 +37,20 @@ program:
     ## 1: start of argument array
     ## 2: length of argument array
     ## 3: start of free heap space
-    ##
-    ## The element at the bottom of the  stack also serves as the exit status of
-    ## the application (unless it is run  with "ivm check"). Hence, it should be
-    ## overwritten with 0  if it terminates normally. In other  words, the entry
-    ## point is essentially called like this:
 
+    ## The entry point is essentially called like this:
     push!!! heap_start arg_length arg_start
     call! main
     set_sp! &2
     exit
 
+    ## The top of the end stack is (truncated and) used as the exit status of
+    ## the virtual machine (unless it is run with "ivm check"). Hence, the
+    ## pointer to the heap start should be overwritten with 0 to signal success.
+
     ## Observe that the stack and heap share the same memory. In other words,
     ## the stack pointer marks the end of the heap.
+
 main:
 
 

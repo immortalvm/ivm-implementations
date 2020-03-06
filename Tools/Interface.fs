@@ -118,7 +118,7 @@ let writeStack (endStack: seq<int64>) =
 let processEndStack (shouldTrace: bool) (stack: seq<int64>) =
     let stack2 = if shouldTrace then stack
                  else let s = Seq.cache stack in writeStack s; s
-    match Seq.tryExactlyOne stack2 with
+    match Seq.tryHead stack2 with
     | Some status -> int status
     | None -> 2
 
