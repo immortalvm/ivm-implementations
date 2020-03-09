@@ -202,7 +202,7 @@ let doCollect (outputs: seq<AssemblerOutput>): AssemblerOutput =
     let initBin = initialization offset spacers relatives
     let binary =
         Seq.append initBin
-                   (rev |> Seq.map (fun ao -> ao.Binary) |> Seq.concat)
+                   (rev |> Seq.collect (fun ao -> ao.Binary))
     let labels = seq {
         let mutable offset = int64 initBin.Length
         for ao in rev do

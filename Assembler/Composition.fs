@@ -76,7 +76,7 @@ let private compose
         Array.fill stable 0 pLength true
         for keyValue in replies do
             let (num, label) = keyValue.Key
-            if not (positions.[label] - starts.[num] = keyValue.Value)
+            if positions.[label] - starts.[num] <> keyValue.Value
             then stable.[num] <- false
                  allStable <- false
 
@@ -118,7 +118,7 @@ let initialization (binarySize: int) (spacers: (int * int64) list) (relatives: i
     let relLoop = 5
 
     let copy = int64 >> ENum >> EStack >> ELoad8 >> SPush
-    let sumSpace = Seq.map snd spacers |> Seq.sum |> int64
+    let sumSpace = Seq.sumBy snd spacers |> int64
     let push (x: int) = int64 x |> ENum |> SPush
 
     let statements =

@@ -20,7 +20,7 @@ type Ext() =
         argument.AddValidator(fun a ->
             a.Tokens
             |> Seq.map (fun t -> t.Value)
-            |> Seq.filter (fun filePath -> not <| File.Exists filePath)
+            |> Seq.filter (File.Exists >> not)
             |> Seq.map (sprintf "File does not exist: %s")
             |> Seq.tryHead
             |> Option.toObj)
@@ -71,13 +71,13 @@ let main argv =
     // Observe that ~ etc. should be expanded by the shell and not here.
     let fName (fsi: FileSystemInfo) : string = fsi.FullName
     let fNames (fsis: seq<FileSystemInfo>) : string list =
-        if fsis = null then []
+        if isNull fsis then []
         else Seq.map (fun (fsi: FileSystemInfo) -> fsi.FullName) fsis |> Seq.toList
     let oName (fsi: FileSystemInfo) : string option =
-        if fsi = null then None else Some fsi.FullName
+        if isNull fsi then None else Some fsi.FullName
 
     let oMem (m: string): uint64 option =
-        if m = null then None else System.Decimal.Parse(m) |> uint64 |> Some
+        if isNull m then None else System.Decimal.Parse(m) |> uint64 |> Some
 
     let rootCommand =
         extend (RootCommand("ivm", Description="iVM Assembler and VM")) [

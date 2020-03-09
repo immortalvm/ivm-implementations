@@ -431,7 +431,7 @@ let parseProgram
             state <- { s with NodeIndex = s.NodeIndex + 1 }
             result
         | Failure(errorMsg, _, _) -> errorMsg |> ParseException |> raise
-    let result = comp |> Seq.map (snd >> parse) |> Seq.concat |> Seq.toList
+    let result = comp |> Seq.collect (snd >> parse) |> Seq.toList
 
     let missing = Seq.toList state.Undefined
     if not missing.IsEmpty then

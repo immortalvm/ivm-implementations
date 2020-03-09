@@ -89,7 +89,7 @@ let parseSymbolsFile file =
     Seq.map readLine relative,
     Seq.map readLine constant,
     Seq.map readLine labels,
-    Seq.map readLine spacers |> Seq.map (fun (x, y) -> int x, y),
+    Seq.map (readLine >> fun (x, y) -> int x, y) spacers,
     Seq.map int relatives
 
 let assem sources sourceRoot libs entry binary symbols noopt =

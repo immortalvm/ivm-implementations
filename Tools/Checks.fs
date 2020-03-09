@@ -61,9 +61,7 @@ let doCheck filenames (sourceRoot: string option) libs entry memory shouldTrace 
             |> Seq.skipWhile (isExpectationHeading >> not)
             |> Seq.append [""]
             |> Seq.skip 1 // Skip the heading
-            |> Seq.map parseNumber
-            |> Seq.map Option.toList
-            |> Seq.concat
+            |> Seq.collect (parseNumber >> Option.toList)
 
         match firstDiff actual expected with
         | i, None, None ->

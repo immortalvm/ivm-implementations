@@ -11,8 +11,11 @@ open Assembler.Integration
 // These constants should be annotated [<Literal>], but then they can no longer
 // be made available through the signature file. This is (yet another) reason
 // to stop using signature files.
+[<Literal>]
 let SOURCE_EXTENSION = ".s"
+[<Literal>]
 let BINARY_EXTENSION = ".b"
+[<Literal>]
 let SYMBOLS_EXTENSION = ".sym"
 
 let private uniqueFullPaths (filenames: seq<string>) =
@@ -52,6 +55,7 @@ let private nonRelativeNodes (fullPaths: seq<string>): seq<string * string> =
             seen <- seen.Add node
     }
 
+[<Literal>]
 let PRE_ENTRY_NODE = "/"
 
 let private entryFileRep (entry: string) : FileRep =
