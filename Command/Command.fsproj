@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -7,11 +8,8 @@
     <AssemblyVersion>$(VERSION)</AssemblyVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Update="FSharp.Core" Version="4.7.0" />
-  </ItemGroup>
-  <ItemGroup>
     <Compile Include="Program.fs" />
     <ProjectReference Include="..\Tools\Tools.fsproj" />
-    <PackageReference Include="System.CommandLine" Version="2.0.0-beta1.20071.2" />
   </ItemGroup>
+  <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>

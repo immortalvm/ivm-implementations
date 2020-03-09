@@ -1,12 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.0</TargetFramework>
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Update="FSharp.Core" Version="4.7.0" />
-  </ItemGroup>
   <ItemGroup>
     <None Include="..\Assembler.Tests\test_code\test_self_referential_expressions.s">
       <Link>test_code\test_self_referential_expressions.s</Link>
@@ -84,16 +82,11 @@
       <Link>test_code\intro1_statements.s</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <PackageReference Include="Expecto" Version="8.13.1" />
-    <PackageReference Include="FsCheck" Version="3.0.0-alpha4" />
     <ProjectReference Include="..\Machine\Machine.fsproj" />
-    <PackageReference Include="Unquote" Version="5.0.0" />
     <ProjectReference Include="..\Tools\Tools.fsproj" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0" />
-    <PackageReference Include="Expecto.FsCheck" Version="8.13.1" />
-    <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.8.0" />
     <ProjectReference Include="..\Assembler\Assembler.fsproj" />
     <Compile Include="ZipLibraryTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
+  <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>

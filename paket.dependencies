@@ -1,0 +1,12 @@
+source https://api.nuget.org/v3/index.json
+
+nuget Expecto 8.13.1
+nuget Expecto.FsCheck 8.13.1
+nuget FParsec 1.1.1
+nuget FsCheck 3.0.0-alpha4 prerelease
+nuget FSharp.Core 4.7.0
+nuget Microsoft.NET.Test.Sdk 16.5.0
+nuget System.CommandLine 2.0.0-beta1.20071.2 prerelease
+nuget System.Drawing.Common 4.7.0
+nuget Unquote 5.0.0
+nuget YoloDev.Expecto.TestSdk 0.8.0

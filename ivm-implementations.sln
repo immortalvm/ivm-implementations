@@ -2,6 +2,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.28721.148
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{25C44051-BDAA-4545-BFAA-9BFD4D2CEC39}"
+	ProjectSection(SolutionItems) = preProject
+		paket.dependencies = paket.dependencies
+	EndProjectSection
+EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Assembler", "Assembler\Assembler.fsproj", "{4588F220-B657-4C9E-953D-5239D4C1C7A7}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Assembler.Tests", "Assembler.Tests\Assembler.Tests.fsproj", "{1D4FED7E-D917-434A-8378-91C5C2BA396D}"
