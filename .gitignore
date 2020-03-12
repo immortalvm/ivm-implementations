@@ -39,3 +39,13 @@ Thumbs.db
 
 # dotCover
 *.dotCover
+
+# Paket, FAKE, ...
+.paket
+.fake
+build.fsx.lock
+
+# VSCode etc
+.ionide
+.vscode
+msbuild.binlog
