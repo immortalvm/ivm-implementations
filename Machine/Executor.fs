@@ -314,7 +314,7 @@ let private random = System.Random ()
 // Execute at random location (multiple of 1000) and return terminal stack.
 // Trace execution if symbol mapping is provided.
 // This method is likely to change...
-let execute (memorySize: uint64) (prog: seq<uint8>) (arg: seq<uint8>) (outputDir: string option) (traceSyms: Map<int, string> option) =
+let execute (memorySize: uint64) (prog: seq<uint8>) (arg: seq<uint8>) (inputDir: string option) (outputDir: string option) (traceSyms: Map<int, string> option) =
     // Start at 0, 1000, ... or 7000.
     let start = random.Next () % 8 |> ( * ) 1000 |> uint64
     let cachedArg = Seq.cache arg
@@ -323,7 +323,7 @@ let execute (memorySize: uint64) (prog: seq<uint8>) (arg: seq<uint8>) (outputDir
             memorySize,
             Seq.concat [prog; Seq.length cachedArg |> uint64 |> toBytes 8; cachedArg],
             start,
-            None,
+            inputDir,
             outputDir,
             traceSyms)
     machine.Run ()

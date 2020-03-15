@@ -55,7 +55,7 @@ let doCheck filenames (sourceRoot: string option) libs entry memory shouldTrace 
             if not shouldTrace then None
             else ao.Labels |> Seq.map (fun (sym, pos) -> int pos, sym) |> Map |> Some
 
-        let actual = doRun memory ao.Binary Seq.empty None traceSyms
+        let actual = doRun memory ao.Binary Seq.empty None None traceSyms
         let expected =
             File.ReadLines primary
             |> Seq.skipWhile (isExpectationHeading >> not)
