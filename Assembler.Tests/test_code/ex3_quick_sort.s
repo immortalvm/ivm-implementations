@@ -1,4 +1,4 @@
-﻿### Quicksort for 16-bit integers
+﻿### Quicksort for 16-bit unsigned integers
 ### Example and integration test
 
     EXPORT sort                 # Make 'sort' as externally visible
@@ -82,6 +82,8 @@ both_found:
     push!!!! (load2 $2) $3 (load2 $3) $2 # Swap
     store2
     store2
+    store8!! (+ $3 width) &3
+    store8!! (+ $2 -width) &2
     jump! low_not_found
 partition_end:                  # lo >= hi
     store8!! $2 &4
