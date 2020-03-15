@@ -59,12 +59,16 @@ let ENTRY_DIRECTORY = "test_code/entry_points"
 
 [<Tests>]
 let entryPointTests =
-    let filename = Path.Combine (ENTRY_DIRECTORY, "main_entry.s")
-    testList IMPL_DIRECTORY [
-        testCase "main" <| fun () ->
+    let case (name : string) =
+        let caseName = Path.GetFileNameWithoutExtension name
+        let fileName = Path.Combine [|ENTRY_DIRECTORY; name|]
+        testCase caseName <| fun () ->
             try
-                let message = doCheck [filename] None [] (Some "main") None false false
+                let message = doCheck [fileName] None [] (Some "main") None false false
                 Expect.isNotMatch message "^Not executed" "Expectations not found"
             with
                 | Failure(msg) -> failtest msg
-    ]
+    Directory.EnumerateFiles ENTRY_DIRECTORY
+    |> Seq.map (Path.GetFileName >> case)
+    |> Seq.toList
+    |> testList ENTRY_DIRECTORY
