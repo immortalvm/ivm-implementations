@@ -26,7 +26,7 @@ type Ext() =
             |> Option.toObj)
         argument
 
-// Needed because we Action<...> stops at 7 arguments.
+// Needed because Func<...> stops at 7 arguments.
 type AsRunDelegate = delegate of string * bool * FileInfo
                                  * DirectoryInfo * string option * bool
                                  * DirectoryInfo * seq<FileSystemInfo>
