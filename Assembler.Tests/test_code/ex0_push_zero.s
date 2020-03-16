@@ -1,5 +1,4 @@
-﻿    push! 0
-    exit
+﻿    exit! 0
 
     ## EXPECTED STACK:
     ## 0

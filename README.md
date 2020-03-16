@@ -92,7 +92,7 @@ statement = identifier ":"                                         (* label *)
           | "data8" "[" expression* "]" ("*" positive_numeral)?    (* data segment, 64 bits per value *)
           | "space" expression                                     (* pointer static byte array *)
 
-          | "exit"
+          | "exit" | "exit!" expression
           | "push" | "push!" expression | "push!!" expression expression | ...
           | "set_sp" | "set_sp!" expression
           | "jump" | "jump!" expression
@@ -108,6 +108,7 @@ statement = identifier ":"                                         (* label *)
           | "sigx1" | "sigx1!" expression
           | "sigx2" | "sigx2!" expression
           | "sigx4" | "sigx4!" expression
+          | "sigx8" | "sigx8!" expression                          (* no-op *)
           | "store1" | "store1!" expression | "store1!!" expression expression
           | "store2" | "store2!" expression | "store2!!" expression expression
           | "store4" | "store4!" expression | "store4!!" expression expression
@@ -157,11 +158,11 @@ expression = positive_numeral  (* 0 to 2^64-1 *)
            | "$" expression    (* stack content *)
            | "&" expression    (* stack pointer *)
 
-           | "(" "+" expression* ")"    (* add *)
-           | "(" "*" expression* ")"    (* mult *)
-           | "(" "&" expression* ")"    (* and *)
-           | "(" "|" expression* ")"    (* or  *)
-           | "(" "^" expression* ")"    (* xor *)
+           | "(" "+" expression* ")"                (* add *)
+           | "(" "*" expression* ")"                (* mult *)
+           | "(" "&" expression* ")"                (* and *)
+           | "(" "|" expression* ")"                (* or  *)
+           | "(" "^" expression* ")"                (* xor *)
 
            | "(" "="   expression expression ")"    (* eq *)
            | "(" "<u"  expression expression ")"    (* lt_u *)
@@ -180,6 +181,7 @@ expression = positive_numeral  (* 0 to 2^64-1 *)
            | "(" "sigx1" expression ")"
            | "(" "sigx2" expression ")"
            | "(" "sigx4" expression ")"
+           | "(" "sigx8" expression ")"             (* identity function *)
 
 identifier = (letter | "_" | "." ) (letter | "_" | "." | digit)*;
 ```

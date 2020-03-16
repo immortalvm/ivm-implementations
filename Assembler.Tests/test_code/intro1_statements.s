@@ -179,8 +179,9 @@ my_1000_byte_array:
     ## sigx2 and sigx4 are similar.
     sigx4  # Sign extension from 32 to 64 bits.
 
-    ## For completeness, we also let 'sigxN! x' be sugar for 'push! x sigxN'.
-    ## However, it is perhaps not very useful.
+    ## For completeness, we also include the no-op sigx8, and let 'sigxN! x' be
+    ## sugar for 'push! x sigxN'.
+    sigx8
     sigx1! 0xff  # Push -1.
 
 

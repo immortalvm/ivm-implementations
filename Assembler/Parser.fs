@@ -231,6 +231,7 @@ let expression: Parser<Expression, State> =
                     | "sigx1" -> expr1 |>> ESigx1
                     | "sigx2" -> expr1 |>> ESigx2
                     | "sigx4" -> expr1 |>> ESigx4
+                    | "sigx8" -> expr1
                     | unknown -> fail <| sprintf "Not an expression keyword: %s" unknown
             p stream
 
@@ -318,7 +319,7 @@ let statement: Parser<Statement list, State> =
             | "data8" -> numArgsZero >>. data |>> (List.map SData8)
             | "space" -> numArgsZero >>. oneSpacer
 
-            | "exit" -> nArgs 0 [SExit]
+            | "exit" -> nArgs 1 [SExit]
             | "push" -> if numArgs = listKey then pushList else pArgs ()
             | "set_sp" -> nArgs 1 [SSetSp]
             | "call" -> nArgs 1 [] .>>. State.Call |>> fun (x, y) -> x @ y
@@ -334,6 +335,7 @@ let statement: Parser<Statement list, State> =
             | "sigx1" -> nArgs 1 [SSigx1]
             | "sigx2" -> nArgs 1 [SSigx2]
             | "sigx4" -> nArgs 1 [SSigx4]
+            | "sigx8" -> nArgs 1 []
             | "store1" -> nArgs 2 [SStore1]
             | "store2" -> nArgs 2 [SStore2]
             | "store4" -> nArgs 2 [SStore4]
