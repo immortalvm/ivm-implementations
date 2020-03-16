@@ -64,6 +64,7 @@ void* sp;
 
 static inline void push(uint64_t x) { *((uint64_t*) (sp -= 8)) = x; }
 static inline uint64_t pop() { uint64_t result = *((uint64_t*) sp); sp += 8; return result; }
+static inline uint64_t top() { return *((uint64_t*) sp); }
 
 static inline uint8_t next1() { return *((uint8_t*)(pc++)); }
 static inline uint16_t next2() { uint16_t result = *((uint16_t*)pc); pc += 2; return result; }
@@ -230,11 +231,12 @@ int main(int argc, char** argv) {
     }
   }
 
-  // Print stack
+  int res = sp != memStop ? (int)top() : -1;
   printf("\n");
   while (sp != memStop) {
+    // Print stack destructively
     x = pop();
     printf("0x..%05llX %7lld\n", x & 0xfffffUL, x);
   }
-  return(0);
+  return(res);
 }
