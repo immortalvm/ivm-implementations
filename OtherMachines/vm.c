@@ -74,7 +74,7 @@ static inline uint64_t signExtend1(uint64_t x) { return ((uint64_t)(int64_t)(int
 static inline uint64_t signExtend2(uint64_t x) { return ((uint64_t)(int64_t)(int16_t)(uint16_t)x); }
 static inline uint64_t signExtend4(uint64_t x) { return ((uint64_t)(int64_t)(int32_t)(uint32_t)x); }
 
-uint64_t memorySize = 1 << 24;
+uint64_t memorySize = 1 << 24; // 16 MiB by default
 char* argFile = NULL;
 char* inpDir = NULL;
 char* outDir = NULL;
@@ -118,7 +118,7 @@ void parseOptions(int argc, char** argv) {
     binFile = argv[optind++];
   }
   if (errflg) {
-    fprintf(stderr, "Usage: %s [-m <bytes>] [-a <file>] [-o <dir>] binary\n", argv[0]);
+    fprintf(stderr, "Usage: %s [-m <size in bytes>] [-a <arg file>] [-i <input dir>] [-o <output dir>] binary\n", argv[0]);
     exit(OPTION_PARSE_ERROR);
   }
 }
