@@ -38,6 +38,9 @@
     <None Include="test_code\ex5_write_decimal_number.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="test_code\ex6_clone_frames.s">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="test_code\test_expressions.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
