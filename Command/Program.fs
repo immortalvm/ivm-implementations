@@ -97,7 +97,7 @@ let main argv =
                     run (oMem memory) (fName ``binary file``) (oName arg) (oName inp) (oName out) trace)
 
             com "as-run" "Assemble and run" [
-                mem; trace; arg; out
+                mem; trace; arg; inp; out
                 entry; noopt; root; sources; libraries
             ] <| CommandHandler.Create(new AsRunDelegate(fun memory trace arg inp out entry noopt root ``source files`` library ->
                          asRun (fNames ``source files``) (oName root) (fNames library) entry (oMem memory) (oName arg) (oName inp) (oName out) trace noopt))
