@@ -78,8 +78,8 @@ let set n = addr n @ [STORE8]
 let toSign =
     [
         PUSH1; 63y; POW2; LT // -1 if positive, 0 if negative
-        PUSH1; 2y; MULT         // -2  or  0
-        NOT                         //  1  or -1
+        PUSH1; 2y; MULT      // -2  or  0
+        NOT                  //  1  or -1
     ]
 let abs = get 0 @ toSign @ [MULT] // Keeps 2^63 unchanged
 let divRemBasis unsignedOp =
@@ -102,7 +102,9 @@ let divRemBasis unsignedOp =
         ]
 let divS = divRemBasis [DIV]
 let remS = divRemBasis [REM]
-let divSU =
+
+// Round towards zero
+let oldDivSU =
     List.concat
         [
             // x :: y :: rest
@@ -114,6 +116,23 @@ let divSU =
             [MULT]
             set 2
             pop 1
+        ]
+
+// Round towards negative infinity
+let divSU =
+    List.concat
+        [
+            // x :: y :: rest
+            get 1 @ [PUSH1; 63y; POW2; LT] // -1 if y>=0, else 0
+            get 0 @ [PUSH1; 2y; MULT; NOT]  // -1 if y<0, else 1
+            get 0 @ get 4 @ [MULT]           // |y|
+            get 2 @ [ADD; PUSH1; 1y; ADD]    // [y] - add 1 if y<0
+            get 3
+            [DIV]
+            // [y] / x :: sign y :: (-1 or 0) :: x :: y :: rest
+            [MULT]
+            set 3
+            pop 2
         ]
 
 
@@ -287,7 +306,7 @@ let divSValue (v1: Value) (v2: Value) : Value =
     | _, One -> v1
     | Zero, _ -> zeroValue
     | Val(c, m), True -> Val(c @ changeSign, -m)
-    | _, Const(n) when n > 0L -> noOffset <| collapseValue v1 @ pushNum n @ divSU
+    | _, Const(n) when n > 0L -> noOffset <| collapseValue v1 @ pushNum n @ oldDivSU
     | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ divS
 
 let divSUValue (v1: Value) (v2: Value) : Value =
@@ -526,7 +545,7 @@ let expressionDivS e lookup =
     | Zero -> pop 1 @ [PUSH0] // NB: x / 0 = 0
     | One -> []
     | True -> changeSign
-    | Const(n) when n > 0L -> pushNum n @ divSU
+    | Const(n) when n > 0L -> pushNum n @ oldDivSU
     | v -> collapseValue v @ divS
 
 let expressionRemS e lookup =

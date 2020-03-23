@@ -20,7 +20,8 @@ type Expression =
 
     | EDivU of Expression * Expression
     | EDivS of Expression * Expression
-    | EDivSU of Expression * Expression // Divide signed with unsigned (e.g. 2^63)
+    // Divide signed with unsigned (e.g. 2^63) and round towards -infinity
+    | EDivSU of Expression * Expression
     | ERemU of Expression * Expression
     | ERemS of Expression * Expression
 

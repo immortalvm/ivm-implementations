@@ -62,7 +62,6 @@
     push! (/s X1 X1)            # 1
     push! (>>u X1 63)           # 1
     push! (>>s X1 63)           # -1
-    push! (/su X1 X1)           # -1 (divide signed with unsigned)
     X2 = (load8 X_data)
     push! (= X1 X2)             # -1
     push! (= -X2 X1)            # -1
@@ -72,7 +71,6 @@
     push! (/s X2 X2)            # 1
     push! (>>u X2 63)           # 1
     push! (>>s X2 63)           # -1
-    push! (/su X2 X2)           # -1 (divide signed with unsigned)
 
     ## x/0 = 0  and x%0 = 0 !
     push! (/u 1 0)              # 0
@@ -116,7 +114,6 @@ X_data:
 ### 0 # Division by zero
 
 ### -1
-### -1
 ### 1
 ### 1
 ### 1
@@ -124,7 +121,6 @@ X_data:
 ### -1
 ### -1
 ### -1   # X2
-### -1
 ### -1
 ### 1
 ### 1

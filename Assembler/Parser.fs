@@ -219,7 +219,6 @@ let expression: Parser<Expression, State> =
 
                     | "/u" -> expr2 |>> EDivU
                     | "/s" -> expr2 |>> EDivS
-                    | "/su" -> expr2 |>> EDivSU
                     | "%u" -> expr2 |>> ERemU
                     | "%s" -> expr2 |>> ERemS
 
