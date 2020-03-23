@@ -19,6 +19,11 @@ let noExpectations = [
     "test_circular2.s"
 ]
 
+let sourceFiles dir =
+    Directory.EnumerateFiles dir
+    |> Seq.filter (Path.GetExtension >> (=) ".s")
+    |> Seq.map Path.GetFileName
+
 let check fileNames =
     try
         let message = doCheck fileNames (Some DIRECTORY) [] None None false false
@@ -32,8 +37,7 @@ let integrationTests =
         let caseName = Path.GetFileNameWithoutExtension name
         let fileName = Path.Combine [|DIRECTORY; name|]
         testCase caseName <| fun () -> check [fileName]
-    Directory.EnumerateFiles DIRECTORY
-    |> Seq.map Path.GetFileName
+    sourceFiles DIRECTORY
     |> Seq.filter (fun name -> not <| List.contains name noExpectations)
     |> Seq.map case
     |> Seq.toList
@@ -68,7 +72,7 @@ let entryPointTests =
                 Expect.isNotMatch message "^Not executed" "Expectations not found"
             with
                 | Failure(msg) -> failtest msg
-    Directory.EnumerateFiles ENTRY_DIRECTORY
-    |> Seq.map (Path.GetFileName >> case)
+    sourceFiles ENTRY_DIRECTORY
+    |> Seq.map case
     |> Seq.toList
     |> testList ENTRY_DIRECTORY
