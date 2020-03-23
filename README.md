@@ -175,6 +175,14 @@ expression = positive_numeral  (* 0 to 2^64-1 *)
            | "(" ">=u" expression expression ")"    (* gte_u *)
            | "(" ">=s" expression expression ")"    (* gte_s *)
 
+           | "(" "<<"  expression expression ")"    (* shift_l *)
+           | "(" ">>u" expression expression ")"    (* shift_r unsigned, unsigned *)
+           | "(" ">>s" expression expression ")"    (* shift_r signed, unsigned *)
+           | "(" "/u"  expression expression ")"    (* div_u *)
+           | "(" "/s"  expression expression ")"    (* div_s *)
+           | "(" "%u"  expression expression ")"    (* rem_u *)
+           | "(" "%s"  expression expression ")"    (* rem_s *)
+
            | "(" "load1" expression ")"
            | "(" "load2" expression ")"
            | "(" "load4" expression ")"
