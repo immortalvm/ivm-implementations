@@ -61,18 +61,21 @@ type private Machine
                     |> Seq.map Path.GetFileName
                     |> Seq.filter (Path.GetExtension >> (=) ".png")
                     |> Seq.sort
+                    |> Seq.map (fun name -> Path.Join (dir, name))
                     |> Seq.toList
                     |> Some
             readFrame()
         | Some [] -> (0, 0)
         | Some (next :: rest) ->
             pendingInputFiles <- Some rest
-            let bitmap = new Bitmap(Image.FromFile next)
+            let bitmap = new Bitmap(next)
             inputBitmap <- Some bitmap
             (bitmap.Width, bitmap.Height)
     let rec readPixel x y : uint8 =
         let c = inputBitmap.Value.GetPixel (x, y)
-        (c.R + c.G + c.B) / 3uy // Does this make sense?
+         // Transparent = white, 765 = 255 * 3, 382 ~ 765 / 2
+        let g = (int c.R + int c.G + int c.B) * int c.A + 765 * (255 - int c.A)
+        (g + 382) / 765 |> uint8
 
     let mutable outputEncountered = false
     let mutable frameCounter = -1 // Since the first "flush" will be a no-op.
