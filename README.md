@@ -146,6 +146,7 @@ statement = identifier ":"                                         (* label *)
           | ... | "read_pixel!!" expression expression
 
           | ... | "put_char!" expression
+          | ... | "put_byte!" expression
           | ... | "new_frame!!!" expression expression expression
           | ... | "set_pixel!!!!!" expression ...
           | ... | "add_sample!!" expression expression;

@@ -41,6 +41,9 @@
     <None Include="test_code\ex6_clone_frames.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="test_code\ex7_copy_argument_file.s">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="test_code\test_expressions.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

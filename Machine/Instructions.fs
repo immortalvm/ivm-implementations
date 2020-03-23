@@ -127,5 +127,8 @@ let ADD_SAMPLE = -5y  // 251
 [<Literal>]
 let PUT_CHAR = -6y    // 250
 
+[<Literal>]
+let PUT_BYTE = -7y    // 249
+
 // Used by Machine.Disassembler to find the module.
 type IReflectionMarker = interface end

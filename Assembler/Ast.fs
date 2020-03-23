@@ -80,6 +80,6 @@ type Statement =
     | SGtEU | SGtES | SGtU | SGtS
 
     | SNewFrame | SSetPixel | SAddSample
-    | SPutChar
+    | SPutChar | SPutByte
 
     | SReadFrame | SReadPixel

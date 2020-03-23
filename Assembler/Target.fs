@@ -651,6 +651,7 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
             | SSetPixel  :: r -> frag r [SET_PIXEL]
             | SAddSample :: r -> frag r [ADD_SAMPLE]
             | SPutChar   :: r -> frag r [PUT_CHAR]
+            | SPutByte   :: r -> frag r [PUT_BYTE]
 
             | SReadFrame :: r -> frag r [READ_FRAME]
             | SReadPixel :: r -> frag r [READ_PIXEL]

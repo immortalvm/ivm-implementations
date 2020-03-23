@@ -78,7 +78,9 @@ type private Machine
         (g + 382) / 765 |> uint8
 
     let mutable outputEncountered = false
-    let mutable frameCounter = -1 // Since the first "flush" will be a no-op.
+    let mutable frameCounter = 0 // Frame 0 will have no bitmap or sound.
+    let mutable text : char [] list = []
+    let mutable bytes : uint8 list = []
     let mutable bitmap : Bitmap option = None
     let mutable sampleRate = 0u
     let mutable samples : (int16 * int16) list = [] // Reversed
@@ -94,6 +96,12 @@ type private Machine
                  printfn "Output to: %s" outputDir.Value
                  outputEncountered <- true
             let path = Path.Combine(outputDir.Value, sprintf "%08d." frameCounter)
+            match text with
+            | [] -> ()
+            | _ -> File.WriteAllText (path + "text", text |> Seq.rev |> Seq.concat |> System.String.Concat )
+            match bytes with
+            | [] -> ()
+            | _ -> File.WriteAllBytes (path + "bytes", bytes |> Seq.rev |> Seq.toArray)
             match bitmap with
             | None -> ()
             | Some b ->
@@ -102,7 +110,6 @@ type private Machine
             | [] -> ()
             | _ ->
                 // See http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html
-                Directory.CreateDirectory outputDir.Value |> ignore
                 let data = samples |> Seq.rev |> Seq.collect (fun (l, r) -> [l; r]) |> Seq.toArray
                 let sampleLength = 2 // 16 bits
                 let channels = 2 // left, right
@@ -303,11 +310,15 @@ type private Machine
             let left = m.Pop () |> int16
             samples <- (left, right) :: samples
         | PUT_CHAR ->
-            m.Pop ()
-            |> toBytes 4
-            |> Seq.toArray
-            |> System.Text.Encoding.UTF32.GetChars
-            |> System.Console.Error.Write
+            let c =
+                m.Pop ()
+                |> toBytes 4
+                |> Seq.toArray
+                |> System.Text.Encoding.UTF32.GetChars
+            text <- c :: text
+            System.Console.Error.Write c
+        | PUT_BYTE ->
+            bytes <- uint8 (m.Pop ()) :: bytes
 
         | undefined -> raise (UndefinedException(sprintf "%d" undefined))
 
