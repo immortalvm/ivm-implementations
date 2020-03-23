@@ -184,8 +184,8 @@ and private divSU x y =
     match x, y with
     | _, ENum 0L -> ENum 0L // x / 0 = 0 !
     | ENum m, ENum n ->
-        let sign = if m < 0L then -1L else 1L
-        (m * sign |> uint64) / (uint64 n) |> int64 |> (*) sign |> ENum
+        let sign, extra = if m < 0L then -1L, 1UL else 1L, 0UL
+        (uint64 (m * sign) + extra) / (uint64 n) |> int64 |> (*) sign |> ENum
     | _, ENum 1L -> x
     | _, _ -> EDivSU (x, y)
 
