@@ -31,7 +31,7 @@ let getLastTag () =
   Git.CommandHelper.getGitResult "." "describe --tags --abbrev=0" |> Seq.head
 
 let publish (alsoZip: bool) (runtimes: string list) =
-  let framework = "netcoreapp3.0"
+  let framework = "netcoreapp3.1"
   let tag = getLastTag ()
   let version = tag.Substring 1
   Trace.logfn "Publishing %s for %s..." tag <| System.String.Join(", ", runtimes)
