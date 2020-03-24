@@ -19,19 +19,18 @@ let private isExpectationHeading line : bool =
     | Success (_) -> true
     | Failure (_) -> false
 
-let private numberParser : Parser<int64, unit> =
+let private numberParser : Parser<int64 list, unit> =
     let neg = (skipChar '-') >>. puint64 |>> (int64 >> (~-))
     let pos = puint64 |>> int64
     spaces >>. many1 (skipChar '#')
            >>. spaces
-           >>. (neg <|> pos)
-           .>> spaces
+           >>. many1 ((neg <|> pos) .>> spaces)
            .>> (eof <|> skipChar '#')
 
-let private parseNumber line : int64 option =
+let private parseNumbers line : int64 list =
     match runParserOnString numberParser () "" line with
-    | Success (result, _, _) -> Some result
-    | Failure (_) -> None
+    | Success (result, _, _) -> result
+    | Failure (_) -> []
 
 // Based on Expecto.Expect
 let private firstDiff s1 s2 =
@@ -61,7 +60,7 @@ let doCheck filenames (sourceRoot: string option) libs entry memory shouldTrace 
             |> Seq.skipWhile (isExpectationHeading >> not)
             |> Seq.append [""]
             |> Seq.skip 1 // Skip the heading
-            |> Seq.collect (parseNumber >> Option.toList)
+            |> Seq.collect parseNumbers
 
         match firstDiff actual expected with
         | i, None, None ->
