@@ -167,41 +167,45 @@ and private xor lst =
 
 and private divU x y =
     match x, y with
+    | ENum 0L, _
     | _, ENum 0L -> ENum 0L // x / 0 = 0 !
-    | ENum m, ENum n -> (uint64 m) / (uint64 n) |> int64 |> ENum
     | _, ENum 1L -> x
+    | ENum m, ENum n -> (uint64 m) / (uint64 n) |> int64 |> ENum
     | _, _ -> EDivU (x, y)
 
 and private divS x y =
     match x, y with
     | _, ENum 0L -> ENum 0L // x / 0 = 0 !
-    | ENum m, ENum n -> m / n |> ENum
     | _, ENum 1L -> x
+    | ENum m, ENum n -> m / n |> ENum
     | _, ENum -1L -> neg x
     | _, _ -> EDivS (x, y)
 
 and private divSU x y =
     match x, y with
-    | _, ENum 0L -> ENum 0L // x / 0 = 0 !
+    | _, ENum 0L // arbitrary
+    | _, ENum 1L
+    | ENum -1L, _ -> x
     | ENum m, ENum n ->
-        let sign, extra = if m < 0L then -1L, 1UL else 1L, 0UL
-        (uint64 (m * sign) + extra) / (uint64 n) |> int64 |> (*) sign |> ENum
-    | _, ENum 1L -> x
+        let off, sign = if m < 0L then -1L, -1L else 0L, 1L
+        uint64 (m * sign + off) / (uint64 n) |> int64 |> (*) sign |> (+) off |> ENum
     | _, _ -> EDivSU (x, y)
 
 and private remU x y =
     match x, y with
+    | _, ENum 1L
+    | ENum 0L, _
     | _, ENum 0L -> ENum 0L // x % 0 = 0 !
     | ENum m, ENum n -> (uint64 m) % (uint64 n) |> int64 |> ENum
-    | _, ENum 1L -> ENum 0L
-    | _, ENum -1L -> ENum 0L
     | _, _ -> ERemU (x, y)
 
 and private remS x y =
     match x, y with
+    | _, ENum 1L
+    | ENum 0L, _
+    | _, ENum -1L
     | _, ENum 0L -> ENum 0L // x % 0 = 0 !
     | ENum m, ENum n -> m % n |> ENum
-    | _, ENum 1L -> ENum 0L
     | _, _ -> ERemS (x, y)
 
 and private sign n x =

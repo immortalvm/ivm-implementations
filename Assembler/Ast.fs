@@ -20,8 +20,11 @@ type Expression =
 
     | EDivU of Expression * Expression
     | EDivS of Expression * Expression
-    // Divide signed with unsigned (e.g. 2^63) and round towards -infinity
+
+    // Divide signed with unsigned (e.g. 2^63) and round towards -infinity.
+    // EDivSU (y, 0) is undefined, i.e. arbitrary.
     | EDivSU of Expression * Expression
+
     | ERemU of Expression * Expression
     | ERemS of Expression * Expression
 
@@ -72,7 +75,7 @@ type Statement =
     | SNeg
     | SAnd | SOr | SXor | SNot
     | SPow2
-    | SDivU | SDivS | SDivSU
+    | SDivU | SDivS | SDivSU // See EDivSU
     | SRemU | SRemS
 
     // Return -1 for true and 0 for false:

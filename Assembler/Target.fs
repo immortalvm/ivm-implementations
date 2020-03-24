@@ -118,22 +118,25 @@ let oldDivSU =
             pop 1
         ]
 
-// Round towards negative infinity
+// Round towards negative infinity.
+// Used for arithmetic shift right.
+// Division by zero: arbitrary value.
 let divSU =
     List.concat
         [
-            // x :: y :: rest
-            get 1 @ [PUSH1; 63y; POW2; LT] // -1 if y>=0, else 0
-            get 0 @ [PUSH1; 2y; MULT; NOT]  // -1 if y<0, else 1
-            get 0 @ get 4 @ [MULT]           // |y|
-            get 2 @ [ADD; PUSH1; 1y; ADD]    // [y] - add 1 if y<0
+             // x :: y :: rest
+            get 1 @ [PUSH1; 63y; POW2; LT; NOT]       // -1 if y<0, else 0
+            get 0 @ [PUSH1; 2y; MULT; PUSH1; 1y; ADD] // -1 if y<0, else 1
+            // (-1 or 1) :: (-1 or 0) :: x :: y :: rest
+            get 0 @ get 4 @ [MULT]                    // absolute value
+            get 2 @ [ADD]                             // subtract 1 if y<0
             get 3
-            [DIV]
-            // [y] / x :: sign y :: (-1 or 0) :: x :: y :: rest
-            [MULT]
-            set 3
-            pop 2
-        ]
+            // x :: [y] :: (-1 or 1) :: (-1 or 0) :: x :: y :: rest
+            [DIV; MULT; ADD]
+            // result :: x :: y :: rest
+            set 2
+            pop 1
+       ]
 
 
 let offsetSign = pushNum (1L <<< 63) @ [ADD]
@@ -293,47 +296,48 @@ let sigx4Value (v: Value) : Value =
 
 let divUValue (v1: Value) (v2: Value) : Value =
     match v1, v2 with
+    | Zero, _
     | _, Zero -> zeroValue // x / 0 = 0 !
-    | Const(m), Const(n) -> constant (uint64 m / uint64 n |> int64)
     | _, One -> v1
-    | Zero, _ -> zeroValue
+    | Const(m), Const(n) -> constant (uint64 m / uint64 n |> int64)
     | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ [DIV]
 
 let divSValue (v1: Value) (v2: Value) : Value =
     match v1, v2 with
+    | Zero, _
     | _, Zero -> zeroValue // x / 0 = 0 !
-    | Const(m), Const(n) -> constant (m / n)
     | _, One -> v1
-    | Zero, _ -> zeroValue
+    | Const(m), Const(n) -> constant (m / n)
     | Val(c, m), True -> Val(c @ changeSign, -m)
     | _, Const(n) when n > 0L -> noOffset <| collapseValue v1 @ pushNum n @ oldDivSU
     | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ divS
 
 let divSUValue (v1: Value) (v2: Value) : Value =
     match v1, v2 with
-    | _, Zero -> zeroValue // x / 0 = 0 !
+    | _, Zero // arbitrary
+    | Zero, _
+    | _, One
+    | True, _ -> v1
     | Const(m), Const(n) ->
-        let sign = if m < 0L then -1L else 1L
-        ((m * sign |> uint64) / (uint64 n)) |> int64 |> (*) sign |> constant
-    | _, One -> v1
-    | Zero, _ -> zeroValue
+        let off, sign = if m < 0L then -1L, -1L else 0L, 1L
+        uint64 (m * sign + off) / (uint64 n) |> int64 |> (*) sign |> (+) off |> constant
     | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ divSU
 
 let remUValue (v1: Value) (v2: Value) : Value =
     match v1, v2 with
+    | _, One
+    | Zero, _
     | _, Zero -> zeroValue // x % 0 = 0 !
     | Const(m), Const(n) -> constant ((uint64 m % uint64 n |> int64))
-    | _, One -> zeroValue
-    | Zero, _ -> zeroValue
     | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ [REM]
 
 let remSValue (v1: Value) (v2: Value) : Value =
     match v1, v2 with
+    | _, One
+    | Zero, _
+    | _, True
     | _, Zero -> zeroValue // x % 0 = 0 !
     | Const(m), Const(n) -> constant (m % n)
-    | _, One -> zeroValue
-    | Zero, _ -> zeroValue
-    | _, True -> zeroValue
     | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ remS
 
 let eqValue (v1: Value) (v2: Value) : Value =
@@ -557,7 +561,7 @@ let expressionRemS e lookup =
 
 let expressionDivSU e lookup =
     match exprPushCore lookup 0 0 e with
-    | Zero -> pop 1 @ [PUSH0] // NB: x / 0 = 0
+    | Zero // arbitrary
     | One -> []
     | v -> collapseValue v @ divSU
 
