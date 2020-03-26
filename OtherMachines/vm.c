@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <wchar.h>
 #include <unistd.h>
 
 #if UINTPTR_MAX != 0xffffffffffffffff
@@ -13,11 +12,16 @@
 #error The byte ordering must be little-endian.
 #endif
 
+// Error codes
 #define OPTION_PARSE_ERROR 1
 #define FILE_NOT_FOUND 2
 #define NOT_IMPLEMENTED_YET 3
 #define UNDEFINED_INSTRUCTION 4
+#define OUT_OF_MEMORY 5
+#define STRING_TOO_LONG 6
+#define NOT_WRITEABLE 7
 
+// Instructions
 #define EXIT 0
 #define NOP 1
 #define JUMP 2
@@ -58,7 +62,9 @@
 #define SET_PIXEL (uint8_t)-4
 #define ADD_SAMPLE (uint8_t)-5
 #define PUT_CHAR (uint8_t)-6
+#define PUT_BYTE (uint8_t)-7
 
+// Machine state
 void* pc;
 void* sp;
 
@@ -75,6 +81,7 @@ static inline uint64_t signExtend1(uint64_t x) { return ((uint64_t)(int64_t)(int
 static inline uint64_t signExtend2(uint64_t x) { return ((uint64_t)(int64_t)(int16_t)(uint16_t)x); }
 static inline uint64_t signExtend4(uint64_t x) { return ((uint64_t)(int64_t)(int32_t)(uint32_t)x); }
 
+// Options
 uint64_t memorySize = 1 << 24; // 16 MiB by default
 char* argFile = NULL;
 char* inpDir = NULL;
@@ -140,6 +147,122 @@ long readFile(char* filename, void* start) {
   return filelen;
 }
 
+void writeFile(char* filename, void* start, size_t size) {
+  FILE* fileptr = fopen(filename, "wb");
+  if (fileptr == NULL || fwrite(start, 1, size, fileptr) < size) {
+    fprintf(stderr, "Trouble writing: %s\n", filename);
+    exit(NOT_WRITEABLE);
+  }
+}
+
+
+/* Growing byte buffer inspired by https://stackoverflow.com/a/3536261 */
+
+typedef struct {
+  uint8_t* array;
+  size_t size;
+  size_t used;
+} Bytes;
+
+void bytesInitialize(Bytes* b, size_t initialSize) {
+  b->array = (uint8_t*) malloc(initialSize * sizeof(uint8_t));
+  if (b->array == NULL) {
+    exit(OUT_OF_MEMORY);
+  }
+  b->size = initialSize;
+  b->used = 0;
+}
+
+void bytesMakeSpace(Bytes* b, size_t extra) {
+  // Precondition: extra <= initial size
+  if (b->used + extra > b->size) {
+    b->size *= 2;
+    b->array = (uint8_t*) realloc(b->array, b->size * sizeof(uint8_t));
+    if (b->array == NULL) {
+      exit(OUT_OF_MEMORY);
+    }
+  }
+}
+
+void bytesPutByte(Bytes* b, uint8_t x) {
+    bytesMakeSpace(b, 1);
+    b->array[b->used++] = x;
+}
+
+// UTF-32 to UTF-8
+void bytesPutChar(Bytes* b, uint32_t c) {
+  if (c < 0x80) {
+    bytesMakeSpace(b, 1);
+    b->array[b->used++] = (uint8_t) c;
+  } else if (c < 0x800) {
+    bytesMakeSpace(b, 2);
+    b->array[b->used++] = (uint8_t) (0xc0 | c >> 6);
+    b->array[b->used++] = (uint8_t) (0x80 | (0x3f & c));
+  } else if (c < 0x10000) {
+    bytesMakeSpace(b, 3);
+    b->array[b->used++] = (uint8_t) (0xe0 | c >> 12);
+    b->array[b->used++] = (uint8_t) (0x80 | (0x3f & c >> 6));
+    b->array[b->used++] = (uint8_t) (0x80 | (0x3f & c));
+  } else {
+    bytesMakeSpace(b, 4);
+    b->array[b->used++] = (uint8_t) (0xf0 | (0x07 & c >> 18)); // &: in case is > 21 bits
+    b->array[b->used++] = (uint8_t) (0x80 | (0x3f & c >> 12));
+    b->array[b->used++] = (uint8_t) (0x80 | (0x3f & c >> 6));
+    b->array[b->used++] = (uint8_t) (0x80 | (0x3f & c));
+  }
+}
+
+
+/* I/O state */
+
+#define INITIAL_TEXT_SIZE 0x1000000 // 16 MiB
+#define INITIAL_BYTES_SIZE 0x1000000 // 16 MiB
+#define MAX_FILENAME 128
+
+int outputCounter = 0;
+Bytes currentText;
+Bytes currentBytes;
+
+void ioInit() {
+  if (outDir != NULL) {
+    if (strlen(outDir) + 16 > MAX_FILENAME) {
+      exit(STRING_TOO_LONG);
+    }
+  }
+  bytesInitialize(&currentText, INITIAL_TEXT_SIZE);
+  bytesInitialize(&currentBytes, INITIAL_BYTES_SIZE);
+}
+
+void ioFlush() {
+  if (outDir != NULL) {
+    char filename[MAX_FILENAME];
+    char* ext = filename + sprintf(filename, "%s/%08d.", outDir, outputCounter);
+    if (currentText.used > 0) {
+      sprintf(ext, "text");
+      writeFile(filename, currentText.array, currentText.used);
+    }
+    if (currentBytes.used > 0) {
+      sprintf(ext, "bytes");
+      writeFile(filename, currentBytes.array, currentBytes.used);
+    }
+  }
+  currentText.used = 0;
+  currentBytes.used = 0;
+  outputCounter++;
+}
+
+void ioPutChar(uint32_t c) {
+  int start = currentText.used;
+  bytesPutChar(&currentText, c);
+  int len = currentText.used - start;
+  printf("%.*s", len, currentText.array + start);
+}
+
+void ioPutByte(uint8_t x) {
+  bytesPutByte(&currentBytes, x);
+}
+
+
 /* Example: clang vm.c && ./a.out 50 ex3_quick_sort.bin empty */
 // [-m <bytes>] [-a <file>] [-o <dir>] binary
 int main(int argc, char** argv) {
@@ -153,15 +276,15 @@ int main(int argc, char** argv) {
   *((uint64_t*) (argStart - 8)) = argLength;
   void* heapStart = argStart + argLength;
 
+  ioInit();
+
   pc = memStart;
   sp = memStop;
-  bool terminated = false;
   uint64_t x, y;
-  bool undefIo = false;
 
-  while (!terminated) {
+  while (true) {
     switch (next1()) {
-    case EXIT: terminated = true; break;
+    case EXIT: goto terminated;
     case NOP: break;
     case JUMP: pc = (void*) pop(); break;
 
@@ -218,21 +341,25 @@ int main(int argc, char** argv) {
     case POW2: x = pop(); push(x <= 63 ? 1UL << x : 0); break;
 
     // TODO:
-    case READ_FRAME: undefIo = true; push(0); push(0); break;
-    case READ_PIXEL: undefIo = true; pop(); pop(); push(0); break;
-    case NEW_FRAME: undefIo = true; printf("\r\f"); pop(); pop(); pop(); break;
-    case SET_PIXEL: undefIo = true; pop(); pop(); pop(); pop(); pop(); break;
-    case ADD_SAMPLE: undefIo = true; pop(); pop(); break;
+    case READ_FRAME: push(0); push(0); break;
+    case READ_PIXEL: pop(); pop(); push(0); break;
+    case NEW_FRAME: pop(); pop(); pop(); printf("\r\f"); ioFlush(); break;
+    case SET_PIXEL: pop(); pop(); pop(); pop(); pop(); break;
+    case ADD_SAMPLE: pop(); pop(); break;
 
-    case PUT_CHAR: printf("%lc", (wchar_t)pop()); break;
+    // TODO: Remove the printf?
+    case PUT_CHAR: ioPutChar(pop()); break;
+    case PUT_BYTE: ioPutByte(pop()); break;
     default:
       fprintf(stderr, "Undefined instruction: %d\n", *((uint8_t*)(pc-1)));
       return UNDEFINED_INSTRUCTION;
     }
   }
 
-  int res = sp != memStop ? (int)top() : -1;
+terminated:
+  ioFlush();
   printf("\n");
+  int res = sp != memStop ? (int)top() : -1;
   while (sp != memStop) {
     // Print stack destructively
     x = pop();
