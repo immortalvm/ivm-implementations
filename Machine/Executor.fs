@@ -124,7 +124,7 @@ type private Machine
                 w.Write(uint16 1) // WAVE_FORMAT_PCM
                 w.Write(uint16 channels)
                 w.Write(uint32 sampleRate)
-                w.Write(uint32 blocks * sampleRate)
+                w.Write(uint32 blockAlign * sampleRate)
                 w.Write(uint16 <| blockAlign);
                 w.Write(uint16 <| 8 * sampleLength);
                 w.Write("data".ToCharArray ());
