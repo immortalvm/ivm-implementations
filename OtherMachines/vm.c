@@ -274,7 +274,6 @@ int main(int argc, char** argv) {
   void* argStart = memStart + readFile(binFile, memStart) + 8;
   long argLength = argFile ? readFile(argFile, argStart) : 0;
   *((uint64_t*) (argStart - 8)) = argLength;
-  void* heapStart = argStart + argLength;
 
   ioInit();
 
