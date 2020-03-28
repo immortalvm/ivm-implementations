@@ -10,8 +10,8 @@ die () {
 cd $1
 
 #  Compute frame rate based on duration of first .wav file.
-SAMPLE_RATE=$(ffprobe 2>&1 00000000.wav | egrep -o "[0-9]+ Hz" | egrep -o "[0-9]+")
-WAV_SIZE=$(wc -c < 00000000.wav)  # More portable than using 'stat'
+SAMPLE_RATE=$(ffprobe 2>&1 00000001.wav | egrep -o "[0-9]+ Hz" | egrep -o "[0-9]+")
+WAV_SIZE=$(wc -c < 00000001.wav)  # More portable than using 'stat'
 FRAME_RATE=$(( SAMPLE_RATE / ((WAV_SIZE - 44) / 4) ))
 
 # Use libvorbis for audio, since AAC introduces noise in our sawtooth example.
