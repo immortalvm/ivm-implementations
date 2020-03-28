@@ -205,8 +205,8 @@ void writePng(char* filename, void* start, uint16_t width, uint16_t height) {
   png_structp png;
   png_infop info;
   if (!(png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL))
-    || !(info = png_create_info_struct(png))
-    || setjmp(png_jmpbuf(png))) {
+  || !(info = png_create_info_struct(png))
+  || setjmp(png_jmpbuf(png))) {
     exit(PNG_TROUBLE);
   }
   FILE *fileptr = fopen(filename, "wb");
@@ -244,7 +244,7 @@ typedef struct {
 } Bytes;
 
 void bytesInitialize(Bytes* b, size_t initialSize) {
-  b->array = (uint8_t*) malloc(initialSize * sizeof(uint8_t));
+  b->array = malloc(initialSize);
   if (!b->array) {
     exit(OUT_OF_MEMORY);
   }
@@ -255,7 +255,7 @@ void bytesInitialize(Bytes* b, size_t initialSize) {
 void bytesMakeSpace(Bytes* b, size_t extra) {
   if (b->used + extra > b->size) {
     b->size += extra > b->size ? extra : b->size;
-    b->array = (uint8_t*) realloc(b->array, b->size * sizeof(uint8_t));
+    b->array = realloc(b->array, b->size);
     if (!b->array) {
       exit(OUT_OF_MEMORY);
     }
@@ -331,7 +331,7 @@ void ioInit() {
 
 void ioFlush() {
   if (outDir) {
-    char filename[MAX_FILENAME];
+    static char filename[MAX_FILENAME];
     char* ext = filename + sprintf(filename, "%s/%08d.", outDir, outputCounter);
     if (currentText.used > 0) {
       sprintf(ext, "text");
@@ -357,6 +357,7 @@ void ioFlush() {
   outputCounter++;
 }
 
+// TODO: Remove the printf?
 void ioPutChar(uint32_t c) {
   int start = currentText.used;
   bytesPutChar(&currentText, c);
@@ -479,7 +480,6 @@ int main(int argc, char** argv) {
       break;
     case ADD_SAMPLE: x = pop(); y = pop(); ioAddSample(y, x); break;
 
-    // TODO: Remove the printf?
     case PUT_CHAR: ioPutChar(pop()); break;
     case PUT_BYTE: ioPutByte(pop()); break;
     default:
