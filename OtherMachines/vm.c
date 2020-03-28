@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <png.h>
+#include <dirent.h>
 
 #if UINTPTR_MAX != 0xffffffffffffffff
 #error The address space must be 64-bit.
@@ -12,6 +13,8 @@
 #if defined(__BIG_ENDIAN__) || defined(__BYTE_ORDER) && __BYTE_ORDER == __BIG_ENDIAN
 #error The byte ordering must be little-endian.
 #endif
+
+#define MAX_FILENAME 256
 
 // Error codes
 #define OPTION_PARSE_ERROR 1
@@ -299,6 +302,117 @@ void bytesPutSample(Bytes* b, uint16_t left, uint16_t right) {
 }
 
 
+/* Input state */
+
+// 16 MiB
+#define INITIAL_IN_IMG_SIZE 0x1000000
+
+struct dirent** inpFiles;
+int numInpFiles;
+int nextInpFile = 0;
+uint8_t* currentInImage = NULL;
+size_t currentInImageLimit = 0;
+uint16_t currentInWidth;
+uint16_t currentInHeight = 0;
+size_t currentInRowbytes = 0;
+
+int acceptPng(const struct dirent* entry) {
+  char* ext;
+  return (entry->d_type == DT_REG)
+    && (ext = strrchr(entry->d_name, '.'))
+    && strcmp(ext, ".png") == 0;
+}
+
+void ioInitIn() {
+  numInpFiles = inpDir ? scandir(inpDir, &inpFiles, acceptPng, alphasort) : 0;
+  if (numInpFiles < 0) {
+    perror("scandir");
+    exit(FILE_NOT_FOUND);
+  }
+}
+
+// Sets currentInWidth and ..Height instead of returning values.
+void ioReadFrame() {
+  if (nextInpFile >= numInpFiles) {
+    currentInWidth = 0;
+    currentInHeight = 0;
+    return;
+  }
+  static char filename[MAX_FILENAME];
+  struct dirent* f = inpFiles[nextInpFile++];
+  sprintf(filename, "%s/%s", inpDir, f->d_name);
+  free(f);
+
+  FILE *fileptr;
+  png_structp png;
+  png_infop info;
+  if (!(fileptr = fopen(filename, "rb"))
+  || !(png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL))
+  || !(info = png_create_info_struct(png))
+  || setjmp(png_jmpbuf(png))) {
+    perror("png");
+    exit(FILE_NOT_FOUND);
+  }
+  png_init_io(png, fileptr);
+  png_read_info(png, info);
+  currentInWidth = png_get_image_width(png, info);
+  currentInHeight = png_get_image_height(png, info);
+
+  if (png_get_bit_depth(png, info) == 16) {
+    png_set_strip_16(png);
+  }
+  png_byte color_type = png_get_color_type(png, info);
+  if (color_type == PNG_COLOR_TYPE_RGB ||
+      color_type == PNG_COLOR_TYPE_RGB_ALPHA) {
+    png_set_rgb_to_gray(png, 1, -1.0, -1.0); // Default weights
+  }
+  if (color_type & PNG_COLOR_MASK_ALPHA) {
+    png_set_strip_alpha(png);
+  }
+  png_read_update_info(png, info);
+  size_t rowbytes = png_get_rowbytes(png, info);
+  size_t needed = rowbytes * currentInHeight;
+  static uint8_t** rowPointers = NULL;
+  static size_t rowPointersLimit = 0;
+
+  // The following is optimized (?) for the expected case
+  // when all the inp frames have the same format.
+
+  if (needed > currentInImageLimit) {
+    free(currentInImage);
+    currentInImage = malloc(needed);
+    if (!currentInImage) {
+      exit(OUT_OF_MEMORY);
+    }
+    currentInImageLimit = needed;
+    currentInRowbytes = 0;
+  }
+  if (currentInHeight > rowPointersLimit) {
+    free(rowPointers);
+    rowPointers = malloc(currentInHeight * sizeof(uint8_t*));
+    if (!rowPointers) {
+      exit(OUT_OF_MEMORY);
+    }
+    rowPointersLimit = currentInHeight;
+    currentInRowbytes = 0;
+  }
+  if (rowbytes != currentInRowbytes) {
+    for (int y = 0; y < currentInHeight; y++) {
+      rowPointers[y] = currentInImage + rowbytes * y;
+    }
+    currentInRowbytes = rowbytes;
+  }
+
+  png_read_image(png, rowPointers);
+  fclose(fileptr);
+  png_destroy_read_struct(&png, &info, NULL);
+}
+
+uint8_t ioReadPixel(uint16_t x, uint16_t y) {
+  return *(currentInImage + currentInRowbytes * y + x);
+}
+
+
 /* Output state */
 
 // 16 MiB
@@ -306,7 +420,6 @@ void bytesPutSample(Bytes* b, uint16_t left, uint16_t right) {
 #define INITIAL_BYTES_SIZE 0x1000000
 #define INITIAL_SAMPLES_SIZE 0x1000000
 #define INITIAL_OUT_IMG_SIZE 0x1000000
-#define MAX_FILENAME 128
 
 int outputCounter = 0;
 Bytes currentText;
@@ -317,7 +430,7 @@ Bytes currentOutImage;
 uint16_t currentOutWidth;
 uint16_t currentOutHeight;
 
-void ioInit() {
+void ioInitOut() {
   if (outDir) {
     if (strlen(outDir) + 16 > MAX_FILENAME) {
       exit(STRING_TOO_LONG);
@@ -401,7 +514,8 @@ int main(int argc, char** argv) {
   long argLength = argFile ? readFile(argFile, argStart) : 0;
   *((uint64_t*) (argStart - 8)) = argLength;
 
-  ioInit();
+  ioInitIn();
+  ioInitOut();
 
   pc = memStart;
   sp = memStop;
@@ -465,9 +579,15 @@ int main(int argc, char** argv) {
 
     case POW2: x = pop(); push(x <= 63 ? 1UL << x : 0); break;
 
-    // TODO:
-    case READ_FRAME: push(0); push(0); break;
-    case READ_PIXEL: pop(); pop(); push(0); break;
+    case READ_FRAME:
+      ioReadFrame();
+      push(currentInWidth);
+      push(currentInHeight);
+      break;
+    case READ_PIXEL:
+      y = pop(); x = pop();
+      push(ioReadPixel(x, y));
+      break;
     case NEW_FRAME:
       r = pop(); y = pop(); x = pop();
       ioFlush(); ioNewFrame(x, y, r);
