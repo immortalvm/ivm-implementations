@@ -156,6 +156,49 @@ void writeFile(char* filename, void* start, size_t size) {
   fclose(fileptr);
 }
 
+// http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html
+typedef struct
+{
+    uint8_t  chunkId1[4];
+    uint32_t chunkSize1;
+    uint8_t  format[4];
+    uint8_t  chunkId2[4];
+    uint32_t chunkSize2;
+    uint16_t audioFormat;
+    uint16_t numChannels;
+    uint32_t sampleRate;
+    uint32_t byteRate;
+    uint16_t blockAlign;
+    uint16_t bitsPerSample;
+    uint8_t  chunkId3[4];
+    int32_t  chunkSize3;
+} WavHeader;
+
+const WavHeader wavBasicHeader = {
+  {'R', 'I', 'F', 'F'}, 36U, {'W', 'A', 'V', 'E'},
+  {'f', 'm', 't', ' '}, 16U, 1U, 2U, 0U, 0U, 4U, 16U,
+  {'d', 'a', 't', 'a'}, 0U
+};
+
+void writeWav(char* filename, void* start, size_t size, uint32_t sampleRate) {
+  FILE* fileptr = fopen(filename, "wb");
+  if (!fileptr) {
+    fprintf(stderr, "Trouble writing: %s\n", filename);
+    exit(NOT_WRITEABLE);
+  }
+  WavHeader h = wavBasicHeader;
+  h.chunkSize1 += size;
+  h.sampleRate = sampleRate;
+  h.byteRate = 4U * sampleRate;
+  h.chunkSize3 = size;
+  fwrite((const void*) &h, sizeof(WavHeader), 1, fileptr);
+  if (fwrite(start, 1, size, fileptr) < size) {
+    fprintf(stderr, "Trouble writing: %s\n", filename);
+    exit(NOT_WRITEABLE);
+  }
+  fclose(fileptr);
+}
+
 
 /* Growing byte buffer inspired by https://stackoverflow.com/a/3536261 */
 
@@ -213,16 +256,28 @@ void bytesPutChar(Bytes* b, uint32_t c) {
   }
 }
 
+void bytesPutSample(Bytes* b, uint16_t left, uint16_t right) {
+  bytesMakeSpace(b, 4);
+  uint16_t* pos = (uint16_t*) (b->array + b->used);
+  pos[0] = left;
+  pos[1] = right;
+  b->used += 4;
+}
 
-/* I/O state */
 
-#define INITIAL_TEXT_SIZE 0x1000000 // 16 MiB
-#define INITIAL_BYTES_SIZE 0x1000000 // 16 MiB
+/* Output state */
+
+// 16 MiB
+#define INITIAL_TEXT_SIZE 0x1000000
+#define INITIAL_BYTES_SIZE 0x1000000
+#define INITIAL_SAMPLES_SIZE 0x1000000
 #define MAX_FILENAME 128
 
 int outputCounter = 0;
 Bytes currentText;
 Bytes currentBytes;
+Bytes currentSamples;
+uint32_t currentSampleRate;
 
 void ioInit() {
   if (outDir) {
@@ -232,6 +287,7 @@ void ioInit() {
   }
   bytesInitialize(&currentText, INITIAL_TEXT_SIZE);
   bytesInitialize(&currentBytes, INITIAL_BYTES_SIZE);
+  bytesInitialize(&currentSamples, INITIAL_SAMPLES_SIZE);
 }
 
 void ioFlush() {
@@ -246,9 +302,14 @@ void ioFlush() {
       sprintf(ext, "bytes");
       writeFile(filename, currentBytes.array, currentBytes.used);
     }
+    if (currentSamples.used > 0) {
+      sprintf(ext, "wav");
+      writeWav(filename, currentSamples.array, currentSamples.used, currentSampleRate);
+    }
   }
   currentText.used = 0;
   currentBytes.used = 0;
+  currentSamples.used = 0;
   outputCounter++;
 }
 
@@ -261,6 +322,19 @@ void ioPutChar(uint32_t c) {
 
 void ioPutByte(uint8_t x) {
   bytesPutByte(&currentBytes, x);
+}
+
+void ioAddSample(uint16_t left, uint16_t right) {
+  bytesPutSample(&currentSamples, left, right);
+}
+
+void ioNewFrame(uint16_t width, uint16_t height, uint32_t sampleRate) {
+  currentSampleRate = sampleRate;
+  // TODO
+}
+
+void ioSetPixel(uint16_t x, uint16_t y, uint64_t r, uint64_t g, uint64_t b) {
+  // TODO
 }
 
 
@@ -279,7 +353,7 @@ int main(int argc, char** argv) {
 
   pc = memStart;
   sp = memStop;
-  uint64_t x, y;
+  uint64_t x, y, r, g, b;
 
   while (true) {
     switch (next1()) {
@@ -330,7 +404,7 @@ int main(int argc, char** argv) {
       y = pop();
       push(x == 0 ? 0 : y % x);
       break;
-    case LT: push(pop() > pop() ? (uint64_t)-1 : 0); break;
+    case LT: x = pop(); y = pop(); push(y < x ? (uint64_t)-1 : 0); break;
 
     case AND: push(pop() & pop()); break;
     case OR: push(pop() | pop()); break;
@@ -342,9 +416,17 @@ int main(int argc, char** argv) {
     // TODO:
     case READ_FRAME: push(0); push(0); break;
     case READ_PIXEL: pop(); pop(); push(0); break;
-    case NEW_FRAME: pop(); pop(); pop(); printf("\r\f"); ioFlush(); break;
-    case SET_PIXEL: pop(); pop(); pop(); pop(); pop(); break;
-    case ADD_SAMPLE: pop(); pop(); break;
+    case NEW_FRAME:
+      r = pop(); y = pop(); x = pop();
+      ioFlush(); ioNewFrame(x, y, r);
+      printf("\r\f");
+      break;
+    case SET_PIXEL:
+      b = pop(); g = pop(); r = pop();
+      y = pop(); x = pop();
+      ioSetPixel(x, y, r, g, b);
+      break;
+    case ADD_SAMPLE: x = pop(); y = pop(); ioAddSample(y, x); break;
 
     // TODO: Remove the printf?
     case PUT_CHAR: ioPutChar(pop()); break;
