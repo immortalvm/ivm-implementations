@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <png.h>
 
 #if UINTPTR_MAX != 0xffffffffffffffff
 #error The address space must be 64-bit.
@@ -20,6 +21,7 @@
 #define OUT_OF_MEMORY 5
 #define STRING_TOO_LONG 6
 #define NOT_WRITEABLE 7
+#define PNG_TROUBLE 8
 
 // Instructions
 #define EXIT 0
@@ -199,6 +201,39 @@ void writeWav(char* filename, void* start, size_t size, uint32_t sampleRate) {
   fclose(fileptr);
 }
 
+void writePng(char* filename, void* start, uint16_t width, uint16_t height) {
+  png_structp png;
+  png_infop info;
+  if (!(png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL))
+    || !(info = png_create_info_struct(png))
+    || setjmp(png_jmpbuf(png))) {
+    exit(PNG_TROUBLE);
+  }
+  FILE *fileptr = fopen(filename, "wb");
+  if (!fileptr) {
+    fprintf(stderr, "Trouble writing: %s\n", filename);
+    exit(NOT_WRITEABLE);
+  }
+  png_init_io(png, fileptr);
+  png_set_IHDR(
+    png,
+    info,
+    width, height,
+    8, // 8-bit color depth
+    PNG_COLOR_TYPE_RGB,
+    PNG_INTERLACE_NONE,
+    PNG_COMPRESSION_TYPE_DEFAULT,
+    PNG_FILTER_TYPE_DEFAULT
+  );
+  png_write_info(png, info);
+  for (int y = 0; y < height; y++) {
+    png_write_row(png, start + y * width * 3);
+  }
+  png_write_end(png, NULL);
+  fclose(fileptr);
+  png_destroy_write_struct(&png, &info);
+}
+
 
 /* Growing byte buffer inspired by https://stackoverflow.com/a/3536261 */
 
@@ -271,6 +306,7 @@ void bytesPutSample(Bytes* b, uint16_t left, uint16_t right) {
 #define INITIAL_TEXT_SIZE 0x1000000
 #define INITIAL_BYTES_SIZE 0x1000000
 #define INITIAL_SAMPLES_SIZE 0x1000000
+#define INITIAL_OUT_IMG_SIZE 0x1000000
 #define MAX_FILENAME 128
 
 int outputCounter = 0;
@@ -278,6 +314,9 @@ Bytes currentText;
 Bytes currentBytes;
 Bytes currentSamples;
 uint32_t currentSampleRate;
+Bytes currentOutImage;
+uint16_t currentOutWidth;
+uint16_t currentOutHeight;
 
 void ioInit() {
   if (outDir) {
@@ -288,6 +327,7 @@ void ioInit() {
   bytesInitialize(&currentText, INITIAL_TEXT_SIZE);
   bytesInitialize(&currentBytes, INITIAL_BYTES_SIZE);
   bytesInitialize(&currentSamples, INITIAL_SAMPLES_SIZE);
+  bytesInitialize(&currentOutImage, INITIAL_OUT_IMG_SIZE);
 }
 
 void ioFlush() {
@@ -306,10 +346,15 @@ void ioFlush() {
       sprintf(ext, "wav");
       writeWav(filename, currentSamples.array, currentSamples.used, currentSampleRate);
     }
+    if (currentOutImage.used > 0) {
+      sprintf(ext, "png");
+      writePng(filename, currentOutImage.array, currentOutWidth, currentOutHeight);
+    }
   }
   currentText.used = 0;
   currentBytes.used = 0;
   currentSamples.used = 0;
+  currentOutImage.used = 0;
   outputCounter++;
 }
 
@@ -330,11 +375,18 @@ void ioAddSample(uint16_t left, uint16_t right) {
 
 void ioNewFrame(uint16_t width, uint16_t height, uint32_t sampleRate) {
   currentSampleRate = sampleRate;
-  // TODO
+  currentOutWidth = width;
+  currentOutHeight = height;
+  size_t size = 3 * width * height;
+  bytesMakeSpace(&currentOutImage, size);
+  currentOutImage.used = size;
 }
 
 void ioSetPixel(uint16_t x, uint16_t y, uint64_t r, uint64_t g, uint64_t b) {
-  // TODO
+  uint8_t* p = currentOutImage.array + (y * currentOutWidth + x) * 3;
+  p[0] = (uint8_t) r;
+  p[1] = (uint8_t) g;
+  p[2] = (uint8_t) b;
 }
 
 
