@@ -264,8 +264,7 @@ void ioPutByte(uint8_t x) {
 }
 
 
-/* Example: clang vm.c && ./a.out 50 ex3_quick_sort.bin empty */
-// [-m <bytes>] [-a <file>] [-o <dir>] binary
+// [-m <bytes>] [-a <file>] [-i <dir>] [-o <dir>] binary
 int main(int argc, char** argv) {
   parseOptions(argc, argv);
 
