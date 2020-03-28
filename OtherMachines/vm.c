@@ -238,7 +238,30 @@ void writePng(char* filename, void* start, uint16_t width, uint16_t height) {
 }
 
 
-/* Growing byte buffer inspired by https://stackoverflow.com/a/3536261 */
+/* Reusable memory */
+
+typedef struct {
+  void* array;
+  size_t size;
+  size_t used;
+} Space;
+
+void spaceInit(Space* s) {
+  s->array = NULL;
+  s->size = s->used = 0;
+}
+
+void spaceReset(Space* s, size_t needed) {
+  s->used = needed;
+  if (s->size >= needed) return;
+  free(s->array);
+  s->array = malloc(needed);
+  if (!s->array) exit(OUT_OF_MEMORY);
+  s->size = needed;
+}
+
+
+/* Growing byte buffer */
 
 typedef struct {
   uint8_t* array;
@@ -246,11 +269,9 @@ typedef struct {
   size_t used;
 } Bytes;
 
-void bytesInitialize(Bytes* b, size_t initialSize) {
+void bytesInit(Bytes* b, size_t initialSize) {
   b->array = malloc(initialSize);
-  if (!b->array) {
-    exit(OUT_OF_MEMORY);
-  }
+  if (!b->array) exit(OUT_OF_MEMORY);
   b->size = initialSize;
   b->used = 0;
 }
@@ -259,9 +280,7 @@ void bytesMakeSpace(Bytes* b, size_t extra) {
   if (b->used + extra > b->size) {
     b->size += extra > b->size ? extra : b->size;
     b->array = realloc(b->array, b->size);
-    if (!b->array) {
-      exit(OUT_OF_MEMORY);
-    }
+    if (!b->array) exit(OUT_OF_MEMORY);
   }
 }
 
@@ -310,11 +329,11 @@ void bytesPutSample(Bytes* b, uint16_t left, uint16_t right) {
 struct dirent** inpFiles;
 int numInpFiles;
 int nextInpFile = 0;
-uint8_t* currentInImage = NULL;
-size_t currentInImageLimit = 0;
+Space currentInImage;
 uint16_t currentInWidth;
 uint16_t currentInHeight = 0;
 size_t currentInRowbytes = 0;
+Space currentInRowpointers;
 
 int acceptPng(const struct dirent* entry) {
   char* ext;
@@ -329,6 +348,8 @@ void ioInitIn() {
     perror("scandir");
     exit(FILE_NOT_FOUND);
   }
+  spaceInit(&currentInImage);
+  spaceInit(&currentInRowpointers);
 }
 
 // Sets currentInWidth and ..Height instead of returning values.
@@ -372,44 +393,33 @@ void ioReadFrame() {
   png_read_update_info(png, info);
   size_t rowbytes = png_get_rowbytes(png, info);
   size_t needed = rowbytes * currentInHeight;
-  static uint8_t** rowPointers = NULL;
-  static size_t rowPointersLimit = 0;
 
-  // The following is optimized (?) for the expected case
+  // We have attempted to optimize for the expected case
   // when all the inp frames have the same format.
 
-  if (needed > currentInImageLimit) {
-    free(currentInImage);
-    currentInImage = malloc(needed);
-    if (!currentInImage) {
-      exit(OUT_OF_MEMORY);
-    }
-    currentInImageLimit = needed;
+  if (needed > currentInImage.size) {
+    spaceReset(&currentInImage, needed);
     currentInRowbytes = 0;
   }
-  if (currentInHeight > rowPointersLimit) {
-    free(rowPointers);
-    rowPointers = malloc(currentInHeight * sizeof(uint8_t*));
-    if (!rowPointers) {
-      exit(OUT_OF_MEMORY);
-    }
-    rowPointersLimit = currentInHeight;
+  if (currentInHeight > currentInRowpointers.size) {
+    spaceReset(&currentInRowpointers, currentInHeight * sizeof(void*));
     currentInRowbytes = 0;
   }
   if (rowbytes != currentInRowbytes) {
+    void** rp = currentInRowpointers.array;
     for (int y = 0; y < currentInHeight; y++) {
-      rowPointers[y] = currentInImage + rowbytes * y;
+      rp[y] = currentInImage.array + rowbytes * y;
     }
     currentInRowbytes = rowbytes;
   }
 
-  png_read_image(png, rowPointers);
+  png_read_image(png, currentInRowpointers.array);
   fclose(fileptr);
   png_destroy_read_struct(&png, &info, NULL);
 }
 
 uint8_t ioReadPixel(uint16_t x, uint16_t y) {
-  return *(currentInImage + currentInRowbytes * y + x);
+  return *((uint8_t*) currentInImage.array + currentInRowbytes * y + x);
 }
 
 
@@ -426,7 +436,7 @@ Bytes currentText;
 Bytes currentBytes;
 Bytes currentSamples;
 uint32_t currentSampleRate;
-Bytes currentOutImage;
+Space currentOutImage;
 uint16_t currentOutWidth;
 uint16_t currentOutHeight;
 
@@ -436,10 +446,10 @@ void ioInitOut() {
       exit(STRING_TOO_LONG);
     }
   }
-  bytesInitialize(&currentText, INITIAL_TEXT_SIZE);
-  bytesInitialize(&currentBytes, INITIAL_BYTES_SIZE);
-  bytesInitialize(&currentSamples, INITIAL_SAMPLES_SIZE);
-  bytesInitialize(&currentOutImage, INITIAL_OUT_IMG_SIZE);
+  bytesInit(&currentText, INITIAL_TEXT_SIZE);
+  bytesInit(&currentBytes, INITIAL_BYTES_SIZE);
+  bytesInit(&currentSamples, INITIAL_SAMPLES_SIZE);
+  spaceInit(&currentOutImage);
 }
 
 void ioFlush() {
@@ -490,9 +500,7 @@ void ioNewFrame(uint16_t width, uint16_t height, uint32_t sampleRate) {
   currentSampleRate = sampleRate;
   currentOutWidth = width;
   currentOutHeight = height;
-  size_t size = 3 * width * height;
-  bytesMakeSpace(&currentOutImage, size);
-  currentOutImage.used = size;
+  spaceReset(&currentOutImage, 3 * width * height);
 }
 
 void ioSetPixel(uint16_t x, uint16_t y, uint64_t r, uint64_t g, uint64_t b) {
