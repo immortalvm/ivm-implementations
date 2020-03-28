@@ -134,7 +134,7 @@ void parseOptions(int argc, char** argv) {
 /* Based on https://stackoverflow.com/a/22059317. */
 long readFile(char* filename, void* start) {
   FILE* fileptr = fopen(filename, "rb");
-  if (fileptr == NULL) {
+  if (!fileptr) {
     fprintf(stderr, "File not found or not readable: %s\n", filename);
     exit(FILE_NOT_FOUND);
   }
@@ -149,7 +149,7 @@ long readFile(char* filename, void* start) {
 
 void writeFile(char* filename, void* start, size_t size) {
   FILE* fileptr = fopen(filename, "wb");
-  if (fileptr == NULL || fwrite(start, 1, size, fileptr) < size) {
+  if (!fileptr || fwrite(start, 1, size, fileptr) < size) {
     fprintf(stderr, "Trouble writing: %s\n", filename);
     exit(NOT_WRITEABLE);
   }
@@ -167,7 +167,7 @@ typedef struct {
 
 void bytesInitialize(Bytes* b, size_t initialSize) {
   b->array = (uint8_t*) malloc(initialSize * sizeof(uint8_t));
-  if (b->array == NULL) {
+  if (!b->array) {
     exit(OUT_OF_MEMORY);
   }
   b->size = initialSize;
@@ -179,7 +179,7 @@ void bytesMakeSpace(Bytes* b, size_t extra) {
   if (b->used + extra > b->size) {
     b->size *= 2;
     b->array = (uint8_t*) realloc(b->array, b->size * sizeof(uint8_t));
-    if (b->array == NULL) {
+    if (!b->array) {
       exit(OUT_OF_MEMORY);
     }
   }
@@ -225,7 +225,7 @@ Bytes currentText;
 Bytes currentBytes;
 
 void ioInit() {
-  if (outDir != NULL) {
+  if (outDir) {
     if (strlen(outDir) + 16 > MAX_FILENAME) {
       exit(STRING_TOO_LONG);
     }
@@ -235,7 +235,7 @@ void ioInit() {
 }
 
 void ioFlush() {
-  if (outDir != NULL) {
+  if (outDir) {
     char filename[MAX_FILENAME];
     char* ext = filename + sprintf(filename, "%s/%08d.", outDir, outputCounter);
     if (currentText.used > 0) {
@@ -273,7 +273,7 @@ int main(int argc, char** argv) {
   void* memStop = memStart + memorySize;
 
   void* argStart = memStart + readFile(binFile, memStart) + 8;
-  long argLength = argFile == NULL ? 0 : readFile(argFile, argStart);
+  long argLength = argFile ? readFile(argFile, argStart) : 0;
   *((uint64_t*) (argStart - 8)) = argLength;
   void* heapStart = argStart + argLength;
 
