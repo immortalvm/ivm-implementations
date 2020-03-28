@@ -153,6 +153,7 @@ void writeFile(char* filename, void* start, size_t size) {
     fprintf(stderr, "Trouble writing: %s\n", filename);
     exit(NOT_WRITEABLE);
   }
+  fclose(fileptr);
 }
 
 
