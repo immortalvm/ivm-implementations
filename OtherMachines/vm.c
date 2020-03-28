@@ -253,9 +253,8 @@ void bytesInitialize(Bytes* b, size_t initialSize) {
 }
 
 void bytesMakeSpace(Bytes* b, size_t extra) {
-  // Precondition: extra <= initial size
   if (b->used + extra > b->size) {
-    b->size *= 2;
+    b->size += extra > b->size ? extra : b->size;
     b->array = (uint8_t*) realloc(b->array, b->size * sizeof(uint8_t));
     if (!b->array) {
       exit(OUT_OF_MEMORY);
