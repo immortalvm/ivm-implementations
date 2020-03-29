@@ -1,7 +1,13 @@
+/* Fast C implementation of the iVM virtual machine
+ * Compile with: cc -Wall -Ofast vm.c -lpng -ovm
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <inttypes.h>
 #include <unistd.h>
 #include <png.h>
 #include <dirent.h>
@@ -14,12 +20,12 @@
 #error The byte ordering must be little-endian.
 #endif
 
-#define MAX_FILENAME 256
+#define MAX_FILENAME 260
 
 // Error codes
 #define OPTION_PARSE_ERROR 1
-#define FILE_NOT_FOUND 2
-#define NOT_IMPLEMENTED_YET 3
+#define NOT_READABLE 2
+#define NOT_IMPLEMENTED 3
 #define UNDEFINED_INSTRUCTION 4
 #define OUT_OF_MEMORY 5
 #define STRING_TOO_LONG 6
@@ -141,13 +147,17 @@ long readFile(char* filename, void* start) {
   FILE* fileptr = fopen(filename, "rb");
   if (!fileptr) {
     fprintf(stderr, "File not found or not readable: %s\n", filename);
-    exit(FILE_NOT_FOUND);
+    exit(NOT_READABLE);
   }
   fseek(fileptr, 0, SEEK_END);
   long filelen = ftell(fileptr);
   rewind(fileptr);
 
-  fread(start, filelen, 1, fileptr);
+  size_t actual = fread(start, 1, filelen, fileptr);
+  if (actual < filelen) {
+    fprintf(stderr, "Partially read: %s\n", filename);
+    exit(NOT_READABLE);
+  }
   fclose(fileptr);
   return filelen;
 }
@@ -346,7 +356,7 @@ void ioInitIn() {
   numInpFiles = inpDir ? scandir(inpDir, &inpFiles, acceptPng, alphasort) : 0;
   if (numInpFiles < 0) {
     perror("scandir");
-    exit(FILE_NOT_FOUND);
+    exit(NOT_READABLE);
   }
   spaceInit(&currentInImage);
   spaceInit(&currentInRowpointers);
@@ -372,7 +382,7 @@ void ioReadFrame() {
   || !(info = png_create_info_struct(png))
   || setjmp(png_jmpbuf(png))) {
     perror("png");
-    exit(FILE_NOT_FOUND);
+    exit(NOT_READABLE);
   }
   png_init_io(png, fileptr);
   png_read_info(png, info);
@@ -623,7 +633,7 @@ terminated:
   while (sp != memStop) {
     // Print stack destructively
     x = pop();
-    printf("0x..%05llX %7lld\n", x & 0xfffffUL, x);
+    printf("0x..%05" PRIx64 " %7" PRIu64 "\n", x & 0xfffffUL, x);
   }
   return(res);
 }
