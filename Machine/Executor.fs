@@ -47,14 +47,14 @@ type private Machine
     let load location = memory.[memoryIndex location]
     let store location value = memory.[memoryIndex location] <- value
 
-    let mutable pendingInputFiles: (string list) option = None
+    let mutable pendingInputFiles: string[] option = None
     let mutable inputBitmap: Bitmap option = None
-    let rec readFrame () : int * int =
+    let rec readFrame (i: uint64) : int * int =
         match pendingInputFiles with
         | None ->
             pendingInputFiles <-
                 match inputDir with
-                | None -> Some []
+                | None -> Some [||]
                 | Some dir ->
                     Directory.GetFiles dir
                     |> Array.toSeq
@@ -62,15 +62,14 @@ type private Machine
                     |> Seq.filter (Path.GetExtension >> (=) ".png")
                     |> Seq.sort
                     |> Seq.map (fun name -> Path.Join (dir, name))
-                    |> Seq.toList
+                    |> Seq.toArray
                     |> Some
-            readFrame()
-        | Some [] -> (0, 0)
-        | Some (next :: rest) ->
-            pendingInputFiles <- Some rest
-            let bitmap = new Bitmap(next)
+            readFrame i
+        | Some arr when i < uint64 arr.Length ->
+            let bitmap = new Bitmap(arr.[int i])
             inputBitmap <- Some bitmap
             (bitmap.Width, bitmap.Height)
+        | _ -> (0, 0)
     let rec readPixel x y : uint8 =
         let c = inputBitmap.Value.GetPixel (x, y)
          // Transparent = white, 765 = 255 * 3, 382 ~ 765 / 2
@@ -282,7 +281,7 @@ type private Machine
             |> m.Push
 
         | READ_FRAME ->
-            let width, height = readFrame ()
+            let width, height = m.Pop () |> readFrame
             width |> uint64 |> m.Push
             height |> uint64 |> m.Push
         | READ_PIXEL ->

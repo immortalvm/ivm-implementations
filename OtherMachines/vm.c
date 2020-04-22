@@ -338,10 +338,7 @@ void bytesPutSample(Bytes* b, uint16_t left, uint16_t right) {
 
 struct dirent** inpFiles;
 int numInpFiles;
-int nextInpFile = 0;
 Space currentInImage;
-uint16_t currentInWidth;
-uint16_t currentInHeight = 0;
 size_t currentInRowbytes = 0;
 Space currentInRowpointers;
 
@@ -362,17 +359,15 @@ void ioInitIn() {
   spaceInit(&currentInRowpointers);
 }
 
-// Sets currentInWidth and ..Height instead of returning values.
-void ioReadFrame() {
-  if (nextInpFile >= numInpFiles) {
-    currentInWidth = 0;
-    currentInHeight = 0;
+void ioReadFrame(uint64_t i, uint64_t* width, uint64_t* height) {
+  if (i >= numInpFiles) {
+    *width = 0;
+    *height = 0;
     return;
   }
   static char filename[MAX_FILENAME];
-  struct dirent* f = inpFiles[nextInpFile++];
+  struct dirent* f = inpFiles[i];
   sprintf(filename, "%s/%s", inpDir, f->d_name);
-  free(f);
 
   FILE *fileptr;
   png_structp png;
@@ -386,8 +381,8 @@ void ioReadFrame() {
   }
   png_init_io(png, fileptr);
   png_read_info(png, info);
-  currentInWidth = png_get_image_width(png, info);
-  currentInHeight = png_get_image_height(png, info);
+  *width = png_get_image_width(png, info);
+  *height = png_get_image_height(png, info);
 
   if (png_get_bit_depth(png, info) == 16) {
     png_set_strip_16(png);
@@ -402,7 +397,7 @@ void ioReadFrame() {
   }
   png_read_update_info(png, info);
   size_t rowbytes = png_get_rowbytes(png, info);
-  size_t needed = rowbytes * currentInHeight;
+  size_t needed = rowbytes * *height;
 
   // We have attempted to optimize for the expected case
   // when all the inp frames have the same format.
@@ -411,13 +406,13 @@ void ioReadFrame() {
     spaceReset(&currentInImage, needed);
     currentInRowbytes = 0;
   }
-  if (currentInHeight > currentInRowpointers.size) {
-    spaceReset(&currentInRowpointers, currentInHeight * sizeof(void*));
+  if (*height > currentInRowpointers.size) {
+    spaceReset(&currentInRowpointers, sizeof(void*) * *height);
     currentInRowbytes = 0;
   }
   if (rowbytes != currentInRowbytes) {
     void** rp = currentInRowpointers.array;
-    for (int y = 0; y < currentInHeight; y++) {
+    for (int y = 0; y < *height; y++) {
       rp[y] = currentInImage.array + rowbytes * y;
     }
     currentInRowbytes = rowbytes;
@@ -598,9 +593,9 @@ int main(int argc, char** argv) {
     case POW2: x = pop(); push(x <= 63 ? 1UL << x : 0); break;
 
     case READ_FRAME:
-      ioReadFrame();
-      push(currentInWidth);
-      push(currentInHeight);
+      ioReadFrame(pop(), &x, &y);
+      push(x);
+      push(y);
       break;
     case READ_PIXEL:
       y = pop(); x = pop();

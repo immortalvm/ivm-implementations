@@ -1,11 +1,13 @@
 ### Write (B/W versions of) each input frame to the output
 
     set_sp! &-3
+    push! 0
 next_frame:                      # Possible entry point
-    read_frame
-    x = 4
-    y = 3
-    v = 2
+    read_frame! $0               # Read frame number i
+    x = 5
+    y = 4
+    v = 3
+    i = 2
     w = 1
     h = 0
     jump_zero!! (+ $w $h) done
@@ -27,10 +29,11 @@ next_col:
     jump_not_zero!! (<u $y $h) next_row
 
     set_sp! &2                  # Pop w,h
+    add! 1                      # Increment i
     jump! next_frame
 
 done:
-    set_sp! &5                  # Pop x,y,v,w,h
+    set_sp! &6                  # Pop x,y,v,i,w,h
     exit! 0
 
 ### EXPECTED STACK:
