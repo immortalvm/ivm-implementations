@@ -242,3 +242,7 @@ the path in the first line to where you can find the ivm executable.
       '(progn
          (add-hook 'asm-mode-set-comment-hook 'ivarru-asm-mode-comment-hook)
          (add-hook 'asm-mode-hook 'ivarru-asm-mode-hook)))
+
+## Install
+### Ubuntu
+sudo apt-get install -y libgdiplus 
