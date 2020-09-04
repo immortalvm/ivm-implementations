@@ -228,10 +228,10 @@ let doAssemble files libraries noopt: AssemblerOutput =
     with
         ParseException(msg) -> failwith msg
 
-let doRun memorySize binary arg inputDir outputDir traceSyms =
+let doRun memorySize binary arg inputDir outputDir traceSyms loc =
     try
         // Default memory size: 16 MiB (for now)
-        execute (valueOr (1UL <<< 24) memorySize) binary arg inputDir outputDir traceSyms |> Seq.map int64
+        execute (valueOr (1UL <<< 24) memorySize) binary arg inputDir outputDir traceSyms loc |> Seq.map int64
     with
         | AccessException msg -> failwithf "Access exception: %s" msg
         | UndefinedException msg -> failwithf "Undefined instruction: %s" msg

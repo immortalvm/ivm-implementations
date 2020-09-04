@@ -122,7 +122,7 @@ let processEndStack (shouldTrace: bool) (stack: seq<int64>) =
     | Some status -> int status
     | None -> 2
 
-let run memory binary (argFile: string option) (inputDir: string option) (outputDir: string option) shouldTrace =
+let run memory binary (argFile: string option) (inputDir: string option) (outputDir: string option) shouldTrace loc =
     let bytes = File.ReadAllBytes binary
     let arg = match argFile with
               | Some name -> File.ReadAllBytes name
@@ -131,9 +131,9 @@ let run memory binary (argFile: string option) (inputDir: string option) (output
         if shouldTrace
         then Path.ChangeExtension(binary, SYMBOLS_EXTENSION) |> readTraceSyms |> Some
         else None
-    doRun memory bytes arg inputDir outputDir traceSyms |> processEndStack shouldTrace
+    doRun memory bytes arg inputDir outputDir traceSyms loc |> processEndStack shouldTrace
 
-let asRun sources sourceRoot libs entry memory argFile inputDir outputDir shouldTrace noopt =
+let asRun sources sourceRoot libs entry memory argFile inputDir outputDir shouldTrace loc noopt =
     let ao = doAssemble (src entry sources sourceRoot) (libraries sourceRoot libs) noopt
     if shouldTrace then
         for name, pos in Seq.sortBy fst ao.Exported do
@@ -146,7 +146,7 @@ let asRun sources sourceRoot libs entry memory argFile inputDir outputDir should
     let arg = match argFile with
               | Some name -> File.ReadAllBytes name
               | None -> Array.empty
-    doRun memory ao.Binary arg inputDir outputDir traceSyms |> processEndStack shouldTrace
+    doRun memory ao.Binary arg inputDir outputDir traceSyms loc |> processEndStack shouldTrace
 
 let createLibrary rootDirectory libraryFileName =
     dirToZipLib rootDirectory libraryFileName

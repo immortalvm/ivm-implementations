@@ -327,9 +327,12 @@ let private random = System.Random ()
 // Execute at random location (multiple of 1000) and return terminal stack.
 // Trace execution if symbol mapping is provided.
 // This method is likely to change...
-let execute (memorySize: uint64) (prog: seq<uint8>) (arg: seq<uint8>) (inputDir: string option) (outputDir: string option) (traceSyms: Map<int, string> option) =
-    // Start at 0, 1000, ... or 7000.
-    let start = random.Next () % 8 |> ( * ) 1000 |> uint64
+let execute (memorySize: uint64) (prog: seq<uint8>) (arg: seq<uint8>)
+            (inputDir: string option) (outputDir: string option)
+            (traceSyms: Map<int, string> option) (loc: uint64 option) =
+    let start = if loc.IsSome then loc.Value
+                // Otherwise Start at 0, 1000, ... or 7000.
+                else random.Next () % 8 |> ( * ) 1000 |> uint64
     let cachedArg = Seq.cache arg
     let machine =
         Machine(

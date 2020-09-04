@@ -26,7 +26,7 @@ let sourceFiles dir =
 
 let check fileNames =
     try
-        let message = doCheck fileNames (Some DIRECTORY) [] None None false false
+        let message = doCheck fileNames (Some DIRECTORY) [] None None false None false
         Expect.isNotMatch message "^Not executed" "Expectations not found"
     with
         | Failure(msg) -> failtest msg
@@ -52,7 +52,7 @@ let implicitImportTests =
     testList IMPL_DIRECTORY [
         testCase "circular" <| fun () ->
             try
-                let message = doCheck filenames None [] None None false false
+                let message = doCheck filenames None [] None None false None false
                 Expect.isNotMatch message "^Not executed" "Expectations not found"
             with
                 | Failure(msg) -> failtest msg
@@ -68,7 +68,7 @@ let entryPointTests =
         let fileName = Path.Combine [|ENTRY_DIRECTORY; name|]
         testCase caseName <| fun () ->
             try
-                let message = doCheck [fileName] None [] (Some "main") None false false
+                let message = doCheck [fileName] None [] (Some "main") None false None false
                 Expect.isNotMatch message "^Not executed" "Expectations not found"
             with
                 | Failure(msg) -> failtest msg
