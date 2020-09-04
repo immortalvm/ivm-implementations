@@ -77,19 +77,19 @@ let get n = addr n @ [LOAD8]
 let set n = addr n @ [STORE8]
 let toSign =
     [
-        PUSH1; 63y; POW2; LT // -1 if positive, 0 if negative
+        PUSH1; 63y; POW2; LT // -1 if positive or zero, 0 if negative
         PUSH1; 2y; MULT      // -2  or  0
         NOT                  //  1  or -1
     ]
 let abs = get 0 @ toSign @ [MULT] // Keeps 2^63 unchanged
-let divRemBasis unsignedOp =
+let divS =
     List.concat
         [
             // x :: y :: rest
             get 1 @ abs
             get 1 @ abs
-            unsignedOp
-            // d :: x :: y :: rest, where d = abs y <unsignedOp> abs x.
+            [DIV]
+            // d :: x :: y :: rest, where d = abs y / abs x.
             get 2 @ toSign
             get 2 @ toSign
             [MULT]
@@ -100,8 +100,22 @@ let divRemBasis unsignedOp =
             // x :: 'd :: rest
             pop 1
         ]
-let divS = divRemBasis [DIV]
-let remS = divRemBasis [REM]
+let remS =
+    List.concat
+        [
+            // x :: y :: rest
+            get 1 @ abs
+            get 1 @ abs
+            [REM]
+            // d :: x :: y :: rest, where d = abs y % abs x.
+            get 2 @ toSign
+            // s :: d :: ..., where s = 1 if y is >= 0, otherwise -1.
+            [MULT]
+            // d' :: x :: y :: rest, where d' = d or d' = -d.
+            set 2
+            // x :: 'd :: rest
+            pop 1
+        ]
 
 // Round towards zero
 let oldDivSU =
