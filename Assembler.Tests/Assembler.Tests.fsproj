@@ -92,6 +92,9 @@
     <None Include="test_code\test_regression_25_shiftr.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="test_code\test_regression_28_mod.s">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <Compile Include="GenParserTests.fs" />
     <Compile Include="ProgParserTests.fs" />
     <Compile Include="CompositionTests.fs" />
