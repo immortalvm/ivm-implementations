@@ -91,6 +91,8 @@ and private neg x =
     | ENum n -> ENum -n
     | ENeg e -> e
     | ENot e -> sum [e; ENum 1L]
+    | ESum ys -> ESum [for y in ys -> neg y]
+    | EProd ys -> prod (ENum -1L :: ys)
     | _ -> ENeg x
 
 and private binNot x =
