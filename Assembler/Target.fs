@@ -403,6 +403,7 @@ let gteSValue (v1: Value) (v2: Value) : Value =
 let exprPushCore (lookup: int -> int) =
     let rec epc (position: int) (depth: int) (expression: Expression) =
 
+        //printfn "%A %A %A" position depth expression
         let rec1 e = epc position depth e
 
         let rec1coll e = rec1 e |> collapseValue
@@ -442,8 +443,9 @@ let exprPushCore (lookup: int -> int) =
             let mutable value = zeroValue
             let multN n s = optM multValue 1L s <| constant (int64 n)
             value <- addValue value <| multN nPc (noOffset [GET_PC])
-            let pcPos = position + if nPc = 0 then 0 else 1
-            value <- addValue value <| multN nSp (Val([GET_SP], depth * 8 |> int64))
+            let pcOffset = if nPc = 0 then 0 else 1
+            let pcPos = position + pcOffset
+            value <- addValue value <| multN nSp (Val([GET_SP], (depth + pcOffset) * 8 |> int64))
 
             for ex in lst do
                 let p, d = match value with
