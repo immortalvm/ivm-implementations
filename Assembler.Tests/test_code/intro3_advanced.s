@@ -7,7 +7,7 @@
 
 ### 1. MEMORY MAP WITH NO ENTRY POINT
 
-    ## In most cases you should now specify an entry point when calling the
+    ## In most cases you should specify an entry point when calling the
     ## assembler, e.g. "-e main". This situation is explained in section 2
     ## below.
 
