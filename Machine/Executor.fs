@@ -268,7 +268,7 @@ type private Machine
             let x, y = m.Pop (), m.Pop ()
             if x = 0UL then 0UL else y % x
             |> m.Push
-        | LT -> (if m.Pop () > m.Pop () then -1 else 0) |> uint64 |> m.Push
+        | LE -> (if m.Pop () >= m.Pop () then -1 else 0) |> uint64 |> m.Push
 
         | AND -> (m.Pop ()) &&& (m.Pop ()) |> m.Push
         | OR -> (m.Pop ()) ||| (m.Pop ()) |> m.Push

@@ -88,7 +88,7 @@ let DIV = 34y // Unsigned division. NB: x / 0 = 0 (for shift-right to work)
 let REM = 35y // Unsigned remainder. NB: x % 0 = 0
 
 [<Literal>]
-let LT = 36y // Less than. Unsigned. 0: false. FF...F: true.
+let LE = 36y // Less than or equal. Unsigned. 0: false. FF...F: true.
 
 // 36-39: Unused
 

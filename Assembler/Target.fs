@@ -70,16 +70,16 @@ let pop n =
 
 let pushTrue = [PUSH0; NOT] // Push -1
 let changeSign = pushTrue @ [MULT]
-let isZero = [PUSH1; 1y; LT]
+let isZero = [PUSH0; LE]
 
 let addr n = [GET_SP; PUSH1; int8 (n * 8); ADD]
 let get n = addr n @ [LOAD8]
 let set n = addr n @ [STORE8]
 let toSign =
     [
-        PUSH1; 63y; POW2; LT // -1 if positive or zero, 0 if negative
-        PUSH1; 2y; MULT      // -2  or  0
-        NOT                  //  1  or -1
+        PUSH1; 63y; POW2; NOT; LE // -1 if positive or zero, 0 if negative
+        PUSH1; 2y; MULT           // -2 or 0
+        NOT                       // 1 or -1
     ]
 let abs = get 0 @ toSign @ [MULT] // Keeps 2^63 unchanged
 let divS =
@@ -139,7 +139,7 @@ let divSU =
     List.concat
         [
              // x :: y :: rest
-            get 1 @ [PUSH1; 63y; POW2; LT; NOT]       // -1 if y<0, else 0
+            get 1 @ [PUSH1; 63y; POW2; NOT; LE; NOT]  // -1 if y<0, else 0
             get 0 @ [PUSH1; 2y; MULT; PUSH1; 1y; ADD] // -1 if y<0, else 1
             // (-1 or 1) :: (-1 or 0) :: x :: y :: rest
             get 0 @ get 4 @ [MULT]                    // absolute value
@@ -160,10 +160,10 @@ let offsetSign2 =
 
 let eq = [XOR] @ isZero
 
-let ltU = [LT]
-let gtU = get 1 @ ltU @ set 1
-let lteU = gtU @ isZero
-let gteU = ltU @ isZero
+let lteU = [LE]
+let gteU = get 1 @ lteU @ set 1
+let ltU = gteU @ isZero
+let gtU = lteU @ isZero
 
 let ltS = offsetSign2 @ ltU
 let lteS = offsetSign2 @ lteU

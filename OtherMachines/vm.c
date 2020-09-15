@@ -60,7 +60,7 @@
 #define MULT 33
 #define DIV 34
 #define REM 35
-#define LT 36
+#define LE 36
 #define AND 40
 #define OR 41
 #define NOT 42
@@ -583,7 +583,7 @@ int main(int argc, char** argv) {
       y = pop();
       push(x == 0 ? 0 : y % x);
       break;
-    case LT: x = pop(); y = pop(); push(y < x ? (uint64_t)-1 : 0); break;
+    case LE: x = pop(); y = pop(); push(y <= x ? (uint64_t)-1 : 0); break;
 
     case AND: push(pop() & pop()); break;
     case OR: push(pop() | pop()); break;
