@@ -97,10 +97,12 @@ type private Machine
             let path = Path.Combine(outputDir.Value, sprintf "%08d." frameCounter)
             match text with
             | [] -> ()
-            | _ -> File.WriteAllText (path + "text", text |> Seq.rev |> Seq.concat |> System.String.Concat )
+            | _ -> File.WriteAllText (path + "text", text |> Seq.rev |> Seq.concat |> System.String.Concat)
+            text <- []
             match bytes with
             | [] -> ()
             | _ -> File.WriteAllBytes (path + "bytes", bytes |> Seq.rev |> Seq.toArray)
+            bytes <- []
             match bitmap with
             | None -> ()
             | Some b ->
