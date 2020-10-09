@@ -42,7 +42,11 @@ let interTests =
                        []
         testCase "Push SP 3" <| fun () ->
             compilesTo [ENum 3L |> EStack |> SPush]
-                       [GET_SP; PUSH1; 3 * 8 |> sbyte; ADD]
+                       [GET_SP_24]
+                       []
+        testCase "Push SP 16" <| fun () ->
+            compilesTo [ENum 16L |> EStack |> SPush]
+                       [GET_SP; PUSH1; 16 * 8 |> sbyte; ADD]
                        []
         testCase "Push SP diff" <| fun () ->
             compilesTo [ESum [ENum 12L |> EStack; ENum 2L |> EStack |> ENeg] |> SPush]

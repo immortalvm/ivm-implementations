@@ -59,7 +59,63 @@ let pushFix (f: int -> int64) =
         else currLen <- nextLen
     result.Value
 
-let addr n = [GET_SP] @ if n = 0 then [] else pushNum (n * 8 |> int64) @ [ADD]
+
+// Pair consisting of (i) a piece of code with the net effect of pushing a single
+// value onto the stack and (ii) a constant "offset" which should (at some point)
+// be added to this value. I could not think of a good name for this type.
+type Value = Val of (int8 list) * int64
+
+let constant offset = Val([PUSH0], offset)
+let noOffset code = Val(code, 0L)
+
+let (|Const|_|) (v: Value) =
+    match v with
+    | Val([PUSH0], n) -> Some n
+    | _ -> None
+
+let (|NoOff|_|) (v: Value) =
+    match v with
+    | Val(c, 0L) -> Some c
+    | _ -> None
+
+let (|Rel|_|) (v: Value) =
+    match v with
+    | Val([GET_PC], n) -> Some n
+    | _ -> None
+
+let collapseValue (v: Value) : int8 list =
+    match v with
+    | NoOff(c) -> c
+    | Const(n) -> pushNum n
+    | Val(c, n) -> c @ pushNum n @ [ADD]
+
+let zeroValue = constant 0L
+let oneValue = constant 1L
+let trueValue = constant -1L
+
+let (|Zero|One|True|OtherValue|) (v: Value) =
+    match v with
+    | Const(0L) -> Zero
+    | Const(1L) -> One
+    | Const(-1L) -> True
+    | _ -> OtherValue
+
+
+let addrValue n =
+    match n with
+    | 0L -> noOffset [GET_SP]
+    | 1L -> noOffset [GET_SP_8]
+    | 2L -> noOffset [GET_SP_16]
+    | 3L -> noOffset [GET_SP_24]
+    | 4L -> noOffset [GET_SP_32]
+    | 5L -> noOffset [GET_SP_40]
+    | 6L -> noOffset [GET_SP_48]
+    | 7L -> noOffset [GET_SP_56]
+    | 8L -> noOffset [GET_SP_64]
+    | _ -> Val([GET_SP], n * 8L)
+
+
+let addr (n: int) = int64 n |> addrValue |> collapseValue
 let get n = addr n @ [LOAD8]
 let set n = addr n @ [STORE8]
 
@@ -203,45 +259,8 @@ let genericConditional transformer =
 let genericJumpNotZero = genericConditional []
 let genericJumpZero = genericConditional isZero
 
-// Pair consisting of (i) a piece of code with the net effect of pushing a single
-// value onto the stack and (ii) a constant "offset" which should (at some point)
-// be added to this value. I could not think of a good name for this type.
-type Value = Val of (int8 list) * int64
 
-let constant offset = Val([PUSH0], offset)
-let noOffset code = Val(code, 0L)
-
-let (|Const|_|) (v: Value) =
-    match v with
-    | Val([PUSH0], n) -> Some n
-    | _ -> None
-
-let (|NoOff|_|) (v: Value) =
-    match v with
-    | Val(c, 0L) -> Some c
-    | _ -> None
-
-let (|Rel|_|) (v: Value) =
-    match v with
-    | Val([GET_PC], n) -> Some n
-    | _ -> None
-
-let collapseValue (v: Value) : int8 list =
-    match v with
-    | NoOff(c) -> c
-    | Const(n) -> pushNum n
-    | Val(c, n) -> c @ pushNum n @ [ADD]
-
-let zeroValue = constant 0L
-let oneValue = constant 1L
-let trueValue = constant -1L
-
-let (|Zero|One|True|OtherValue|) (v: Value) =
-    match v with
-    | Const(0L) -> Zero
-    | Const(1L) -> One
-    | Const(-1L) -> True
-    | _ -> OtherValue
+// More on values
 
 let addValue v1 v2 =
     match v1, v2 with
@@ -400,6 +419,15 @@ let gteSValue (v1: Value) (v2: Value) : Value =
     | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ gteS
 
 
+
+
+// TODO: This could do more
+let spOptimization (v: Value) : Value =
+    match v with
+    | Val([GET_SP], i) when i % 8L = 0L -> addrValue (i / 8L)
+    | _ -> v
+
+
 let exprPushCore (lookup: int -> int) =
     let rec epc (position: int) (depth: int) (expression: Expression) =
 
@@ -460,7 +488,7 @@ let exprPushCore (lookup: int -> int) =
                         | e -> inner e
                 value <- addValue value s
             // Finally return the result
-            value
+            spOptimization value
 
         | ENeg e -> e |> rec1 |> negValue
         | EPow2 e -> e |> rec1 |> pow2Value
