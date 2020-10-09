@@ -3,7 +3,6 @@
 open System.IO
 open Expecto
 open Expecto.Impl
-open FsCheck
 open Swensen.Unquote
 
 open Tools.Checks

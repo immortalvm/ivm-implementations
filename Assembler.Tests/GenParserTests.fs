@@ -3,7 +3,6 @@
 open System
 open Expecto
 open Expecto.Impl
-open FsCheck
 open Swensen.Unquote
 
 open FParsec

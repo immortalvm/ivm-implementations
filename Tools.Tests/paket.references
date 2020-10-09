@@ -1,7 +1,5 @@
 FSharp.Core
 Expecto
-FsCheck
 Unquote
 Microsoft.NET.Test.Sdk
-Expecto.FsCheck
 YoloDev.Expecto.TestSdk
