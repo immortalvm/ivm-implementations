@@ -107,7 +107,7 @@ let XOR = 43y
 [<Literal>]
 let POW2 = 44y
 
-// 45-127: Unused
+// 45-248: Unused
 
 [<Literal>]
 let READ_FRAME = -1y  // 255
