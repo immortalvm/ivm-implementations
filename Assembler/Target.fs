@@ -190,15 +190,15 @@ let deltaJumpZero delta =
 
 let deltaJumpNotZero delta = isZero @ deltaJumpZero (delta - int64 (opLen isZero))
 
-let genericConditional interjection =
-    [
-        GET_SP; PUSH1; 8y; ADD; LOAD8 // a::x::r -> x::a::x::r
-    ] @ interjection @ [
-        JUMP_ZERO; 6y
-        // If not zero:
-        GET_SP; PUSH1; 8y; ADD; STORE8 // a::x::r -> a::r
-        JUMP
-    ] @ pop 2 // If zero
+let genericConditional transformer =
+    let ifNotZero = set 1 @ [JUMP]
+    List.concat [
+        get 1
+        transformer
+        [ JUMP_ZERO; int8 ifNotZero.Length ]
+        ifNotZero
+        pop 2
+    ]
 
 let genericJumpNotZero = genericConditional []
 let genericJumpZero = genericConditional isZero
