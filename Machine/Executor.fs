@@ -239,6 +239,15 @@ type private Machine
         | GET_PC -> m.ProgramCounter |> m.Push
         | GET_SP -> m.StackPointer |> m.Push
 
+        | GET_SP_8 -> m.StackPointer |> (+) 8UL |> m.Push
+        | GET_SP_16 -> m.StackPointer |> (+) 16UL |> m.Push
+        | GET_SP_24 -> m.StackPointer |> (+) 24UL |> m.Push
+        | GET_SP_32 -> m.StackPointer |> (+) 32UL |> m.Push
+        | GET_SP_40 -> m.StackPointer |> (+) 40UL |> m.Push
+        | GET_SP_48 -> m.StackPointer |> (+) 48UL |> m.Push
+        | GET_SP_56 -> m.StackPointer |> (+) 56UL |> m.Push
+        | GET_SP_64 -> m.StackPointer |> (+) 64UL |> m.Push
+
         | PUSH0 -> 0UL |> m.Push
         | PUSH1 -> m.NextOp 1 |> m.Push
         | PUSH2 -> m.NextOp 2 |> m.Push

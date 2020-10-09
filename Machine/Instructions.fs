@@ -107,7 +107,33 @@ let XOR = 43y
 [<Literal>]
 let POW2 = 44y
 
-// 45-248: Unused
+
+
+[<Literal>]
+let GET_SP_8 = 64y
+
+[<Literal>]
+let GET_SP_16 = 65y
+
+[<Literal>]
+let GET_SP_24 = 66y
+
+[<Literal>]
+let GET_SP_32 = 67y
+
+[<Literal>]
+let GET_SP_40 = 68y
+
+[<Literal>]
+let GET_SP_48 = 69y
+
+[<Literal>]
+let GET_SP_56 = 70y
+
+[<Literal>]
+let GET_SP_64 = 71y
+
+
 
 [<Literal>]
 let READ_FRAME = -1y  // 255
