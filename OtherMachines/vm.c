@@ -67,6 +67,15 @@
 #define XOR 43
 #define POW2 44
 
+#define GET_SP_8 64
+#define GET_SP_16 65
+#define GET_SP_24 66
+#define GET_SP_32 67
+#define GET_SP_40 68
+#define GET_SP_48 69
+#define GET_SP_56 70
+#define GET_SP_64 71
+
 #define READ_FRAME (uint8_t)-1
 #define READ_PIXEL (uint8_t)-2
 #define NEW_FRAME (uint8_t)-3
@@ -550,6 +559,15 @@ int main(int argc, char** argv) {
     case SET_SP: sp = (void*) pop(); break;
     case GET_PC: push((uint64_t) pc); break;
     case GET_SP: push((uint64_t) sp); break;
+
+    case GET_SP_8: push((uint64_t) sp + 8); break;
+    case GET_SP_16: push((uint64_t) sp + 16); break;
+    case GET_SP_24: push((uint64_t) sp + 24); break;
+    case GET_SP_32: push((uint64_t) sp + 32); break;
+    case GET_SP_40: push((uint64_t) sp + 40); break;
+    case GET_SP_48: push((uint64_t) sp + 48); break;
+    case GET_SP_56: push((uint64_t) sp + 56); break;
+    case GET_SP_64: push((uint64_t) sp + 64); break;
 
     case PUSH0: push(0); break;
     case PUSH1: push(next1()); break;
