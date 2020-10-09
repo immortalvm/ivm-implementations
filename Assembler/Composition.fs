@@ -1,10 +1,9 @@
 ﻿module Assembler.Composition
 
 open Assembler.Target
-open Machine.Executor
 
 [<Literal>]
-let private ATTEMPTS_BEFORE_MONOTINICITY = 3;
+let private ATTEMPTS_BEFORE_MONOTINICITY = 5;
 
 // 'nops n' must return a nop sequence of at least n signed bytes.
 let private compose
