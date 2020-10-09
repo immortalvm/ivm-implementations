@@ -59,6 +59,10 @@ let pushFix (f: int -> int64) =
         else currLen <- nextLen
     result.Value
 
+let addr n = [GET_SP] @ if n = 0 then [] else pushNum (n * 8 |> int64) @ [ADD]
+let get n = addr n @ [LOAD8]
+let set n = addr n @ [STORE8]
+
 // Using this with negative n is probably not a good idea.
 let pop n =
     let pop1 = [JUMP_ZERO; 0y]
@@ -66,21 +70,17 @@ let pop n =
     | 0 -> []
     | 1 -> pop1
     | 2 -> pop1 @ pop1
-    | n -> [GET_SP] @ pushNum (int64 n * 8L) @ [ADD; SET_SP]
+    | n -> addr n @ [SET_SP]
 
 let pushTrue = [PUSH0; NOT] // Push -1
 let changeSign = pushTrue @ [MULT]
 let isZero = [PUSH1; 1y; LT]
 
-let addr n = [GET_SP] @ if n = 0 then [] else pushNum (n * 8 |> int64) @ [ADD]
-let get n = addr n @ [LOAD8]
-let set n = addr n @ [STORE8]
-let toSign =
-    [
-        PUSH1; 63y; POW2; LT // -1 if positive or zero, 0 if negative
-        PUSH1; 2y; MULT      // -2  or  0
-        NOT                  //  1  or -1
-    ]
+// -1 if positive or zero, 0 if negative
+let isPositive = [PUSH1; 63y; POW2; LT]
+
+// 1 or -1
+let toSign = isPositive @ [ PUSH1; 2y; MULT; NOT ]
 let abs = get 0 @ toSign @ [MULT] // Keeps 2^63 unchanged
 let divS =
     List.concat
