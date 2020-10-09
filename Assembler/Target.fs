@@ -72,7 +72,7 @@ let pushTrue = [PUSH0; NOT] // Push -1
 let changeSign = pushTrue @ [MULT]
 let isZero = [PUSH1; 1y; LT]
 
-let addr n = [GET_SP; PUSH1; int8 (n * 8); ADD]
+let addr n = [GET_SP] @ if n = 0 then [] else pushNum (n * 8 |> int64) @ [ADD]
 let get n = addr n @ [LOAD8]
 let set n = addr n @ [STORE8]
 let toSign =
