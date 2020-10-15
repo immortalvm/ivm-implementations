@@ -23,7 +23,14 @@ Target.create "Clean" (fun _ ->
 Target.create "Test" (fun _ ->
   Trace.log " --- Testing --- "
   // TODO: Reduce output noise when running tests / running in general
-  DotNet.test id "."
+  DotNet.test (fun options ->
+  { options with
+      MSBuildParams =
+      {
+        options.MSBuildParams with
+          DisableInternalBinLog = true // https://gitter.im/fsharp/FAKE?at=5e6a729be203784a55a350db
+      }
+  }) "."
 )
 
 // Since Git.Information.getLastTag only sees annotated tags
@@ -52,7 +59,8 @@ let publish (alsoZip: bool) (runtimes: string list) =
 
         MSBuildParams =
         {
-          MSBuild.CliArguments.Create() with
+          options.MSBuildParams with
+            DisableInternalBinLog = true // https://gitter.im/fsharp/FAKE?at=5e6a729be203784a55a350db
             Properties =
               ("PackAsTool", "false")
               :: ("TargetFramework", framework)
