@@ -3,7 +3,7 @@
 open Assembler.Target
 
 [<Literal>]
-let private ATTEMPTS_BEFORE_MONOTINICITY = 5;
+let private ATTEMPTS_BEFORE_MONOTINICITY = 10;
 
 // 'nops n' must return a nop sequence of at least n signed bytes.
 let private compose
@@ -18,6 +18,7 @@ let private compose
     // positions[0] will refer to the length/end of the file.
     // This is used for "linking".
     let positions = Array.create numLabels -1 // -1 = abbreviation
+    let positionsUpdateBit = Array.create numLabels false
     let spaces = Array.create numLabels 0L
     let exports = Array.create numLabels (false, 0L)
 
@@ -36,17 +37,23 @@ let private compose
     let mutable attempts = 0
 
     while not allStable do
+        printfn "Round: %d" attempts
         let mutable position = 0
+        let updateBit = attempts % 2 = 1
 
         let updateIfNecessary num inter =
+            let prevStart = starts.[num]
+            starts.[num] <- position
+
             let lookup i =
-                let res = positions.[i] - position
+                let res = positions.[i] - (if positionsUpdateBit.[i] = updateBit
+                                           then position
+                                           else prevStart)
                 replies <- replies.Add ((num, i), res)
                 res
 
-            starts.[num] <- position
             match inter with
-            | Label i -> positions.[i] <- position
+            | Label i -> positions.[i] <- position; positionsUpdateBit.[i] <- updateBit
             | Relative -> relativize.[num] <- true
             | Spacer (i, size) ->
                 if not stable.[num]
@@ -60,7 +67,9 @@ let private compose
                                     else let l0 = opLen codes.[num]
                                          let l1 = opLen c
                                          if l1 >= l0 then c
-                                         else c @ nops (l0 - l1)
+                                         else
+                                             printfn "  %d : %d -> %d" num l1 l0
+                                             c @ nops (l0 - l1)
                 position <- position + opLen codes.[num]
             | Export exp ->
                 if not stable.[num]
@@ -69,6 +78,7 @@ let private compose
 
         List.iteri updateIfNecessary prog
         positions.[0] <- position // End of file
+        positionsUpdateBit.[0] <- updateBit
 
         // Check all replies (not only the recently recalculated).
         allStable <- true
