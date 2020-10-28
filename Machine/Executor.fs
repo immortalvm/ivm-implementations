@@ -268,6 +268,15 @@ type private Machine
             |> m.Push
         | LT -> (if m.Pop () > m.Pop () then -1 else 0) |> uint64 |> m.Push
 
+        | DIVS ->
+            let x, y = m.Pop (), m.Pop ()
+            if x = 0UL then 0UL else (int64 y) / (int64 x) |> uint64
+            |> m.Push
+        | REMS ->
+            let x, y = m.Pop (), m.Pop ()
+            if x = 0UL then 0UL else (int64 y) % (int64 x) |> uint64
+            |> m.Push
+
         | AND -> (m.Pop ()) &&& (m.Pop ()) |> m.Push
         | OR -> (m.Pop ()) ||| (m.Pop ()) |> m.Push
         | NOT -> ~~~ (m.Pop ()) |> m.Push

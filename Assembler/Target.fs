@@ -79,55 +79,8 @@ let isPositive = [PUSH1; 63y; POW2; LT]
 // 1 or -1
 let toSign = isPositive @ [ PUSH1; 2y; MULT; NOT ]
 let abs = get 0 @ toSign @ [MULT] // Keeps 2^63 unchanged
-let divS =
-    List.concat
-        [
-            // x :: y :: rest
-            get 1 @ abs
-            get 1 @ abs
-            [DIV]
-            // d :: x :: y :: rest, where d = abs y / abs x.
-            get 2 @ toSign
-            get 2 @ toSign
-            [MULT]
-            // s :: d :: ..., where s = 1 if x and y have the same sign, otherwise -1.
-            [MULT]
-            // d' :: x :: y :: rest, where d' = d or d' = -d.
-            set 2
-            // x :: 'd :: rest
-            pop 1
-        ]
-let remS =
-    List.concat
-        [
-            // x :: y :: rest
-            get 1 @ abs
-            get 1 @ abs
-            [REM]
-            // d :: x :: y :: rest, where d = abs y % abs x.
-            get 2 @ toSign
-            // s :: d :: ..., where s = 1 if y is >= 0, otherwise -1.
-            [MULT]
-            // d' :: x :: y :: rest, where d' = d or d' = -d.
-            set 2
-            // x :: 'd :: rest
-            pop 1
-        ]
-
-// Round towards zero
-let oldDivSU =
-    List.concat
-        [
-            // x :: y :: rest
-            get 1 @ abs
-            get 1
-            [DIV]
-            get 2 @ toSign
-            // sign(y) :: |y| / x :: x :: y :: rest
-            [MULT]
-            set 2
-            pop 1
-        ]
+let divS = [DIVS]
+let remS = [REMS]
 
 // Round towards negative infinity.
 // Used for arithmetic shift right.
@@ -337,7 +290,7 @@ let divSValue (v1: Value) (v2: Value) : Value =
     | _, One -> v1
     | Const(m), Const(n) -> constant (m / n)
     | Val(c, m), True -> Val(c @ changeSign, -m)
-    | _, Const(n) when n > 0L -> noOffset <| collapseValue v1 @ pushNum n @ oldDivSU
+    | _, Const(n) when n > 0L -> noOffset <| collapseValue v1 @ pushNum n @ [DIVS]
     | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ divS
 
 let divSUValue (v1: Value) (v2: Value) : Value =
@@ -580,7 +533,7 @@ let expressionDivS e lookup =
     | Zero -> pop 1 @ [PUSH0] // NB: x / 0 = 0
     | One -> []
     | True -> changeSign
-    | Const(n) when n > 0L -> pushNum n @ oldDivSU
+    | Const(n) when n > 0L -> pushNum n @ [DIVS]
     | v -> collapseValue v @ divS
 
 let expressionRemS e lookup =

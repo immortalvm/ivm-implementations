@@ -58,6 +58,8 @@
 #define DIV 34
 #define REM 35
 #define LT 36
+#define DIVS 37
+#define REMS 38
 #define AND 40
 #define OR 41
 #define NOT 42
@@ -575,6 +577,16 @@ int main(int argc, char** argv) {
       push(x == 0 ? 0 : y % x);
       break;
     case LT: x = pop(); y = pop(); push(y < x ? (uint64_t)-1 : 0); break;
+    case DIVS:
+      x = pop();
+      y = pop();
+      push(x == 0 ? 0 : (uint64_t) (((int64_t)y) / ((int64_t)x)));
+      break;
+    case REMS:
+      x = pop();
+      y = pop();
+      push(x == 0 ? 0 : (uint64_t) (((int64_t)y) % ((int64_t)x)));
+      break;
 
     case AND: push(pop() & pop()); break;
     case OR: push(pop() | pop()); break;

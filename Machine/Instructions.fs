@@ -80,6 +80,14 @@ let REM = 35y // Unsigned remainder. NB: x % 0 = 0
 [<Literal>]
 let LT = 36y // Less than. Unsigned. 0: false. FF...F: true.
 
+
+[<Literal>]
+let DIVS = 37y // Signed division. NB: x / 0 = 0
+
+[<Literal>]
+let REMS = 38y // Unsigned remainder. NB: x % 0 = 0
+
+
 // 36-39: Unused
 
 [<Literal>]
