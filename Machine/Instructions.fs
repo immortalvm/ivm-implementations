@@ -37,17 +37,7 @@ let PUSH4 = 10y
 [<Literal>]
 let PUSH8 = 11y
 
-// Sign extension
-[<Literal>]
-let SIGX1 = 12y // From 8 to 64 bits
-
-[<Literal>]
-let SIGX2 = 13y // From 16 to 64 bits
-
-[<Literal>]
-let SIGX4 = 14y // From 32 to 64 bits
-
-// 15: Unused
+// 12-15: Unused
 
 [<Literal>]
 let LOAD1 = 16y

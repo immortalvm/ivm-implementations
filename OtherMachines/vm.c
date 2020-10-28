@@ -45,9 +45,6 @@
 #define PUSH2 9
 #define PUSH4 10
 #define PUSH8 11
-#define SIGX1 12
-#define SIGX2 13
-#define SIGX4 14
 #define LOAD1 16
 #define LOAD2 17
 #define LOAD4 18
@@ -89,8 +86,6 @@ static inline uint32_t next4() { uint32_t result = *((uint32_t*)pc); pc += 4; re
 static inline uint64_t next8() { uint64_t result = *((uint64_t*)pc); pc += 8; return result; }
 
 static inline uint64_t signExtend1(uint64_t x) { return ((uint64_t)(int64_t)(int8_t)(uint8_t)x); }
-static inline uint64_t signExtend2(uint64_t x) { return ((uint64_t)(int64_t)(int16_t)(uint16_t)x); }
-static inline uint64_t signExtend4(uint64_t x) { return ((uint64_t)(int64_t)(int32_t)(uint32_t)x); }
 
 // Options
 uint64_t memorySize = 1 << 24; // 16 MiB by default
@@ -556,10 +551,6 @@ int main(int argc, char** argv) {
     case PUSH2: push(next2()); break;
     case PUSH4: push(next4()); break;
     case PUSH8: push(next8()); break;
-
-    case SIGX1: push(signExtend1(pop())); break;
-    case SIGX2: push(signExtend2(pop())); break;
-    case SIGX4: push(signExtend4(pop())); break;
 
     case LOAD1: push(*((uint8_t*)pop())); break;
     case LOAD2: push(*((uint16_t*)pop())); break;

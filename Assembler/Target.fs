@@ -203,6 +203,10 @@ let genericConditional transformer =
 let genericJumpNotZero = genericConditional []
 let genericJumpZero = genericConditional isZero
 
+let sigx1 = get 0 @ pushNum (1L <<<  7) @ [AND] @ pushNum -1L @ [MULT; OR]
+let sigx2 = get 0 @ pushNum (1L <<< 15) @ [AND] @ pushNum -1L @ [MULT; OR]
+let sigx4 = get 0 @ pushNum (1L <<< 31) @ [AND] @ pushNum -1L @ [MULT; OR]
+
 // Pair consisting of (i) a piece of code with the net effect of pushing a single
 // value onto the stack and (ii) a constant "offset" which should (at some point)
 // be added to this value. I could not think of a good name for this type.
@@ -295,17 +299,17 @@ let notValue (v: Value) : Value =
 let sigx1Value (v: Value) : Value =
     match v with
     | Const(n) -> constant (uint64 n |> signExtend1 |> int64)
-    | _ -> noOffset <| collapseValue v @ [SIGX1]
+    | _ -> noOffset <| collapseValue v @ sigx1
 
 let sigx2Value (v: Value) : Value =
     match v with
     | Const(n) -> constant (uint64 n |> signExtend2 |> int64)
-    | _ -> noOffset <| collapseValue v @ [SIGX2]
+    | _ -> noOffset <| collapseValue v @ sigx2
 
 let sigx4Value (v: Value) : Value =
     match v with
     | Const(n) -> constant (uint64 n |> signExtend4 |> int64)
-    | _ -> noOffset <| collapseValue v @ [SIGX4]
+    | _ -> noOffset <| collapseValue v @ sigx4
 
 
 let divUValue (v1: Value) (v2: Value) : Value =
@@ -618,9 +622,9 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
             | SLoad2 :: r -> frag r [LOAD2]
             | SLoad4 :: r -> frag r [LOAD4]
             | SLoad8 :: r -> frag r [LOAD8]
-            | SSigx1 :: r -> frag r [SIGX1]
-            | SSigx2 :: r -> frag r [SIGX2]
-            | SSigx4 :: r -> frag r [SIGX4]
+            | SSigx1 :: r -> frag r sigx1
+            | SSigx2 :: r -> frag r sigx2
+            | SSigx4 :: r -> frag r sigx4
             | SStore1 :: r -> frag r [STORE1]
             | SStore2 :: r -> frag r [STORE2]
             | SStore4 :: r -> frag r [STORE4]

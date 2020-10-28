@@ -245,10 +245,6 @@ type private Machine
         | PUSH4 -> m.NextOp 4 |> m.Push
         | PUSH8 -> m.NextOp 8 |> m.Push
 
-        | SIGX1 -> m.Pop () |> signExtend1 |> m.Push
-        | SIGX2 -> m.Pop () |> signExtend2 |> m.Push
-        | SIGX4 -> m.Pop () |> signExtend4 |> m.Push
-
         | LOAD1 -> m.Pop () |> m.LoadN 1 |> m.Push
         | LOAD2 -> m.Pop () |> m.LoadN 2 |> m.Push
         | LOAD4 -> m.Pop () |> m.LoadN 4 |> m.Push
