@@ -17,32 +17,29 @@ let bytes (n: int) (y: uint64) : int8 list =
     |> Seq.map (fun i -> y >>> i*8 |> uint8 |> int8)
     |> Seq.toList
 
+let (|Power2|_|) (n: uint64) =
+    if n &&& (n - 1UL) = 0UL
+    then System.Array.BinarySearch (powers, n) |> int8 |> Some
+    else None
+
 let pushNum (x: int64): int8 list =
     let n = uint64 x
     let nn = x ^^^ -1L |> uint64
-
     let b8 = 1UL <<< 8
     let b16 = 1UL <<< 16
     let b32 = 1UL <<< 32
-
-    if n &&& (n - 1UL) = 0UL && n >= b16
-    then
-        let k = System.Array.BinarySearch (powers, n)
-        [PUSH1; int8 k; POW2]                          // 3
-    elif nn &&& (nn - 1UL) = 0UL && nn >= b16
-    then
-        let k = System.Array.BinarySearch (powers, nn)
-        [PUSH1; int8 k; POW2; NOT]                     // 4
-    else
-        if n = 0UL then [PUSH0]                         // 1
-        elif nn = 0UL then [PUSH0; NOT]                 // 2 (pushTrue)
-        elif n < b8 then [PUSH1; int8 n]                // 2
-        elif nn < b8 then [PUSH1; int8 nn; NOT]         // 3
-        elif n < b16 then [PUSH2] @ bytes 2 n           // 3
-        elif nn < b16 then [PUSH2] @ bytes 2 nn @ [NOT] // 4
-        elif n < b32 then [PUSH4] @ bytes 4 n           // 5
-        elif nn < b32 then [PUSH4] @ bytes 4 nn @ [NOT] // 6
-        else [PUSH8] @ bytes 8 n                        // 9
+    match n, nn with
+    | 0UL, _ -> [PUSH0]                                  // 1
+    | _, 0UL -> [PUSH0; NOT]                             // 2 (pushTrue)
+    | _, _ when n < b8 -> [PUSH1; int8 n]                // 2
+    | _, _ when nn < b8 -> [PUSH1; int8 nn; NOT]         // 3
+    | _, _ when n < b16 -> [PUSH2] @ bytes 2 n           // 3
+    | Power2(k), _ -> [PUSH1; int8 k; POW2]              // 3
+    | _, _ when nn < b16 -> [PUSH2] @ bytes 2 nn @ [NOT] // 4
+    | _, Power2(k) -> [PUSH1; int8 k; POW2; NOT]         // 4
+    | _, _ when n < b32 -> [PUSH4] @ bytes 4 n           // 5
+    | _, _ when nn < b32 -> [PUSH4] @ bytes 4 nn @ [NOT] // 6
+    | _, _ -> [PUSH8] @ bytes 8 n                        // 9
 
 let pushInt = int64 >> pushNum
 
@@ -203,9 +200,10 @@ let genericConditional transformer =
 let genericJumpNotZero = genericConditional []
 let genericJumpZero = genericConditional isZero
 
-let sigx1 = get 0 @ pushNum (1L <<<  7) @ [AND] @ pushNum -1L @ [MULT; OR]
-let sigx2 = get 0 @ pushNum (1L <<< 15) @ [AND] @ pushNum -1L @ [MULT; OR]
-let sigx4 = get 0 @ pushNum (1L <<< 31) @ [AND] @ pushNum -1L @ [MULT; OR]
+let sigx b = get 0 @ pushNum (1L <<< b - 1) @ [AND] @ pushNum -1L @ [MULT; OR]
+let sigx1 = sigx 8
+let sigx2 = sigx 16
+let sigx4 = sigx 32
 
 // Pair consisting of (i) a piece of code with the net effect of pushing a single
 // value onto the stack and (ii) a constant "offset" which should (at some point)
