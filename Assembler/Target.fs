@@ -151,9 +151,7 @@ let divSU =
 
 
 let offsetSign = pushNum (1L <<< 63) @ [ADD]
-let offsetSign2 =
-    let bit63 = 1L <<< 63
-    offsetSign @ get 1 @ offsetSign @ set 2
+let offsetSign2 = offsetSign @ get 1 @ offsetSign @ set 2
 
 let eq = [XOR] @ isZero
 
