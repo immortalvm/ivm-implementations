@@ -17,9 +17,9 @@ let bytes (n: int) (y: uint64) : int8 list =
     |> Seq.map (fun i -> y >>> i*8 |> uint8 |> int8)
     |> Seq.toList
 
-let (|Power2|_|) (n: uint64) =
+let (|Power2|_|) (n: uint64) : int option =
     if n &&& (n - 1UL) = 0UL
-    then System.Array.BinarySearch (powers, n) |> int8 |> Some
+    then System.Array.BinarySearch (powers, n) |> Some
     else None
 
 let pushNum (x: int64): int8 list =
@@ -203,6 +203,13 @@ let sigx1 = sigx 8
 let sigx2 = sigx 16
 let sigx4 = sigx 32
 
+let shiftrs (k: int) =
+    if k <= 0 then []
+    elif k > 63 then [PUSH0; MULT]
+    elif k = 63 then isPositive @ [NOT]
+    else // 0<k<63
+        pushNum (int64 k) @ [POW2; DIV] @ sigx (64 - k)
+
 // Pair consisting of (i) a piece of code with the net effect of pushing a single
 // value onto the stack and (ii) a constant "offset" which should (at some point)
 // be added to this value. I could not think of a good name for this type.
@@ -214,6 +221,13 @@ let noOffset code = Val(code, 0L)
 let (|Const|_|) (v: Value) =
     match v with
     | Val([PUSH0], n) -> Some n
+    | _ -> None
+
+let (|Power2Const|_|) (v: Value) =
+    match v with
+    | Const(n) -> match uint64 n with
+                  | Power2(k) -> Some k
+                  | _ -> None
     | _ -> None
 
 let (|NoOff|_|) (v: Value) =
@@ -335,6 +349,7 @@ let divSUValue (v1: Value) (v2: Value) : Value =
     | Const(m), Const(n) ->
         let off, sign = if m < 0L then -1L, -1L else 0L, 1L
         uint64 (m * sign + off) / (uint64 n) |> int64 |> (*) sign |> (+) off |> constant
+    | _, Power2Const(k) -> noOffset <| collapseValue v1 @ shiftrs k
     | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ divSU
 
 let remUValue (v1: Value) (v2: Value) : Value =
@@ -579,6 +594,7 @@ let expressionDivSU e lookup =
     match exprPushCore lookup 0 0 e with
     | Zero // arbitrary
     | One -> []
+    | Power2Const(k) -> shiftrs k
     | v -> collapseValue v @ divSU
 
 type Intermediate =
