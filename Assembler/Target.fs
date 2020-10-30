@@ -665,6 +665,8 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
             | SPush e :: SDivS :: r -> fragment r (expressionDivS e)
             | SPush e :: SRemS :: r -> fragment r (expressionRemS e)
             | SPush e :: SDivSU :: r -> fragment r (expressionDivSU e)
+            // In case of --noopt
+            | SPush e :: SPow2 :: SDivSU :: r -> fragment r (expressionDivSU (EPow2 e))
 
             | SJump :: r -> frag r [JUMP]
             | SJumpZero :: r -> frag r genericJumpZero
