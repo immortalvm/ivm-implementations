@@ -1,3 +1,5 @@
+### See also test_regression_33_sigx.s
+
     push! (sigx1 (load1 (+ x 0)))
     push! (sigx1 (load1 (+ x 1)))
     push! (sigx1 (load1 (+ x 2)))

@@ -198,10 +198,8 @@ let genericConditional transformer =
 let genericJumpNotZero = genericConditional []
 let genericJumpZero = genericConditional isZero
 
-let sigx b = get 0 @ pushNum (1L <<< b - 1) @ [AND] @ pushNum -1L @ [MULT; OR]
-let sigx1 = sigx 8
-let sigx2 = sigx 16
-let sigx4 = sigx 32
+let unsafeSigx b = get 0 @ pushNum (1L <<< b - 1) @ [AND] @ pushNum -1L @ [MULT; OR]
+let sigx b = pushNum ((1L <<< b) - 1L) @ [AND] @ unsafeSigx b
 
 let shiftrs (k: int) =
     if k <= 0 then []
@@ -306,20 +304,20 @@ let notValue (v: Value) : Value =
     | Const(n) -> constant (n ^^^ -1L)
     | Val(c, n) -> Val(c @ [NOT], (n ^^^ -1L) + 1L)
 
-let sigx1Value (v: Value) : Value =
+let sigx1Value (unsafe: bool) (v: Value) : Value =
     match v with
     | Const(n) -> constant (uint64 n |> signExtend1 |> int64)
-    | _ -> noOffset <| collapseValue v @ sigx1
+    | _ -> noOffset <| collapseValue v @ if unsafe then unsafeSigx 8 else sigx 8
 
-let sigx2Value (v: Value) : Value =
+let sigx2Value (unsafe: bool) (v: Value) : Value =
     match v with
     | Const(n) -> constant (uint64 n |> signExtend2 |> int64)
-    | _ -> noOffset <| collapseValue v @ sigx2
+    | _ -> noOffset <| collapseValue v @ if unsafe then unsafeSigx 16 else sigx 16
 
-let sigx4Value (v: Value) : Value =
+let sigx4Value (unsafe: bool)(v: Value) : Value =
     match v with
     | Const(n) -> constant (uint64 n |> signExtend4 |> int64)
-    | _ -> noOffset <| collapseValue v @ sigx4
+    | _ -> noOffset <| collapseValue v @ if unsafe then unsafeSigx 32 else sigx 32
 
 
 let divUValue (v1: Value) (v2: Value) : Value =
@@ -480,9 +478,12 @@ let exprPushCore (lookup: int -> int) =
         | ENeg e -> e |> rec1 |> negValue
         | EPow2 e -> e |> rec1 |> pow2Value
         | ENot e -> e |> rec1 |> notValue
-        | ESigx1 e -> e |> rec1 |> sigx1Value
-        | ESigx2 e -> e |> rec1 |> sigx2Value
-        | ESigx4 e -> e |> rec1 |> sigx4Value
+        | ESigx1 (ELoad1 _ as e) -> e |> rec1 |> sigx1Value true
+        | ESigx2 (ELoad2 _ as e) -> e |> rec1 |> sigx2Value true
+        | ESigx4 (ELoad4 _ as e) -> e |> rec1 |> sigx4Value true
+        | ESigx1 e -> e |> rec1 |> sigx1Value false
+        | ESigx2 e -> e |> rec1 |> sigx2Value false
+        | ESigx4 e -> e |> rec1 |> sigx4Value false
         | ELoad1 e -> noOffset <| rec1coll e @ [LOAD1]
         | ELoad2 e -> noOffset <| rec1coll e @ [LOAD2]
         | ELoad4 e -> noOffset <| rec1coll e @ [LOAD4]
@@ -630,13 +631,17 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
             | SPow2 :: r -> frag r [POW2]
 
             | SSetSp :: r -> frag r [SET_SP]
+
+            | SLoad1 :: SSigx1 :: r -> frag r <| [LOAD1] @ unsafeSigx 8
+            | SLoad2 :: SSigx2 :: r -> frag r <| [LOAD1] @ unsafeSigx 16
+            | SLoad4 :: SSigx4 :: r -> frag r <| [LOAD1] @ unsafeSigx 32
             | SLoad1 :: r -> frag r [LOAD1]
             | SLoad2 :: r -> frag r [LOAD2]
             | SLoad4 :: r -> frag r [LOAD4]
             | SLoad8 :: r -> frag r [LOAD8]
-            | SSigx1 :: r -> frag r sigx1
-            | SSigx2 :: r -> frag r sigx2
-            | SSigx4 :: r -> frag r sigx4
+            | SSigx1 :: r -> frag r <| sigx 8
+            | SSigx2 :: r -> frag r <| sigx 16
+            | SSigx4 :: r -> frag r <| sigx 32
             | SStore1 :: r -> frag r [STORE1]
             | SStore2 :: r -> frag r [STORE2]
             | SStore4 :: r -> frag r [STORE4]
