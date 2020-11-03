@@ -206,7 +206,7 @@ let shiftrs (k: int) =
     elif k > 63 then [PUSH0; MULT]
     elif k = 63 then isPositive @ [NOT]
     else // 0<k<63
-        pushNum (int64 k) @ [POW2; DIV] @ sigx (64 - k)
+        pushNum (int64 k) @ [POW2; DIV] @ unsafeSigx (64 - k)
 
 // Pair consisting of (i) a piece of code with the net effect of pushing a single
 // value onto the stack and (ii) a constant "offset" which should (at some point)
