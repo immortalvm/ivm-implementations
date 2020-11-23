@@ -98,6 +98,9 @@
     <None Include="test_code\test_regression_30.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="test_code\test_regression_35.s">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="test_code\test_sigx.s">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

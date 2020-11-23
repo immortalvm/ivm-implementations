@@ -633,8 +633,8 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
             | SSetSp :: r -> frag r [SET_SP]
 
             | SLoad1 :: SSigx1 :: r -> frag r <| [LOAD1] @ unsafeSigx 8
-            | SLoad2 :: SSigx2 :: r -> frag r <| [LOAD1] @ unsafeSigx 16
-            | SLoad4 :: SSigx4 :: r -> frag r <| [LOAD1] @ unsafeSigx 32
+            | SLoad2 :: SSigx2 :: r -> frag r <| [LOAD2] @ unsafeSigx 16
+            | SLoad4 :: SSigx4 :: r -> frag r <| [LOAD4] @ unsafeSigx 32
             | SLoad1 :: r -> frag r [LOAD1]
             | SLoad2 :: r -> frag r [LOAD2]
             | SLoad4 :: r -> frag r [LOAD4]
