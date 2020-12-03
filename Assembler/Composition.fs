@@ -3,7 +3,7 @@
 open Assembler.Target
 
 [<Literal>]
-let private ATTEMPTS_BEFORE_MONOTINICITY = 10;
+let private ATTEMPTS_BEFORE_MONOTINICITY = 15;
 
 // 'nops n' must return a nop sequence of at least n signed bytes.
 let private compose
@@ -37,7 +37,7 @@ let private compose
     let mutable attempts = 0
 
     while not allStable do
-        printfn "Round: %d" attempts
+        printf "."
         let mutable position = 0
         let updateBit = attempts % 2 = 1
 
@@ -90,6 +90,7 @@ let private compose
                  allStable <- false
 
         attempts <- attempts + 1
+    printfn ""
 
     let codeList =
         Seq.concat codes |> Seq.map uint8 |> Seq.toList
