@@ -97,10 +97,12 @@ type private Machine
             let path = Path.Combine(outputDir.Value, sprintf "%08d." frameCounter)
             match text with
             | [] -> ()
-            | _ -> File.WriteAllText (path + "text", text |> Seq.rev |> Seq.concat |> System.String.Concat )
+            | _ -> File.WriteAllText (path + "text", text |> Seq.rev |> Seq.concat |> System.String.Concat)
+            text <- []
             match bytes with
             | [] -> ()
             | _ -> File.WriteAllBytes (path + "bytes", bytes |> Seq.rev |> Seq.toArray)
+            bytes <- []
             match bitmap with
             | None -> ()
             | Some b ->
@@ -229,10 +231,15 @@ type private Machine
         | NOP -> ()
 
         | JUMP -> m.ProgramCounter <- m.Pop ()
-        | JUMP_ZERO ->
-            let offset = m.NextOp 1 |> signExtend1
+        | JZ_FWD ->
+            let offset = m.NextOp 1
             if m.Pop () = 0UL
             then m.ProgramCounter <- m.ProgramCounter + offset
+        | JZ_BACK ->
+            let offset = m.NextOp 1
+            if m.Pop () = 0UL
+            then m.ProgramCounter <- m.ProgramCounter - (offset + 1UL)
+
         | SET_SP -> m.StackPointer <- m.Pop ()
         | GET_PC -> m.ProgramCounter |> m.Push
         | GET_SP -> m.StackPointer |> m.Push
@@ -242,10 +249,6 @@ type private Machine
         | PUSH2 -> m.NextOp 2 |> m.Push
         | PUSH4 -> m.NextOp 4 |> m.Push
         | PUSH8 -> m.NextOp 8 |> m.Push
-
-        | SIGX1 -> m.Pop () |> signExtend1 |> m.Push
-        | SIGX2 -> m.Pop () |> signExtend2 |> m.Push
-        | SIGX4 -> m.Pop () |> signExtend4 |> m.Push
 
         | LOAD1 -> m.Pop () |> m.LoadN 1 |> m.Push
         | LOAD2 -> m.Pop () |> m.LoadN 2 |> m.Push

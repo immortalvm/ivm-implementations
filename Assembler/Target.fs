@@ -17,32 +17,29 @@ let bytes (n: int) (y: uint64) : int8 list =
     |> Seq.map (fun i -> y >>> i*8 |> uint8 |> int8)
     |> Seq.toList
 
+let (|Power2|_|) (n: uint64) : int option =
+    if n &&& (n - 1UL) = 0UL
+    then System.Array.BinarySearch (powers, n) |> Some
+    else None
+
 let pushNum (x: int64): int8 list =
     let n = uint64 x
     let nn = x ^^^ -1L |> uint64
-
     let b8 = 1UL <<< 8
     let b16 = 1UL <<< 16
     let b32 = 1UL <<< 32
-
-    if n &&& (n - 1UL) = 0UL && n >= b16
-    then
-        let k = System.Array.BinarySearch (powers, n)
-        [PUSH1; int8 k; POW2]                          // 3
-    elif nn &&& (nn - 1UL) = 0UL && nn >= b16
-    then
-        let k = System.Array.BinarySearch (powers, nn)
-        [PUSH1; int8 k; POW2; NOT]                     // 4
-    else
-        if n = 0UL then [PUSH0]                         // 1
-        elif nn = 0UL then [PUSH0; NOT]                 // 2 (pushTrue)
-        elif n < b8 then [PUSH1; int8 n]                // 2
-        elif nn < b8 then [PUSH1; int8 nn; NOT]         // 3
-        elif n < b16 then [PUSH2] @ bytes 2 n           // 3
-        elif nn < b16 then [PUSH2] @ bytes 2 nn @ [NOT] // 4
-        elif n < b32 then [PUSH4] @ bytes 4 n           // 5
-        elif nn < b32 then [PUSH4] @ bytes 4 nn @ [NOT] // 6
-        else [PUSH8] @ bytes 8 n                        // 9
+    match n, nn with
+    | 0UL, _ -> [PUSH0]                                  // 1
+    | _, 0UL -> [PUSH0; NOT]                             // 2 (pushTrue)
+    | _, _ when n < b8 -> [PUSH1; int8 n]                // 2
+    | _, _ when nn < b8 -> [PUSH1; int8 nn; NOT]         // 3
+    | _, _ when n < b16 -> [PUSH2] @ bytes 2 n           // 3
+    | Power2(k), _ -> [PUSH1; int8 k; POW2]              // 3
+    | _, _ when nn < b16 -> [PUSH2] @ bytes 2 nn @ [NOT] // 4
+    | _, Power2(k) -> [PUSH1; int8 k; POW2; NOT]         // 4
+    | _, _ when n < b32 -> [PUSH4] @ bytes 4 n           // 5
+    | _, _ when nn < b32 -> [PUSH4] @ bytes 4 nn @ [NOT] // 6
+    | _, _ -> [PUSH8] @ bytes 8 n                        // 9
 
 let pushInt = int64 >> pushNum
 
@@ -59,35 +56,35 @@ let pushFix (f: int -> int64) =
         else currLen <- nextLen
     result.Value
 
+let addr n = [GET_SP] @ if n = 0 then [] else pushNum (n * 8 |> int64) @ [ADD]
+let get n = addr n @ [LOAD8]
+let set n = addr n @ [STORE8]
+
 // Using this with negative n is probably not a good idea.
 let pop n =
-    let pop1 = [JUMP_ZERO; 0y]
+    let pop1 = [JZ_FWD; 0y]
     match n with
     | 0 -> []
     | 1 -> pop1
     | 2 -> pop1 @ pop1
-    | n -> [GET_SP] @ pushNum (int64 n * 8L) @ [ADD; SET_SP]
+    | n -> addr n @ [SET_SP]
 
 let pushTrue = [PUSH0; NOT] // Push -1
 let changeSign = pushTrue @ [MULT]
 let isZero = [PUSH1; 1y; LT]
 
-let addr n = [GET_SP; PUSH1; int8 (n * 8); ADD]
-let get n = addr n @ [LOAD8]
-let set n = addr n @ [STORE8]
-let toSign =
-    [
-        PUSH1; 63y; POW2; LT // -1 if positive or zero, 0 if negative
-        PUSH1; 2y; MULT      // -2  or  0
-        NOT                  //  1  or -1
-    ]
-let abs = get 0 @ toSign @ [MULT] // Keeps 2^63 unchanged
+// -1 if positive or zero, 0 if negative
+let isPositive = [PUSH1; 63y; POW2; LT]
+
+// 1 or -1
+let toSign = isPositive @ [ PUSH1; 2y; MULT; NOT ]
+let absolute = get 0 @ toSign @ [MULT] // Keeps 2^63 unchanged
 let divS =
     List.concat
         [
             // x :: y :: rest
-            get 1 @ abs
-            get 1 @ abs
+            get 1 @ absolute
+            get 1 @ absolute
             [DIV]
             // d :: x :: y :: rest, where d = abs y / abs x.
             get 2 @ toSign
@@ -104,8 +101,8 @@ let remS =
     List.concat
         [
             // x :: y :: rest
-            get 1 @ abs
-            get 1 @ abs
+            get 1 @ absolute
+            get 1 @ absolute
             [REM]
             // d :: x :: y :: rest, where d = abs y % abs x.
             get 2 @ toSign
@@ -122,7 +119,7 @@ let oldDivSU =
     List.concat
         [
             // x :: y :: rest
-            get 1 @ abs
+            get 1 @ absolute
             get 1
             [DIV]
             get 2 @ toSign
@@ -154,9 +151,7 @@ let divSU =
 
 
 let offsetSign = pushNum (1L <<< 63) @ [ADD]
-let offsetSign2 =
-    let bit63 = 1L <<< 63
-    offsetSign @ get 1 @ offsetSign @ set 2
+let offsetSign2 = offsetSign @ get 1 @ offsetSign @ set 2
 
 let eq = [XOR] @ isZero
 
@@ -171,37 +166,53 @@ let gtS = offsetSign2 @ gtU
 let gteS = offsetSign2 @ gteU
 
 
-let byteDist x = -128L <= x && x <= 127L
+let byteDist x = -256L <= x && x <= 255L
+
+let jumpZero (offset: int64) =
+    if offset >= 0L
+    then [JZ_FWD; int8 offset]
+    else [JZ_BACK; int8 <| abs offset - 1L]
+
 
 // NB. The delta is w.r.t. before the code.
 let deltaJump delta =
     if delta = 0L then []
-    elif byteDist <| delta - 3L then [PUSH0; JUMP_ZERO; int8 (delta - 3L)]
+    elif byteDist <| delta - 3L then [PUSH0] @ jumpZero (delta - 3L)
     elif delta < 0L then [GET_PC] @ pushNum (delta - 1L) @ [ADD; JUMP]
     else 
         let f pushLength = delta - int64 pushLength - 1L
         pushFix f @ [GET_PC; ADD; JUMP]
 
 let deltaJumpZero delta =
-    if byteDist <| delta - 2L then [JUMP_ZERO; int8 (delta - 2L)]
+    if byteDist <| delta - 2L then jumpZero (delta - 2L)
     else
         let jump = deltaJump (delta - 5L)
-        [JUMP_ZERO; 3y; PUSH0; JUMP_ZERO; int8 (opLen jump)] @ jump
+        jumpZero 3L @ [PUSH0] @ jumpZero (opLen jump |> int64) @ jump
 
 let deltaJumpNotZero delta = isZero @ deltaJumpZero (delta - int64 (opLen isZero))
 
-let genericConditional interjection =
-    [
-        GET_SP; PUSH1; 8y; ADD; LOAD8 // a::x::r -> x::a::x::r
-    ] @ interjection @ [
-        JUMP_ZERO; 6y
-        // If not zero:
-        GET_SP; PUSH1; 8y; ADD; STORE8 // a::x::r -> a::r
-        JUMP
-    ] @ pop 2 // If zero
+let genericConditional transformer =
+    let ifNotZero = set 1 @ [JUMP]
+    List.concat [
+        get 1
+        transformer
+        jumpZero (ifNotZero |> opLen |> int64)
+        ifNotZero
+        pop 2
+    ]
 
 let genericJumpNotZero = genericConditional []
 let genericJumpZero = genericConditional isZero
+
+let unsafeSigx b = get 0 @ pushNum (1L <<< b - 1) @ [AND] @ pushNum -1L @ [MULT; OR]
+let sigx b = pushNum ((1L <<< b) - 1L) @ [AND] @ unsafeSigx b
+
+let shiftrs (k: int) =
+    if k <= 0 then []
+    elif k > 63 then [PUSH0; MULT]
+    elif k = 63 then isPositive @ [NOT]
+    else // 0<k<63
+        pushNum (int64 k) @ [POW2; DIV] @ unsafeSigx (64 - k)
 
 // Pair consisting of (i) a piece of code with the net effect of pushing a single
 // value onto the stack and (ii) a constant "offset" which should (at some point)
@@ -214,6 +225,13 @@ let noOffset code = Val(code, 0L)
 let (|Const|_|) (v: Value) =
     match v with
     | Val([PUSH0], n) -> Some n
+    | _ -> None
+
+let (|Power2Const|_|) (v: Value) =
+    match v with
+    | Const(n) -> match uint64 n with
+                  | Power2(k) -> Some k
+                  | _ -> None
     | _ -> None
 
 let (|NoOff|_|) (v: Value) =
@@ -292,20 +310,20 @@ let notValue (v: Value) : Value =
     | Const(n) -> constant (n ^^^ -1L)
     | Val(c, n) -> Val(c @ [NOT], (n ^^^ -1L) + 1L)
 
-let sigx1Value (v: Value) : Value =
+let sigx1Value (unsafe: bool) (v: Value) : Value =
     match v with
     | Const(n) -> constant (uint64 n |> signExtend1 |> int64)
-    | _ -> noOffset <| collapseValue v @ [SIGX1]
+    | _ -> noOffset <| collapseValue v @ if unsafe then unsafeSigx 8 else sigx 8
 
-let sigx2Value (v: Value) : Value =
+let sigx2Value (unsafe: bool) (v: Value) : Value =
     match v with
     | Const(n) -> constant (uint64 n |> signExtend2 |> int64)
-    | _ -> noOffset <| collapseValue v @ [SIGX2]
+    | _ -> noOffset <| collapseValue v @ if unsafe then unsafeSigx 16 else sigx 16
 
-let sigx4Value (v: Value) : Value =
+let sigx4Value (unsafe: bool)(v: Value) : Value =
     match v with
     | Const(n) -> constant (uint64 n |> signExtend4 |> int64)
-    | _ -> noOffset <| collapseValue v @ [SIGX4]
+    | _ -> noOffset <| collapseValue v @ if unsafe then unsafeSigx 32 else sigx 32
 
 
 let divUValue (v1: Value) (v2: Value) : Value =
@@ -335,6 +353,7 @@ let divSUValue (v1: Value) (v2: Value) : Value =
     | Const(m), Const(n) ->
         let off, sign = if m < 0L then -1L, -1L else 0L, 1L
         uint64 (m * sign + off) / (uint64 n) |> int64 |> (*) sign |> (+) off |> constant
+    | _, Power2Const(k) -> noOffset <| collapseValue v1 @ shiftrs k
     | _, _ -> noOffset <| collapseValue v1 @ collapseValue v2 @ divSU
 
 let remUValue (v1: Value) (v2: Value) : Value =
@@ -465,9 +484,12 @@ let exprPushCore (lookup: int -> int) =
         | ENeg e -> e |> rec1 |> negValue
         | EPow2 e -> e |> rec1 |> pow2Value
         | ENot e -> e |> rec1 |> notValue
-        | ESigx1 e -> e |> rec1 |> sigx1Value
-        | ESigx2 e -> e |> rec1 |> sigx2Value
-        | ESigx4 e -> e |> rec1 |> sigx4Value
+        | ESigx1 (ELoad1 _ as e) -> e |> rec1 |> sigx1Value true
+        | ESigx2 (ELoad2 _ as e) -> e |> rec1 |> sigx2Value true
+        | ESigx4 (ELoad4 _ as e) -> e |> rec1 |> sigx4Value true
+        | ESigx1 e -> e |> rec1 |> sigx1Value false
+        | ESigx2 e -> e |> rec1 |> sigx2Value false
+        | ESigx4 e -> e |> rec1 |> sigx4Value false
         | ELoad1 e -> noOffset <| rec1coll e @ [LOAD1]
         | ELoad2 e -> noOffset <| rec1coll e @ [LOAD2]
         | ELoad4 e -> noOffset <| rec1coll e @ [LOAD4]
@@ -579,6 +601,7 @@ let expressionDivSU e lookup =
     match exprPushCore lookup 0 0 e with
     | Zero // arbitrary
     | One -> []
+    | Power2Const(k) -> shiftrs k
     | v -> collapseValue v @ divSU
 
 type Intermediate =
@@ -614,13 +637,17 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
             | SPow2 :: r -> frag r [POW2]
 
             | SSetSp :: r -> frag r [SET_SP]
+
+            | SLoad1 :: SSigx1 :: r -> frag r <| [LOAD1] @ unsafeSigx 8
+            | SLoad2 :: SSigx2 :: r -> frag r <| [LOAD2] @ unsafeSigx 16
+            | SLoad4 :: SSigx4 :: r -> frag r <| [LOAD4] @ unsafeSigx 32
             | SLoad1 :: r -> frag r [LOAD1]
             | SLoad2 :: r -> frag r [LOAD2]
             | SLoad4 :: r -> frag r [LOAD4]
             | SLoad8 :: r -> frag r [LOAD8]
-            | SSigx1 :: r -> frag r [SIGX1]
-            | SSigx2 :: r -> frag r [SIGX2]
-            | SSigx4 :: r -> frag r [SIGX4]
+            | SSigx1 :: r -> frag r <| sigx 8
+            | SSigx2 :: r -> frag r <| sigx 16
+            | SSigx4 :: r -> frag r <| sigx 32
             | SStore1 :: r -> frag r [STORE1]
             | SStore2 :: r -> frag r [STORE2]
             | SStore4 :: r -> frag r [STORE4]
@@ -632,7 +659,7 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
 
             // Avoid optimizing away tight infinite loops.
             | SLabel i :: SPush (ELabel j) :: SJump :: r when i = j ->
-                [Label i] @ frag r [PUSH0; JUMP_ZERO; -3y]
+                [Label i] @ frag r [PUSH0; JZ_BACK; 2y]
 
             | SLabel i :: r -> rest <- r; [Label i]
 
@@ -649,6 +676,8 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
             | SPush e :: SDivS :: r -> fragment r (expressionDivS e)
             | SPush e :: SRemS :: r -> fragment r (expressionRemS e)
             | SPush e :: SDivSU :: r -> fragment r (expressionDivSU e)
+            // In case of --noopt
+            | SPush e :: SPow2 :: SDivSU :: r -> fragment r (expressionDivSU (EPow2 e))
 
             | SJump :: r -> frag r [JUMP]
             | SJumpZero :: r -> frag r genericJumpZero
