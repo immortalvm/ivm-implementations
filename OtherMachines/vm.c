@@ -36,8 +36,8 @@
 #define EXIT 0
 #define NOP 1
 #define JUMP 2
-#define JUMP_ZERO 3
-#define JUMP_ZERO_ 4
+#define JZ_FWD 3
+#define JZ_BACK 4
 #define SET_SP 5
 #define GET_PC 6
 #define GET_SP 7
@@ -534,14 +534,14 @@ int main(int argc, char** argv) {
     case NOP: break;
     case JUMP: pc = (void*) pop(); break;
 
-    case JUMP_ZERO:
+    case JZ_FWD:
       x = next1();
       if (pop() == 0) {
         pc += x;
       }
       break;
 
-    case JUMP_ZERO_:
+    case JZ_BACK:
       x = next1();
       if (pop() == 0) {
         pc -= x + 1;

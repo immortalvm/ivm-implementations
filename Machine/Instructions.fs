@@ -10,10 +10,10 @@ let NOP = 1y
 let JUMP = 2y
 
 [<Literal>]
-let JUMP_ZERO = 3y // PC += offset
+let JZ_FWD = 3y // PC += offset
 
 [<Literal>]
-let JUMP_ZERO' = 4y // PC -= offset + 1
+let JZ_BACK = 4y // PC -= offset + 1
 
 [<Literal>]
 let SET_SP = 5y

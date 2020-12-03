@@ -231,11 +231,11 @@ type private Machine
         | NOP -> ()
 
         | JUMP -> m.ProgramCounter <- m.Pop ()
-        | JUMP_ZERO ->
+        | JZ_FWD ->
             let offset = m.NextOp 1
             if m.Pop () = 0UL
             then m.ProgramCounter <- m.ProgramCounter + offset
-        | JUMP_ZERO' ->
+        | JZ_BACK ->
             let offset = m.NextOp 1
             if m.Pop () = 0UL
             then m.ProgramCounter <- m.ProgramCounter - (offset + 1UL)

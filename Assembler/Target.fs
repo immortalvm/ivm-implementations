@@ -62,7 +62,7 @@ let set n = addr n @ [STORE8]
 
 // Using this with negative n is probably not a good idea.
 let pop n =
-    let pop1 = [JUMP_ZERO; 0y]
+    let pop1 = [JZ_FWD; 0y]
     match n with
     | 0 -> []
     | 1 -> pop1
@@ -170,8 +170,8 @@ let byteDist x = -256L <= x && x <= 255L
 
 let jumpZero (offset: int64) =
     if offset >= 0L
-    then [JUMP_ZERO; int8 offset]
-    else [JUMP_ZERO'; int8 <| abs offset - 1L]
+    then [JZ_FWD; int8 offset]
+    else [JZ_BACK; int8 <| abs offset - 1L]
 
 
 // NB. The delta is w.r.t. before the code.
@@ -659,7 +659,7 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
 
             // Avoid optimizing away tight infinite loops.
             | SLabel i :: SPush (ELabel j) :: SJump :: r when i = j ->
-                [Label i] @ frag r [PUSH0; JUMP_ZERO'; 2y]
+                [Label i] @ frag r [PUSH0; JZ_BACK; 2y]
 
             | SLabel i :: r -> rest <- r; [Label i]
 

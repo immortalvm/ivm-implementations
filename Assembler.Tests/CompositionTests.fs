@@ -50,10 +50,10 @@ let interTests =
                        []
         testCase "Tight inf loop" <| fun () ->
             compilesTo [SLabel 1; SPush <| ELabel 1; SJump]
-                       [PUSH0; JUMP_ZERO'; 2y]
+                       [PUSH0; JZ_BACK; 2y]
                        [0]
         testCase "Small inf loop" <| fun () ->
             compilesTo [SLabel 1; SNot; SPush <| ELabel 1; SJump]
-                       [NOT; PUSH0; JUMP_ZERO'; 3y]
+                       [NOT; PUSH0; JZ_BACK; 3y]
                        [0]
     ]
