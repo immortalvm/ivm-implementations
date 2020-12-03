@@ -232,9 +232,14 @@ type private Machine
 
         | JUMP -> m.ProgramCounter <- m.Pop ()
         | JUMP_ZERO ->
-            let offset = m.NextOp 1 |> signExtend1
+            let offset = m.NextOp 1
             if m.Pop () = 0UL
             then m.ProgramCounter <- m.ProgramCounter + offset
+        | JUMP_ZERO' ->
+            let offset = m.NextOp 1
+            if m.Pop () = 0UL
+            then m.ProgramCounter <- m.ProgramCounter - (offset + 1UL)
+
         | SET_SP -> m.StackPointer <- m.Pop ()
         | GET_PC -> m.ProgramCounter |> m.Push
         | GET_SP -> m.StackPointer |> m.Push

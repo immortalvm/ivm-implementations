@@ -78,13 +78,13 @@ let isPositive = [PUSH1; 63y; POW2; LT]
 
 // 1 or -1
 let toSign = isPositive @ [ PUSH1; 2y; MULT; NOT ]
-let abs = get 0 @ toSign @ [MULT] // Keeps 2^63 unchanged
+let absolute = get 0 @ toSign @ [MULT] // Keeps 2^63 unchanged
 let divS =
     List.concat
         [
             // x :: y :: rest
-            get 1 @ abs
-            get 1 @ abs
+            get 1 @ absolute
+            get 1 @ absolute
             [DIV]
             // d :: x :: y :: rest, where d = abs y / abs x.
             get 2 @ toSign
@@ -101,8 +101,8 @@ let remS =
     List.concat
         [
             // x :: y :: rest
-            get 1 @ abs
-            get 1 @ abs
+            get 1 @ absolute
+            get 1 @ absolute
             [REM]
             // d :: x :: y :: rest, where d = abs y % abs x.
             get 2 @ toSign
@@ -119,7 +119,7 @@ let oldDivSU =
     List.concat
         [
             // x :: y :: rest
-            get 1 @ abs
+            get 1 @ absolute
             get 1
             [DIV]
             get 2 @ toSign
@@ -166,22 +166,28 @@ let gtS = offsetSign2 @ gtU
 let gteS = offsetSign2 @ gteU
 
 
-let byteDist x = -128L <= x && x <= 127L
+let byteDist x = -256L <= x && x <= 255L
+
+let jumpZero (offset: int64) =
+    if offset >= 0L
+    then [JUMP_ZERO; int8 offset]
+    else [JUMP_ZERO'; int8 <| abs offset - 1L]
+
 
 // NB. The delta is w.r.t. before the code.
 let deltaJump delta =
     if delta = 0L then []
-    elif byteDist <| delta - 3L then [PUSH0; JUMP_ZERO; int8 (delta - 3L)]
+    elif byteDist <| delta - 3L then [PUSH0] @ jumpZero (delta - 3L)
     elif delta < 0L then [GET_PC] @ pushNum (delta - 1L) @ [ADD; JUMP]
     else 
         let f pushLength = delta - int64 pushLength - 1L
         pushFix f @ [GET_PC; ADD; JUMP]
 
 let deltaJumpZero delta =
-    if byteDist <| delta - 2L then [JUMP_ZERO; int8 (delta - 2L)]
+    if byteDist <| delta - 2L then jumpZero (delta - 2L)
     else
         let jump = deltaJump (delta - 5L)
-        [JUMP_ZERO; 3y; PUSH0; JUMP_ZERO; int8 (opLen jump)] @ jump
+        jumpZero 3L @ [PUSH0] @ jumpZero (opLen jump |> int64) @ jump
 
 let deltaJumpNotZero delta = isZero @ deltaJumpZero (delta - int64 (opLen isZero))
 
@@ -190,7 +196,7 @@ let genericConditional transformer =
     List.concat [
         get 1
         transformer
-        [ JUMP_ZERO; int8 ifNotZero.Length ]
+        jumpZero (ifNotZero |> opLen |> int64)
         ifNotZero
         pop 2
     ]
@@ -653,7 +659,7 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
 
             // Avoid optimizing away tight infinite loops.
             | SLabel i :: SPush (ELabel j) :: SJump :: r when i = j ->
-                [Label i] @ frag r [PUSH0; JUMP_ZERO; -3y]
+                [Label i] @ frag r [PUSH0; JUMP_ZERO'; 2y]
 
             | SLabel i :: r -> rest <- r; [Label i]
 

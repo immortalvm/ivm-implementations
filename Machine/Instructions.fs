@@ -10,34 +10,37 @@ let NOP = 1y
 let JUMP = 2y
 
 [<Literal>]
-let JUMP_ZERO = 3y // Relative to next signed byte (immediate arg)
+let JUMP_ZERO = 3y // PC += offset
 
 [<Literal>]
-let SET_SP = 4y
+let JUMP_ZERO' = 4y // PC -= offset + 1
 
 [<Literal>]
-let GET_PC = 5y
+let SET_SP = 5y
 
 [<Literal>]
-let GET_SP = 6y
+let GET_PC = 6y
 
 [<Literal>]
-let PUSH0 = 7y
+let GET_SP = 7y
+
+[<Literal>]
+let PUSH0 = 8y
 
 // Push the next byte(s) as a zero-padded 64-bit integer.
 [<Literal>]
-let PUSH1 = 8y
+let PUSH1 = 9y
 
 [<Literal>]
-let PUSH2 = 9y
+let PUSH2 = 10y
 
 [<Literal>]
-let PUSH4 = 10y
+let PUSH4 = 11y
 
 [<Literal>]
-let PUSH8 = 11y
+let PUSH8 = 12y
 
-// 12-15: Unused
+// 13-15: Unused
 
 [<Literal>]
 let LOAD1 = 16y
