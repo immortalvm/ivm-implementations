@@ -13,9 +13,6 @@
 (defconstant +push2+      #x09)
 (defconstant +push4+      #x0A)
 (defconstant +push8+      #x0B)
-(defconstant +sigx1+      #x0C)
-(defconstant +sigx2+      #x0D)
-(defconstant +sigx4+      #x0E)
 (defconstant +load1+      #x10)
 (defconstant +load2+      #x11)
 (defconstant +load4+      #x12)
@@ -391,18 +388,6 @@
   (let ((a (fetch m 8)))
     (push* m a)))
 
-(define-opcode +sigx1+ (m () :group bit-2)
-  (let ((x (pop* m)))
-    (push* m (sigext 1 x))))
-
-(define-opcode +sigx2+ (m () :group bit-2)
-  (let ((x (pop* m)))
-    (push* m (sigext 2 x))))
-
-(define-opcode +sigx4+ (m () :group bit-2)
-  (let ((x (pop* m)))
-    (push* m (sigext 4 x))))
-
 ;;;----------------------------------------- Utilities --------------------------------------------
 
 (defun entry-count (entry)
@@ -460,9 +445,6 @@
                       (store4 (newloc machine 1 +store4+))
                       (store2 (newloc machine 1 +store2+))
                       (store1 (newloc machine 1 +store1+))
-                      (sigx4 (newloc machine 1 +sigx4+))
-                      (sigx2 (newloc machine 1 +sigx2+))
-                      (sigx1 (newloc machine 1 +sigx1+))
                       (add (newloc machine 1 +add+))
                       (mult (newloc machine 1 +mult+))
                       (div (newloc machine 1 +div+))
@@ -698,21 +680,17 @@
       #+nil
       (print-machine-diff m m-orig :format :plain))))
 
-(defun test-5-push-sigxt ()
+(defun test-5-push ()
   (let* ((m (make-machine +memwidth+ :groups '(core bit-2))))
     (asm m `((push0)
-             (push8 #xFEDCBA9876543210)
-             (push4 #xFEDCBA98)
-             (sigx4)
-             (push2 #xFEDC)
-             (sigx2)
-             (push1 #xFE)
-             (sigx1)
+             (push2 #x2120)
+             (push4 #x13121110)
+             (push8 #x0706050403020100)
              (exit)))
     (let ((m-orig (machine-copy m)))
       (print-machine m :end (machine-index m))
       (run m)
-      (print-machine m :start #xD8)
+      (print-machine m :start #xE0)
       #+nil
       (print-machine-diff m m-orig :format :plain))))
 
