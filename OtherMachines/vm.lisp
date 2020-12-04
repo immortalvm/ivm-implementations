@@ -72,14 +72,6 @@
       (ash 1 x)
       0))
 
-(defun sigext (octets number)
-  (if (logbitp (1- (* 8 octets)) number)
-      (ecase octets
-        (1 (logior number #xFFFFFFFFFFFFFF00))
-        (2 (logior number #xFFFFFFFFFFFF0000))
-        (4 (logior number #xFFFFFFFF00000000)))
-      number))
-
 (defmacro increment (place delta &key (size 64))
   `(setf ,place (mod (+ ,place ,delta) (expt 2 ,size))))
 
@@ -603,29 +595,6 @@
     (let ((w (fetch m 8)))
       (verify (and (= (machine-pc m) #x0F)
                    (= w #xAEADACABAAA9A8A7))))))
-
-(defun test-2-extend ()
-  (let ((x #x000000000000007F)
-        (y #x0000000000007FFF)
-        (z #x000000007FFFFFFF))
-    ;; 1 octet
-    (setf x (sigext 1 x))
-    (verify (= x #x000000000000007F))
-    (incf x)
-    (setf x (sigext 1 x))
-    (verify (= x #xFFFFFFFFFFFFFF80))
-    ;; 2 octets
-    (setf y (sigext 2 y))
-    (verify (= y #x0000000000007FFF))
-    (incf y)
-    (setf y (sigext 2 y))
-    (verify (= y #xFFFFFFFFFFFF8000))
-    ;; 4 octets
-    (setf z (sigext 4 z))
-    (verify (= z #x000000007FFFFFFF))
-    (incf z)
-    (setf z (sigext 4 z))
-    (verify (= z #xFFFFFFFF80000000))))
 
 (defun test-3-basics ()
   (let ((m (make-machine +memwidth+ :groups '(core))))
