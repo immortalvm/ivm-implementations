@@ -22,8 +22,6 @@
 (defconstant +store2+     #x15)
 (defconstant +store4+     #x16)
 (defconstant +store8+     #x17)
-(defconstant +allocate+   #x18)
-(defconstant +deallocate+ #x19)
 (defconstant +add+        #x20)
 (defconstant +mult+       #x21)
 (defconstant +div+        #x22)
