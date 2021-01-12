@@ -389,9 +389,12 @@
 (defun entry-count (entry)
   (if (consp entry)
       (destructuring-bind (op . args) entry
-        (if (eql op 'data)
-            (length args)
-            (length entry)))
+        (case op
+          (push2 3)
+          (push4 5)
+          (push8 9)
+          (data (length args))
+          (t (length entry))))
       entry))
 
 (defun get-address-table (program)
