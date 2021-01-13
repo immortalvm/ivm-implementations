@@ -32,6 +32,7 @@
 (defconstant +not+        #x2A)
 (defconstant +xor+        #x2B)
 (defconstant +pow2+       #x2C)
+(defconstant +put_byte+   #xf9)
 
 (defvar *format* :latex)
 (defvar *operations* (make-hash-table))
@@ -384,6 +385,12 @@
   (let ((a (fetch m 8)))
     (push* m a)))
 
+;;;--------------------------------------- IO Operations ------------------------------------------
+
+(define-opcode +put_byte+ (m () :group io)
+  (let ((integer (pop* m)))
+    (format t "~&~2,'0X~%" (ldb (byte 8 0) integer))))
+
 ;;;----------------------------------------- Utilities --------------------------------------------
 
 (defun entry-count (entry)
@@ -456,6 +463,7 @@
                       (not (newloc machine 1 +not+))
                       (xor (newloc machine 1 +xor+))
                       (pow2 (newloc machine 1 +pow2+))
+                      (put_byte (newloc machine 1 +put_byte+))
                       (data (dolist (arg args)
                               (newloc machine 1 arg))))))))))))
 
