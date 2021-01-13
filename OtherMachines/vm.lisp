@@ -112,11 +112,12 @@
                  (setf (gethash op opcodes) function)))
              *operations*)))
 
-(defmethod run ((machine machine))
+(defmethod run ((machine machine) &key print-stack)
   (with-slots (opcodes memory pc sp term) machine
     (do ()
         (term)
-      (print-stack machine)
+      (when print-stack
+        (print-stack machine))
       (let ((p pc))
         (incf pc)
         (assert (< pc sp) () "PC >= SP")
