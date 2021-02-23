@@ -1,5 +1,11 @@
 # The iVM assembler and prototype VM
 
+## Introduction
+
+The iVM assembler was made for two reasons: To make it feasible to program the iVM by hand, and also to act as a target for the iVM compiler.  The assembly language provides some useful shorthands and it abstracts away details that does not regard the assembly programmer or the compiler.
+
+## The assembly language
+
 For code examples and a language introduction see the source files in [Assembler.Tests/test_code](Assembler.Tests/test_code),
 in particular these files:
 
