@@ -1,14 +1,15 @@
-# The performance-optimized VM
+# Other machine implementations
 
-This virtual machine was realized as part of the VirtuMa project.
+The prototype machine implementation in of the `ivm` executable is very
+slow. `vm.c` contains a much faster implmentation written in C. This
+virtual machine was realized as part of the VirtuMa project. It has e.g.
+been used for interpreting data in the Portable Document Format using a
+port of the Ghostscript PDF interpreter, see
+https://github.com/immortalvm/ivm-ghostscript. `vm.c` uses libpng. For
+compilation instructions see the top of the file.
 
-The VM is written in C for performance.  The VM is used for interpreting
-data in the Portable Document Format and this feature relies on a port
-of the Ghostscript PDF interpreter, see this repository:
-https://github.com/immortalvm/ivm-ghostscript
+This directory also contains a partial implementation of the machine
+written in Common Lisp.
 
-
-## Build instructions (brief)
-
-Compile:
-    gcc vm.c -lpng -ovm
+A more advanced implementation of the machine, also written in C, is found
+in the repo https://github.com/immortalvm/yet-another-ivm-emulator.
