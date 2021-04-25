@@ -1,8 +1,20 @@
-# The iVM assembler and prototype VM
+# The iVM assembler and prototype machine implementations
 
 ## Introduction
 
 The iVM assembler was made for two reasons: To make it feasible to program the iVM by hand, and also to act as a target for the iVM compiler.  The assembly language provides some useful shorthands and it abstracts away details that does not regard the assembly programmer or the compiler.
+
+## Assembler installation
+
+Zip files containing executables for Linux, Windows and MacOS have been attached to each release (see Releases). These executables are self-contained (in particular, they contain the necessary parts of the .NET Core framework).
+
+## Building the assembler from source
+
+The Bash script `publish.sh` builds the assembler, runs the tests and creates the deployment zip-files for all three platforms. In order to run the script, you need .NET Core. (If you do not have Bash, you can execute the three dotnet commands in the script manually.)
+
+## Machine implementations
+
+The `ivm` executable contains not only the assembler, but also a (rather slow) prototype implementation of the machine. A much faster implementation in C is found in the `OtherMachines` folder, which also contains a partial implementation in Common Lisp.
 
 ## The assembly language
 
@@ -248,7 +260,3 @@ the path in the first line to where you can find the ivm executable.
       '(progn
          (add-hook 'asm-mode-set-comment-hook 'ivarru-asm-mode-comment-hook)
          (add-hook 'asm-mode-hook 'ivarru-asm-mode-hook)))
-
-## Install
-### Ubuntu
-sudo apt-get install -y libgdiplus 
