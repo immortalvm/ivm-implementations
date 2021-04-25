@@ -11,4 +11,8 @@ https://github.com/immortalvm/ivm-ghostscript
 ## Build instructions (brief)
 
 Compile:
-    gcc vm.c -lpng -ovm
+    make
+
+# LISP VM
+
+Independent 3rd party implementation in LISP, implemented from startup guide.
