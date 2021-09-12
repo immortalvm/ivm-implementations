@@ -49,3 +49,6 @@ build.fsx.lock
 .ionide
 .vscode
 msbuild.binlog
+
+# AltCover
+coverage.xml

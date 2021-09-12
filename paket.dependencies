@@ -1,5 +1,6 @@
 source https://api.nuget.org/v3/index.json
 
+nuget AltCover
 nuget Expecto
 nuget FParsec
 nuget FSharp.Core

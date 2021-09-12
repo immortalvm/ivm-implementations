@@ -1,5 +1,6 @@
 NUGET
   remote: https://api.nuget.org/v3/index.json
+    altcover (8.2.821)
     Expecto (9.0.4)
       FSharp.Core (>= 4.6) - restriction: || (>= net461) (>= netstandard2.0)
       Mono.Cecil (>= 0.11.3) - restriction: || (>= net461) (>= netstandard2.0)
