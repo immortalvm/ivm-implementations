@@ -8,6 +8,7 @@ open System.IO
 
 exception AccessException of string
 exception UndefinedException of string
+exception VersionException of string
 
 // Little-endian encoding
 let private fromBytes : seq<uint8> -> uint64 =
@@ -282,6 +283,11 @@ type private Machine
             let n = m.Pop()
             if n <= 63UL then 1UL <<< int n else 0UL
             |> m.Push
+
+        | CHECK ->
+            let n = m.Pop()
+            if n > 0UL
+            then raise (VersionException($"Incompatible byte code version: {n}"))
 
         | READ_FRAME ->
             let width, height = m.Pop () |> readFrame

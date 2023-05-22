@@ -100,6 +100,9 @@ let XOR = 43y
 [<Literal>]
 let POW2 = 44y
 
+[<Literal>]
+let CHECK = 48y
+
 // 45-248: Unused
 
 [<Literal>]
