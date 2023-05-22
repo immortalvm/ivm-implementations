@@ -2,8 +2,11 @@ source https://api.nuget.org/v3/index.json
 
 nuget AltCover
 nuget Expecto
+nuget Fake.Core.Target
+nuget Fake.DotNet.Cli
+nuget Fake.IO.Zip
+nuget Fake.Tools.Git
 nuget FParsec
-nuget FSharp.Core
 nuget Microsoft.NET.Test.Sdk
 nuget System.CommandLine 2.0.0-beta1.20371.2
 nuget System.Drawing.Common

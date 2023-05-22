@@ -10,7 +10,9 @@ Zip files containing executables for Linux, Windows and MacOS have been attached
 
 ## Building the assembler from source
 
-The Bash script `publish.sh` builds the assembler, runs the tests and creates the deployment zip-files for all three platforms. In order to run the script, you need .NET Core. (If you do not have Bash, you can execute the three dotnet commands in the script manually.)
+The Bash script `build.sh` builds the assembler, runs the tests and creates the deployment zip-files for all three platforms. In order to run the script, you need .NET. If you do not have Bash, you can execute the three dotnet commands in the script manually.
+
+Pass `Clean` or `Test` as argument to `build.sh` in order to only clean the directories or run the unit tests.
 
 ## Machine implementations
 

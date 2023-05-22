@@ -1,0 +1,5 @@
+Fake.IO.FileSystem
+Fake.IO.Zip
+Fake.DotNet.Cli
+Fake.Tools.Git
+Fake.Core.Target
