@@ -1,15 +1,9 @@
 ﻿module Machine.Tests.ExecutorTests
 
-open System
 open Expecto
-open Expecto.Impl
-open Swensen.Unquote
-
 open Machine.Instructions
 open Machine.Executor
 
-
-let random = System.Random ()
 
 let endStack prog =
     // Memory size: 64 KiB
@@ -22,9 +16,4 @@ let expectEndStack prog expected () =
 let basicTests =
     testList "Basics" [
         testCase "Push zero" <| expectEndStack [PUSH0; EXIT] [0L]
-        testCase "Version 0 ok" <| expectEndStack [PUSH0; CHECK; EXIT] []
-        testCase "Version 1 not ok" <| fun () ->
-            Expect.throwsT<VersionException>
-                (fun () -> endStack [PUSH1; 1y; CHECK; EXIT] |> ignore)
-                "Version 1 was accepted"
     ]

@@ -1,5 +1,10 @@
 ﻿module Machine.Instructions
 
+// The current version of the machine and produced byte code.
+// Unlike the constants below, this is not an instruction!
+[<Literal>]
+let VERSION = 0UL
+
 [<Literal>]
 let EXIT = 0y
 

@@ -286,7 +286,8 @@ type private Machine
 
         | CHECK ->
             let n = m.Pop()
-            if n > 0UL
+            if n > VERSION
+            // We assume backward compatibility for now.
             then raise (VersionException($"Incompatible byte code version: {n}"))
 
         | READ_FRAME ->

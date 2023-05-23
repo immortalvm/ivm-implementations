@@ -111,6 +111,7 @@
     <Compile Include="ProgParserTests.fs" />
     <Compile Include="CompositionTests.fs" />
     <Compile Include="IntegrationTests.fs" />
+    <Compile Include="VersionCheckTests.fs" />
     <Compile Include="Main.fs" />
     <ProjectReference Include="..\Tools\Tools.fsproj" />
     <ProjectReference Include="..\Assembler\Assembler.fsproj" />
