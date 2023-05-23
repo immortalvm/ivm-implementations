@@ -66,6 +66,7 @@ type Statement =
     | SExit | SSetSp
     | SCall of int
     | SJump | SJumpZero | SJumpNotZero
+    | SCheck
 
     | SLoad1 | SLoad2 | SLoad4 | SLoad8
     | SSigx1 | SSigx2 | SSigx4

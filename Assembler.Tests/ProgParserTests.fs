@@ -184,4 +184,12 @@ let BasicTests =
                     [ENum 1L; ELabel 1; ELabel 1] |> ESum |> EStack |> SPush
                 ]
                 "x: push!! 0 &(+ x x)"
+
+        testCase "Check version" <|
+            success
+                [
+                    Machine.Instructions.VERSION |> int64 |> ENum |> SPush
+                    SCheck
+                ]
+                "check_version"
     ]

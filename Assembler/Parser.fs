@@ -326,6 +326,7 @@ let statement: Parser<Statement list, State> =
             | "jump" -> nArgs 1 [SJump]
             | "jump_zero" -> nArgs 2 [SJumpZero]
             | "jump_not_zero" -> nArgs 2 [SJumpNotZero]
+            | "check_version" -> nArgs 0 [Machine.Instructions.VERSION |> int64 |> ENum |> SPush; SCheck]
 
             | "load1" -> nArgs 1 [SLoad1]
             | "load2" -> nArgs 1 [SLoad2]

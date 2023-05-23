@@ -120,6 +120,7 @@ statement = identifier ":"                                         (* label *)
           | "jump_not_zero" | "jump_not_zero!" expression | "jump_not_zero!!" expression expression
           | "call" | "call!" expression
           | "return"                                               (* alias for "jump" *)
+          | "check_version"
 
           | "load1" | "load1!" expression
           | "load2" | "load2!" expression

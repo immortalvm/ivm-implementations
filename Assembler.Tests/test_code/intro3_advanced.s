@@ -68,7 +68,21 @@ after_data:
     store8!! (load4 my_data) &3
 
 
-### 4.
+### 4. Check binary version compatibility
+
+    ## Ideally, the iVM machine should never change, but it cannot be ruled out.
+    ## If this  happens, it is  important to know  if the machine  is compatible
+    ## with  the executable  binaries  at  hand. For  this  reason,  it is  best
+    ## practice to start assembly files with the following statement:
+    check_version
+
+    ## The effect of this statement is to push to the stack the version of the
+    ## machine and instruction set for which the binary was assembled and then
+    ## call the CHECK instruction to see if the machine can run it. If not, the
+    ## machine should signal an error.
+
+
+### 5.
 
     ## To be continued...
     return

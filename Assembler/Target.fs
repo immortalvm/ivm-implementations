@@ -715,6 +715,8 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
             | SData4 (line, e) :: r -> fragment r (expressionData 4 line e)
             | SData8 (line, e) :: r -> fragment r (expressionData 8 line e)
 
+            | SCheck :: r -> frag r [CHECK]
+
             | SNewFrame  :: r -> frag r [NEW_FRAME]
             | SSetPixel  :: r -> frag r [SET_PIXEL]
             | SAddSample :: r -> frag r [ADD_SAMPLE]
