@@ -31,6 +31,7 @@
 #define STRING_TOO_LONG 6
 #define NOT_WRITEABLE 7
 #define PNG_TROUBLE 8
+#define WRONG_BINARY_VERSION 9
 
 // Instructions
 #define EXIT 0
@@ -64,6 +65,7 @@
 #define NOT 42
 #define XOR 43
 #define POW2 44
+#define CHECK 48
 
 #define READ_FRAME (uint8_t)-1
 #define READ_PIXEL (uint8_t)-2
@@ -588,6 +590,14 @@ int main(int argc, char** argv) {
     case XOR: push(pop() ^ pop()); break;
 
     case POW2: x = pop(); push(x <= 63 ? 1UL << x : 0); break;
+
+    case CHECK:
+      x = pop();
+      if (x > 1) {
+        fprintf(stderr, "Incompatible binary version: %" PRIu64 "\n", x);
+        return WRONG_BINARY_VERSION;
+      }
+      break;
 
     case READ_FRAME:
       ioReadFrame(pop(), &x, &y);
