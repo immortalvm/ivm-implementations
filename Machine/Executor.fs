@@ -288,7 +288,7 @@ type private Machine
             let n = m.Pop()
             if n > VERSION
             // We assume backward compatibility for now.
-            then raise (VersionException($"Incompatible byte code version: {n}"))
+            then raise (VersionException($"Incompatible binary version: {n}"))
 
         | READ_FRAME ->
             let width, height = m.Pop () |> readFrame
