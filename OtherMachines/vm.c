@@ -481,12 +481,8 @@ void ioFlush() {
   outputCounter++;
 }
 
-// TODO: Remove the printf?
 void ioPutChar(uint32_t c) {
-  int start = currentText.used;
   bytesPutChar(&currentText, c);
-  int len = currentText.used - start;
-  printf("%.*s", len, currentText.array + start);
 }
 
 void ioPutByte(uint8_t x) {
