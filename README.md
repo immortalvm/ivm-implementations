@@ -163,6 +163,7 @@ statement = identifier ":"                                         (* label *)
           | "gt_u" | "gt_u!" expression | "gt_u!!" expression expression
           | "gt_s" | "gt_s!" expression | "gt_s!!" expression expression
 
+          | "read_char"                                            (* interactive *)
           | "read_frame" | "read_frame!" expression
           | ... | "read_pixel!!" expression expression
 
