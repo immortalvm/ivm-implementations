@@ -378,6 +378,7 @@ let statement: Parser<Statement list, State> =
 
             | "read_frame" -> nArgs 1 [SReadFrame]
             | "read_pixel" -> nArgs 2 [SReadPixel]
+            | "read_char" -> nArgs 0 [SReadChar]
 
             // Better error message than simply 'fail'.
             | _ -> fun _ -> Reply (Error, unexpectedString id)

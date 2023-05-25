@@ -3,7 +3,7 @@
 // The current version of the machine and produced byte code.
 // Unlike the constants below, this is not an instruction!
 [<Literal>]
-let VERSION = 1UL
+let VERSION = 2UL
 
 [<Literal>]
 let EXIT = 0y
@@ -108,7 +108,7 @@ let POW2 = 44y
 [<Literal>]
 let CHECK = 48y
 
-// 49-248: Unused
+// 49-247: Unused
 
 [<Literal>]
 let READ_FRAME = -1y  // 255
@@ -130,6 +130,9 @@ let PUT_CHAR = -6y    // 250
 
 [<Literal>]
 let PUT_BYTE = -7y    // 249
+
+[<Literal>]
+let READ_CHAR = -8y    // 248
 
 // Used by Machine.Disassembler to find the module.
 type IReflectionMarker = interface end

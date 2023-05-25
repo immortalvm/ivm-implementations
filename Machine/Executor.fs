@@ -3,6 +3,7 @@
 open Machine.Instructions
 open Machine.Utils
 
+open System
 open System.Drawing
 open System.IO
 
@@ -18,6 +19,11 @@ let private fromBytes : seq<uint8> -> uint64 =
 let private toBytes n (x: uint64) : seq<uint8> =
     [| 0 .. n-1 |] |> Seq.map (fun i -> x >>> i*8 |> uint8)
 
+let keyChar (ki: ConsoleKeyInfo) : char =
+    if ki.Key = ConsoleKey.Enter
+    then '\n'
+    else ki.KeyChar
+
 type private Machine
     (
         memorySize: uint64,
@@ -30,14 +36,14 @@ type private Machine
     let memory =
         try
             let size =
-                if memorySize > uint64 System.Int32.MaxValue
-                then failwithf "Max memory size: %d" System.Int32.MaxValue
+                if memorySize > uint64 Int32.MaxValue
+                then failwithf "Max memory size: %d" Int32.MaxValue
                 else int memorySize
             let mem = Array.create size 0uy
             Seq.iteri (fun i x -> mem.[i] <- x) initialProgram
             mem
         with
-            :? System.IndexOutOfRangeException -> raise (AccessException "Program too big")
+            :? IndexOutOfRangeException -> raise (AccessException "Program too big")
 
     let memoryIndex location : int =
         let i = location - startLocation
@@ -98,7 +104,7 @@ type private Machine
             let path = Path.Combine(outputDir.Value, sprintf "%08d." frameCounter)
             match text with
             | [] -> ()
-            | _ -> File.WriteAllText (path + "text", text |> Seq.rev |> Seq.concat |> System.String.Concat)
+            | _ -> File.WriteAllText (path + "text", text |> Seq.rev |> Seq.concat |> String.Concat)
             text <- []
             match bytes with
             | [] -> ()
@@ -203,7 +209,7 @@ type private Machine
                 if traceSyms.IsSome
                 then
                     printfn " %4d: %s" m.StackPointer
-                    <| System.String.Join(" ", m.Stack 50 |> Seq.rev |> Seq.map int64)
+                    <| String.Join(" ", m.Stack 50 |> Seq.rev |> Seq.map int64)
 
             flushFrame ()
         finally
@@ -305,7 +311,7 @@ type private Machine
             let height = m.Pop () |> int
             let width = m.Pop () |> int
             bitmap <- Some <| new Bitmap (width, height)
-            System.Console.Error.Write "\r\f" // carriage return + form feed
+            Console.Error.Write "\r\f" // carriage return + form feed
         | SET_PIXEL ->
             let b = m.Pop () |> int
             let g = m.Pop () |> int
@@ -323,16 +329,23 @@ type private Machine
                 m.Pop ()
                 |> toBytes 4
                 |> Seq.toArray
-                |> System.Text.Encoding.UTF32.GetChars
+                |> Text.Encoding.UTF32.GetChars
             text <- c :: text
-            System.Console.Error.Write c
+            Console.Error.Write c
         | PUT_BYTE ->
             bytes <- uint8 (m.Pop ()) :: bytes
+        | READ_CHAR ->
+            Console.ReadKey ()
+            |> keyChar
+            |> fun c -> [| c |]
+            |> Text.Encoding.UTF32.GetBytes
+            |> fromBytes
+            |> m.Push
 
         | undefined -> raise (UndefinedException(sprintf "%d" undefined))
 
 
-let private random = System.Random ()
+let private random = Random ()
 
 // Execute at random location (multiple of 1000) and return terminal stack.
 // Trace execution if symbol mapping is provided.
