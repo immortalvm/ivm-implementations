@@ -32,6 +32,7 @@
 (defconstant +not+        #x2A)
 (defconstant +xor+        #x2B)
 (defconstant +pow2+       #x2C)
+(defconstant +check+      #x30)
 (defconstant +put_byte+   #xf9)
 
 (defvar *format* :latex)
@@ -273,6 +274,11 @@
   (let ((a (fetch m 1)))
     (push* m a)))
 
+(define-opcode +check+ (m (term) :group core)
+  (let ((integer (pop* m)))
+    (when (> integer 1)
+      (setq term t))))
+
 ;;;-------------------------------------- Bit Operations I ----------------------------------------
 
 (define-opcode +load1+ (m () :group bit-1)
@@ -437,6 +443,7 @@
                       (set_sp (newloc machine 1 +set_sp+))
                       (get_pc (newloc machine 1 +get_pc+))
                       (get_sp (newloc machine 1 +get_sp+))
+                      (check (newloc machine 1 +check+))
                       (push8 (newloc machine 1 +push8+)
                        (newloc machine 8 (resolve (first args))))
                       (push4 (newloc machine 1 +push4+)
@@ -628,8 +635,13 @@
              CONTINUE_2
              (get_sp)
              (get_pc)
+             (push1 #x01)
+             (check)
              (push1 #xF8)
              (set_sp)
+             (push1 #x02)
+             (check)
+             (push1 #x00)
              (exit)))
     (let ((m-orig (machine-copy m)))
       (print-machine m :end (machine-index m))
