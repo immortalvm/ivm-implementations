@@ -277,7 +277,8 @@
 (define-opcode +check+ (m (term) :group core)
   (let ((integer (pop* m)))
     (when (> integer 1)
-      (setq term t))))
+      (setq term t)
+      (error "Machine version mismatch"))))
 
 ;;;-------------------------------------- Bit Operations I ----------------------------------------
 
@@ -614,6 +615,40 @@
                    (= w #xAEADACABAAA9A8A7))))))
 
 (defun test-3-basics ()
+  (let ((m (make-machine +memwidth+ :groups '(core))))
+    (asm m '((nop)
+             (push1 CONTINUE_2)
+             (push1 #x00)
+             (push1 #x01)
+             (push1 CONTINUE_1)
+             (push1 #x01)
+             (push1 #x00)
+             (jz_fwd 1)   ; true
+             (exit)
+             (jz_back 2)  ; false
+             (jump)
+             (exit)
+             (jump)
+             CONTINUE_1
+             (jz_fwd 2)   ; false
+             (jz_back 4)  ; true
+             (exit)
+             CONTINUE_2
+             (get_sp)
+             (get_pc)
+             (push1 #x01)
+             (check)
+             (push1 #xF8)
+             (set_sp)
+             (exit)))
+    (let ((m-orig (machine-copy m)))
+      (print-machine m :end (machine-index m))
+      (run m)
+      (print-machine m :start #xE8)
+      #+nil
+      (print-machine-diff m m-orig))))
+
+(defun test-3-basics-version-mismatch ()
   (let ((m (make-machine +memwidth+ :groups '(core))))
     (asm m '((nop)
              (push1 CONTINUE_2)
