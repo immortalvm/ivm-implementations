@@ -335,8 +335,8 @@ type private Machine
         | PUT_BYTE ->
             bytes <- uint8 (m.Pop ()) :: bytes
         | READ_CHAR ->
-            Console.ReadKey ()
-            |> keyChar
+            if Console.IsInputRedirected then Console.Read () |> Convert.ToChar
+                                         else Console.ReadKey () |> keyChar
             |> fun c -> [| c |]
             |> Text.Encoding.UTF32.GetBytes
             |> fromBytes
