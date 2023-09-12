@@ -613,7 +613,7 @@ int main(int argc, char** argv) {
 
     case CHECK:
       x = pop();
-      if (x > 1) {
+      if (x > 2) {
         fprintf(stderr, "Incompatible binary version: %" PRIu64 "\n", x);
         return WRONG_BINARY_VERSION;
       }
