@@ -1,4 +1,5 @@
 ### Loop read_char+put_char until receiving EOT (^D).
+### NB. Do not add to the F# test project. Running the tests would get stuck.
 
     eot = 4
 loop:
