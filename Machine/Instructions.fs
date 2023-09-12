@@ -3,7 +3,7 @@
 // The current version of the machine and produced byte code.
 // Unlike the constants below, this is not an instruction!
 [<Literal>]
-let VERSION = 2UL
+let VERSION = 3UL
 
 [<Literal>]
 let EXIT = 0y
@@ -133,6 +133,9 @@ let PUT_BYTE = -7y    // 249
 
 [<Literal>]
 let READ_CHAR = -8y    // 248
+
+[<Literal>]
+let READ_BYTE = -9y    // 247
 
 // Used by Machine.Disassembler to find the module.
 type IReflectionMarker = interface end

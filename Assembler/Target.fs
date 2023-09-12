@@ -726,6 +726,7 @@ let intermediates (prog: Statement list) : seq<Intermediate> =
             | SReadFrame :: r -> frag r [READ_FRAME]
             | SReadPixel :: r -> frag r [READ_PIXEL]
             | SReadChar :: r -> frag r [READ_CHAR]
+            | SReadByte :: r -> frag r [READ_BYTE]
 
             | _ -> failwithf "Impossible case: %O" rest
     }

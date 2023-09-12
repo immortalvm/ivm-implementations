@@ -88,4 +88,4 @@ type Statement =
     | SPutChar | SPutByte
 
     | SReadFrame | SReadPixel
-    | SReadChar
+    | SReadChar | SReadByte

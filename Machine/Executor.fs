@@ -10,6 +10,10 @@ open System.IO
 exception AccessException of string
 exception UndefinedException of string
 exception VersionException of string
+exception BytesExhaustedException of string
+
+[<Literal>]
+let BYTE_INPUT_FILE_NAME = "bytes"
 
 // Little-endian encoding
 let private fromBytes : seq<uint8> -> uint64 =
@@ -53,6 +57,25 @@ type private Machine
 
     let load location = memory.[memoryIndex location]
     let store location value = memory.[memoryIndex location] <- value
+
+    let mutable inputBytes: byte list option = None
+    let getInputBytes () : byte list =
+        match inputBytes with
+        | None ->
+            let bytes =
+                match inputDir with
+                | None -> []
+                | Some dir ->
+                    let path = Path.Combine(dir, BYTE_INPUT_FILE_NAME)
+                    if File.Exists path then File.ReadAllBytes path |> Array.toList else []
+            inputBytes <- Some bytes
+            bytes
+        | Some bytes -> bytes
+    let readByte () : byte =
+        match getInputBytes () with
+        | (b :: rest) -> inputBytes <- Some rest
+                         b
+        | [] -> raise (BytesExhaustedException "No more input bytes")
 
     let mutable pendingInputFiles: string[] option = None
     let mutable inputBitmap: Bitmap option = None
@@ -341,6 +364,8 @@ type private Machine
             |> Text.Encoding.UTF32.GetBytes
             |> fromBytes
             |> m.Push
+
+        | READ_BYTE -> readByte () |> uint64 |> m.Push
 
         | undefined -> raise (UndefinedException(sprintf "%d" undefined))
 
