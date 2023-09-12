@@ -336,7 +336,7 @@ type private Machine
             bytes <- uint8 (m.Pop ()) :: bytes
         | READ_CHAR ->
             if Console.IsInputRedirected then Console.Read () |> Convert.ToChar
-                                         else Console.ReadKey () |> keyChar
+                                         else Console.ReadKey (true) |> keyChar
             |> fun c -> [| c |]
             |> Text.Encoding.UTF32.GetBytes
             |> fromBytes
