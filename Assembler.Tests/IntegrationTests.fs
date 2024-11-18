@@ -43,7 +43,7 @@ let integrationTests =
     |> testList DIRECTORY
 
 [<Literal>]
-let IMPL_DIRECTORY = "test_code/Implicit_imports"
+let IMPL_DIRECTORY = "test_code/implicit_imports"
 
 [<Tests>]
 let implicitImportTests =
